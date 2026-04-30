@@ -73,4 +73,4 @@ testpaths = ["tests"]
 addopts = "-v --tb=short --cov=bot --cov=services --cov=utils --cov=tasks --cov-report=term-missing:skip-covered"
 
 [tool.coverage.run]
-omit = ["tests/*", "db/migrations/*"]
+omit = ["tests/*", "db/migrations/*", "utils/coverage_dashboard.py"]
