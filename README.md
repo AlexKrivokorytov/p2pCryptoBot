@@ -6,6 +6,8 @@
 [![Aiogram 3.x](https://img.shields.io/badge/framework-aiogram_3.x-orange.svg)](https://docs.aiogram.dev/)
 [![SQLAlchemy 2.0](https://img.shields.io/badge/db-SQLAlchemy_2.0-red.svg)](https://www.sqlalchemy.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/AlexKrivokorytov/p2pCryptoBot/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexKrivokorytov/p2pCryptoBot/actions/workflows/ci.yml)
+![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen)
 
 **p2pCryptoBot** is a high-robust, production-ready **P2P Crypto Trading Bot** for Telegram. It acts as a secure Escrow service between Buyers and Sellers, ensuring trade safety through integration with **Crypto Pay API** and direct blockchain interactions (EVM/TON).
 

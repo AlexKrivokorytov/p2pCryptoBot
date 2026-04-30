@@ -74,7 +74,22 @@ jobs:
 
       - name: Run pytest with coverage
         run: |
-          pytest --cov=services --cov=providers --cov=utils \
+          pytest --cov=bot --cov=services --cov=providers --cov=utils --cov=tasks \
                  --cov-report=term-missing \
+                 --cov-report=xml:coverage.xml \
                  --cov-fail-under=80 \
-                 -v
+                 -v | tee pytest_output.txt
+
+      - name: Generate Coverage Summary
+        if: always()
+        run: |
+          echo "### 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          coverage report --show-missing >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Annotate Failures
+        if: failure()
+        run: |
+          echo "### ❌ Test Failures Detected" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the 'Annotations' section at the top of the page for details." >> $GITHUB_STEP_SUMMARY
