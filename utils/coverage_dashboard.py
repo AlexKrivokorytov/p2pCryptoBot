@@ -238,8 +238,8 @@ def generate_html(stats: dict[str, GroupStat], total_percent: float,
             }}
         }});"""
     html += "</script></body></html>"
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html)
+    with open(output_path, "w", encoding="utf-8") as out:
+        out.write(html)
     return os.path.realpath(output_path)
 
 
