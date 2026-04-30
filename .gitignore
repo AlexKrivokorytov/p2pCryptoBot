@@ -1,0 +1,63 @@
+# ── Secrets & Environment ─────────────────────────────────────────────────────
+.env
+*.env
+.env.local
+.env.*.local
+.env.example # Skip if you want to keep example as a template, but usually .env.example is tracked.
+             # Actually, keep .env.example tracked. So I'll remove it from ignore.
+
+# ── Python & Build ────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.log
+.python-version
+
+# ── Virtual Environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+lib/
+lib64/
+bin/
+include/
+share/
+
+# ── Database & Storage ────────────────────────────────────────────────────────
+postgres_data/
+*.sqlite
+*.db
+
+# ── IDE & System ──────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Project Specific Artifacts ────────────────────────────────────────────────
+pytest_out*.txt
+pytest_errors.txt
+test_results/
+scratch/
+temp/

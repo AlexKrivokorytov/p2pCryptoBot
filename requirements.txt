@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# requirements.txt — pinned runtime dependencies for reproducible Docker builds
+# Generated from pyproject.toml; update with: pip-compile pyproject.toml
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Telegram bot framework
+aiogram==3.27.0
+
+# Database — async runtime
+sqlalchemy[asyncio]==2.0.40
+asyncpg==0.31.0
+
+# Database — Alembic sync migrations (psycopg2, NOT asyncpg)
+alembic==1.15.2
+psycopg2-binary==2.9.10
+
+# Crypto Pay SDK
+aiocryptopay==0.4.8
+
+# Exchange adapters
+ccxt==4.4.70
+
+# Structured logging
+structlog==25.3.0
+
+# Encryption
+cryptography==47.0.0
+
+# Web3 wallet key generation + EVM JSON-RPC client
+# web3 includes eth-account as a dependency (compatible version resolved automatically)
+web3==7.12.0
+# pytoniq-core: TON mnemonic + key derivation (pure Python, no C deps)
+pytoniq-core==0.1.36
+
+# Config / secrets
+python-dotenv==1.1.0
+
+# Webhook HTTP server
+# NOTE: ccxt 4.4.70 requires aiohttp<=3.10.11
+aiohttp==3.10.11

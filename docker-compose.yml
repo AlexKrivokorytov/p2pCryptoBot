@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: p2pbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: p2pbot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U p2pbot -d p2pbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  migrate:
+    build:
+      context: .
+      target: runtime
+    env_file: .env
+    environment:
+      # psycopg2 URL for Alembic sync migrations (avoids asyncpg enum bug)
+      POSTGRES_URI: postgresql+asyncpg://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
+      ALEMBIC_DB_URL: postgresql+psycopg2://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["/bin/sh", "/app/migrate.sh"]
+    restart: "no"
+
+  bot:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_URI: postgresql+asyncpg://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
+      ALEMBIC_DB_URL: postgresql+psycopg2://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "bot.main"]
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
