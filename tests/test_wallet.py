@@ -122,7 +122,8 @@ async def test_cmd_wallet_no_wallets(mock_get_wallets: AsyncMock, session: Async
     """Wallet command shows empty-state text when user has no wallets."""
     mock_get_wallets.return_value = []
 
-    message = AsyncMock()
+    message = AsyncMock(spec=Message)
+    message.from_user = MagicMock()
     message.from_user.id = 111
 
     await wallet_handlers.cmd_wallet(message, session)
@@ -147,7 +148,8 @@ async def test_cmd_wallet_with_wallets(mock_get_wallets: AsyncMock, session: Asy
     )
     mock_get_wallets.return_value = [wallet]
 
-    message = AsyncMock()
+    message = AsyncMock(spec=Message)
+    message.from_user = MagicMock()
     message.from_user.id = 111
 
     await wallet_handlers.cmd_wallet(message, session)
@@ -172,9 +174,11 @@ async def test_cb_generate_wallet_success(mock_generate: AsyncMock, session: Asy
         encrypted_private_key="enc",
     )
 
-    callback = AsyncMock()
-    callback.data = "wallet:generate:evm"
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
     callback.from_user.id = 111
+    callback.message = AsyncMock(spec=Message)
+    callback.data = "wallet:generate:evm"
 
     state = AsyncMock()
     await wallet_handlers.cb_generate_wallet(callback, session, state)
@@ -188,9 +192,11 @@ async def test_cb_generate_wallet_success(mock_generate: AsyncMock, session: Asy
 @pytest.mark.asyncio
 async def test_cb_generate_wallet_invalid_chain(session: AsyncSession) -> None:
     """Invalid chain shows error message and does not crash."""
-    callback = AsyncMock()
-    callback.data = "wallet:generate:solana"
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
     callback.from_user.id = 111
+    callback.message = AsyncMock(spec=Message)
+    callback.data = "wallet:generate:solana"
 
     state = AsyncMock()
     await wallet_handlers.cb_generate_wallet(callback, session, state)

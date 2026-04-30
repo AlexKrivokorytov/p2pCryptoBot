@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from aiogram.types import CallbackQuery, Message
 from bot.handlers import profile as profile_handlers
 from db.models.user import User
 from services import user_service
@@ -61,8 +62,10 @@ async def test_cb_profile(mock_get_profile: AsyncMock, session: AsyncSession) ->
     user = User(telegram_id=999, is_verified=False, total_trades=0, successful_trades=0)
     mock_get_profile.return_value = user
 
-    callback = AsyncMock()
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
     callback.from_user.id = 999
+    callback.message = AsyncMock(spec=Message)
 
     await profile_handlers.cb_profile(callback, session)
 

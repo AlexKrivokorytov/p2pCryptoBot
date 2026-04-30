@@ -14,7 +14,7 @@ from db.models.base import Base
 os.environ.setdefault(
     "POSTGRES_URI", "postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test"
 )
-os.environ.setdefault("AES_KEY", "0" * 64)
+os.environ["AES_KEY"] = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 os.environ.setdefault("CRYPTOPAY_TOKEN", "test")
 os.environ.setdefault("CRYPTOPAY_CALLBACK_SECRET", "testsecret")
 os.environ.setdefault("BOT_TOKEN", "0:test")

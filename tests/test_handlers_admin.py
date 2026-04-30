@@ -8,6 +8,7 @@ import pytest
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aiogram.types import CallbackQuery, Message
 from bot.handlers import admin as admin_handlers
 from bot.states import ArbitrationFSM
 
@@ -148,8 +149,10 @@ async def test_cmd_disputes_not_admin(session: AsyncSession) -> None:
 @patch("bot.handlers.admin.dispute_service.resolve_dispute", new_callable=AsyncMock)
 async def test_cb_dispute_resolve_not_admin(mock_resolve: AsyncMock, session: AsyncSession) -> None:
     """Non-admin resolving via callback is rejected."""
-    callback = AsyncMock()
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
     callback.from_user.id = 123
+    callback.message = AsyncMock(spec=Message)
     callback.data = "dispute:resolve:12345678:taker_wins"
     state = AsyncMock(spec=FSMContext)
     crypto_pay = AsyncMock()
@@ -166,9 +169,10 @@ async def test_cb_dispute_resolve_success(mock_resolve: AsyncMock, session: Asyn
     """Admin successfully resolves dispute."""
     mock_resolve.return_value = {"status": "completed"}
 
-    callback = AsyncMock()
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
     callback.from_user.id = 999
-    callback.data = "dispute:resolve:5a1fc458:taker_wins"
+    callback.message = AsyncMock(spec=Message)
     state = AsyncMock(spec=FSMContext)
     crypto_pay = AsyncMock()
 
@@ -188,8 +192,10 @@ async def test_cb_dispute_resolve_error(mock_resolve: AsyncMock, session: AsyncS
     """Admin dispute resolution handles service errors gracefully."""
     mock_resolve.side_effect = ValueError("Order not found")
 
-    callback = AsyncMock()
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
     callback.from_user.id = 999
+    callback.message = AsyncMock(spec=Message)
     callback.data = "dispute:resolve:5a1fc458:taker_wins"
     state = AsyncMock(spec=FSMContext)
     crypto_pay = AsyncMock()
