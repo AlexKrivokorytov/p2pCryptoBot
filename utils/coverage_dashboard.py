@@ -3,9 +3,25 @@ import sys
 import webbrowser
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 
-def get_stats(xml_path="coverage.xml"):
+class FileStat(TypedDict):
+    """File coverage statistics."""
+    name: str
+    coverage: float
+    lines: int
+    missed: int
+
+
+class GroupStat(TypedDict):
+    """Module group statistics."""
+    lines: int
+    covered: int
+    files: List[FileStat]
+
+
+def get_stats(xml_path: str = "coverage.xml") -> Optional[Tuple[Dict[str, GroupStat], ET.Element]]:
     """Parse coverage.xml and group data by project modules."""
     if not os.path.exists(xml_path):
         return None
@@ -13,7 +29,7 @@ def get_stats(xml_path="coverage.xml"):
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
-    groups = {
+    groups: Dict[str, List[str]] = {
         "Bot Layer": ["bot/"],
         "Services": ["services/"],
         "Data Layer": ["db/"],
@@ -21,14 +37,19 @@ def get_stats(xml_path="coverage.xml"):
         "Helpers": ["utils/", "tasks/"],
     }
 
-    stats = {name: {"lines": 0, "covered": 0, "files": []} for name in groups}
+    stats: Dict[str, GroupStat] = {
+        name: {"lines": 0, "covered": 0, "files": []} for name in groups
+    }
     stats["Others"] = {"lines": 0, "covered": 0, "files": []}
 
     for package in root.findall(".//package"):
         for class_ in package.findall(".//class"):
             filename = class_.get("filename")
-            lines_valid = int(class_.get("lines-valid", 0))
-            lines_covered = int(class_.get("lines-covered", 0))
+            if not filename:
+                continue
+
+            lines_valid = int(class_.get("lines-valid", "0"))
+            lines_covered = int(class_.get("lines-covered", "0"))
 
             found_group = "Others"
             for name, prefixes in groups.items():
@@ -52,7 +73,8 @@ def get_stats(xml_path="coverage.xml"):
     return stats, root
 
 
-def generate_html(stats, total_percent, output_path="coverage_dashboard.html"):
+def generate_html(stats: Dict[str, GroupStat], total_percent: float,
+                  output_path: str = "coverage_dashboard.html") -> str:
     """Generate a premium HTML dashboard with donut charts."""
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     html = f"""<!DOCTYPE html>
@@ -161,8 +183,8 @@ def generate_html(stats, total_percent, output_path="coverage_dashboard.html"):
     for name, data in stats.items():
         if data["lines"] == 0:
             continue
-        percent = round((data["covered"] / data["lines"] * 100), 1)
-        color = "#10b981" if percent >= 95 else "#f59e0b" if percent >= 80 else "#f43f5e"
+        p = round((data["covered"] / data["lines"] * 100), 1)
+        c = "#10b981" if p >= 95 else "#f59e0b" if p >= 80 else "#f43f5e"
         problem_files = sorted(
             [f for f in data["files"] if f["coverage"] < 100],
             key=lambda x: x["coverage"]
@@ -172,7 +194,7 @@ def generate_html(stats, total_percent, output_path="coverage_dashboard.html"):
         <div class="card">
             <div class="card-header">
                 <span class="card-title">{name}</span>
-                <span style="font-weight: 700; color: {color}">{percent}%</span>
+                <span style="font-weight: 700; color: {c}">{p}%</span>
             </div>
             <div class="chart-container"><canvas id="{chart_id}"></canvas></div>
             <div class="problems">
@@ -196,8 +218,8 @@ def generate_html(stats, total_percent, output_path="coverage_dashboard.html"):
     for name, data in stats.items():
         if data["lines"] == 0:
             continue
-        percent = round((data["covered"] / data["lines"] * 100), 1)
-        color = "#10b981" if percent >= 95 else "#f59e0b" if percent >= 80 else "#f43f5e"
+        p = round((data["covered"] / data["lines"] * 100), 1)
+        c = "#10b981" if p >= 95 else "#f59e0b" if p >= 80 else "#f43f5e"
         chart_id = f"chart-{name.replace(' ', '-')}"
         html += f"""
         new Chart(document.getElementById('{chart_id}'), {{
@@ -205,7 +227,7 @@ def generate_html(stats, total_percent, output_path="coverage_dashboard.html"):
             data: {{
                 datasets: [{{
                     data: [{data['covered']}, {data['lines'] - data['covered']}],
-                    backgroundColor: ['{color}', '#334155'],
+                    backgroundColor: ['{c}', '#334155'],
                     borderWidth: 0
                 }}]
             }},
@@ -221,7 +243,7 @@ def generate_html(stats, total_percent, output_path="coverage_dashboard.html"):
     return os.path.realpath(output_path)
 
 
-def generate_markdown(stats, total_percent):
+def generate_markdown(stats: Dict[str, GroupStat], total_percent: float) -> str:
     """Generate a Markdown report with Mermaid pie charts."""
     md = "## 📊 P2P Bot Coverage Dashboard\n\n"
     md += f"> **Global Coverage: {total_percent}%**\n\n"
@@ -233,9 +255,9 @@ def generate_markdown(stats, total_percent):
     for name, data in stats.items():
         if data["lines"] == 0:
             continue
-        percent = round((data["covered"] / data["lines"] * 100), 1)
-        status = "✅" if percent >= 95 else "⚠️" if percent >= 80 else "❌"
-        md += f"| {name} | **{percent}%** | {status} |\n"
+        p = round((data["covered"] / data["lines"] * 100), 1)
+        status = "✅" if p >= 95 else "⚠️" if p >= 80 else "❌"
+        md += f"| {name} | **{p}%** | {status} |\n"
 
         mermaid_blocks += f"#### {name}\n"
         mermaid_blocks += "```mermaid\npie title Coverage\n"
@@ -257,19 +279,19 @@ def generate_markdown(stats, total_percent):
 
 
 if __name__ == "__main__":
-    stats_data = get_stats()
-    if not stats_data:
+    stats_result = get_stats()
+    if not stats_result:
         print("Error: coverage.xml not found.")
         sys.exit(1)
 
-    stats, root_xml = stats_data
-    total_l = int(root_xml.get("lines-valid", 0))
-    total_c = int(root_xml.get("lines-covered", 0))
-    total_p = round((total_c / total_l * 100), 1) if total_l > 0 else 0
+    s, root_xml = stats_result
+    total_l = int(root_xml.get("lines-valid", "0"))
+    total_c = int(root_xml.get("lines-covered", "0"))
+    total_p = round((total_c / total_l * 100), 1) if total_l > 0 else 0.0
 
     if "--markdown" in sys.argv:
-        print(generate_markdown(stats, total_p))
+        print(generate_markdown(s, total_p))
     else:
-        file_path = generate_html(stats, total_p)
+        file_path = generate_html(s, total_p)
         print(f"Dashboard generated: {file_path}")
         webbrowser.open("file://" + file_path)
