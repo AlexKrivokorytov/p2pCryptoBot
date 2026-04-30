@@ -13,7 +13,9 @@ from db.models.user import User
 from services import dispute_service
 
 
-async def _create_order(session: AsyncSession, status: OrderStatus = OrderStatus.escrow_held) -> Order:
+async def _create_order(
+    session: AsyncSession, status: OrderStatus = OrderStatus.escrow_held
+) -> Order:
     maker = User(telegram_id=201, username="maker")
     taker = User(telegram_id=202, username="taker")
 
@@ -46,7 +48,9 @@ async def test_raise_dispute_success(session: AsyncSession) -> None:
     """Dispute can be raised on an escrow_held order."""
     order = await _create_order(session, status=OrderStatus.escrow_held)
 
-    result = await dispute_service.raise_dispute(session, order_id=str(order.id), reason="Taker didn't pay fiat", raised_by=201)
+    result = await dispute_service.raise_dispute(
+        session, order_id=str(order.id), reason="Taker didn't pay fiat", raised_by=201
+    )
 
     assert result["status"] == OrderStatus.dispute
 
@@ -57,7 +61,9 @@ async def test_raise_dispute_invalid_status(session: AsyncSession) -> None:
     order = await _create_order(session, status=OrderStatus.completed)
 
     with pytest.raises(ValueError, match="Cannot raise dispute"):
-        await dispute_service.raise_dispute(session, order_id=str(order.id), reason="Late dispute", raised_by=201)
+        await dispute_service.raise_dispute(
+            session, order_id=str(order.id), reason="Late dispute", raised_by=201
+        )
 
 
 @pytest.mark.asyncio

@@ -12,11 +12,13 @@ from bot.handlers import escrow as escrow_handlers
 from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 
+
 async def _create_test_user(session: AsyncSession, telegram_id: int, username: str) -> User:
     async with session.begin():
         user = User(telegram_id=telegram_id, username=username, first_name=username)
         session.add(user)
         return user
+
 
 async def _create_order(
     session: AsyncSession,
@@ -55,9 +57,7 @@ async def test_cb_escrow_confirm_success(mock_release: AsyncMock, session: Async
 
     await escrow_handlers.cb_escrow_confirm(callback, session, crypto_pay)
 
-    mock_release.assert_called_once_with(
-        session, crypto_pay, order_id="5a1fc458", force=False
-    )
+    mock_release.assert_called_once_with(session, crypto_pay, order_id="5a1fc458", force=False)
     callback.message.edit_text.assert_called_once()
     assert "Escrow released" in callback.message.edit_text.call_args[0][0]
     callback.answer.assert_called_once()

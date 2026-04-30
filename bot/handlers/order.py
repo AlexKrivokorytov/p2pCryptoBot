@@ -22,7 +22,7 @@ from bot.keyboards import (
     payment_keyboard,
     payment_method_keyboard,
 )
-from bot.states import CreateAdFSM, BrowseOrderBookFSM
+from bot.states import BrowseOrderBookFSM, CreateAdFSM
 from db.models.order import Order, OrderType, SupportedAsset
 from providers.crypto_pay import CryptoPayClient
 from services import order_service, rate_service
@@ -38,6 +38,7 @@ router = Router(name="order")
 
 # ── Step 1: choose type (sell_crypto or buy_crypto) ────────────────────────────
 
+
 @router.callback_query(F.data == "ad:create")
 async def cb_ad_create(callback: CallbackQuery, state: FSMContext) -> None:
     """Prompt ad type selection to start creating a new ad."""
@@ -51,6 +52,7 @@ async def cb_ad_create(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 # ── Step 2: type chosen → choose asset ─────────────────────────────────────────
+
 
 @router.callback_query(CreateAdFSM.choose_type, F.data.startswith("adtype:"))
 async def cb_ad_type_chosen(callback: CallbackQuery, state: FSMContext) -> None:
@@ -75,6 +77,7 @@ async def cb_ad_type_chosen(callback: CallbackQuery, state: FSMContext) -> None:
 
 # ── Step 3: asset chosen → enter amount ────────────────────────────────────────
 
+
 @router.callback_query(CreateAdFSM.choose_asset, F.data.startswith("asset:"))
 async def cb_asset_chosen(callback: CallbackQuery, state: FSMContext) -> None:
     """Store chosen asset, prompt for crypto amount."""
@@ -96,6 +99,7 @@ async def cb_asset_chosen(callback: CallbackQuery, state: FSMContext) -> None:
 
 # ── Step 4: amount entered → enter fiat currency ──────────────────────────────
 
+
 @router.message(CreateAdFSM.enter_amount)
 async def msg_amount(message: Message, state: FSMContext) -> None:
     """Validate and store crypto amount, prompt for fiat currency."""
@@ -104,25 +108,31 @@ async def msg_amount(message: Message, state: FSMContext) -> None:
         if amount <= 0:
             raise ValueError
     except ValueError:
-        await message.answer(format_error("Please enter a valid positive number."), parse_mode="HTML")
+        await message.answer(
+            format_error("Please enter a valid positive number."), parse_mode="HTML"
+        )
         return
 
     await state.update_data(amount=amount)
     await state.set_state(CreateAdFSM.enter_fiat_currency)
     await message.answer(
-        "🌍 Enter the <b>fiat currency</b> code (e.g. <code>RUB</code>, <code>EUR</code>, <code>USD</code>):",
+        "🌍 Enter the <b>fiat currency</b> code\n"
+        "(e.g. <code>RUB</code>, <code>EUR</code>, <code>USD</code>):",
         parse_mode="HTML",
     )
 
 
 # ── Step 5: fiat currency entered → enter fiat amount ─────────────────────────
 
+
 @router.message(CreateAdFSM.enter_fiat_currency)
 async def msg_fiat_currency(message: Message, state: FSMContext) -> None:
     """Store fiat currency, prompt for fiat amount."""
     currency = (message.text or "").strip().upper()
     if len(currency) < 2 or len(currency) > 10 or not currency.isalpha():
-        await message.answer(format_error("Invalid currency code. Example: RUB, EUR, USD"), parse_mode="HTML")
+        await message.answer(
+            format_error("Invalid currency code. Example: RUB, EUR, USD"), parse_mode="HTML"
+        )
         return
 
     await state.update_data(fiat_currency=currency)
@@ -142,6 +152,7 @@ async def msg_fiat_currency(message: Message, state: FSMContext) -> None:
 
 # ── Step 6: fiat amount entered → choose payment method ───────────────────────
 
+
 @router.message(CreateAdFSM.enter_fiat_amount)
 async def msg_fiat_amount(message: Message, state: FSMContext) -> None:
     """Validate fiat amount, prompt for payment method."""
@@ -150,7 +161,9 @@ async def msg_fiat_amount(message: Message, state: FSMContext) -> None:
         if fiat_amount <= 0:
             raise ValueError
     except ValueError:
-        await message.answer(format_error("Please enter a valid positive fiat amount."), parse_mode="HTML")
+        await message.answer(
+            format_error("Please enter a valid positive fiat amount."), parse_mode="HTML"
+        )
         return
 
     await state.update_data(fiat_amount=fiat_amount)
@@ -163,6 +176,7 @@ async def msg_fiat_amount(message: Message, state: FSMContext) -> None:
 
 
 # ── Step 7: payment method chosen → show summary ──────────────────────────────
+
 
 @router.callback_query(CreateAdFSM.enter_payment_method, F.data.startswith("paymethod:"))
 async def cb_payment_method(callback: CallbackQuery, state: FSMContext) -> None:
@@ -190,6 +204,7 @@ async def cb_payment_method(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 # ── Step 8: confirmed → create order + invoice ─────────────────────────────────
+
 
 @router.callback_query(CreateAdFSM.confirm, F.data == "ad:confirmed")
 async def cb_ad_confirmed(
@@ -236,6 +251,7 @@ async def cb_ad_confirmed(
 
 # ── Cancel ad creation ─────────────────────────────────────────────────────────
 
+
 @router.callback_query(F.data == "ad:cancel")
 async def cb_cancel_ad(callback: CallbackQuery, state: FSMContext) -> None:
     """Cancel ad creation and return to menu."""
@@ -251,6 +267,7 @@ async def cb_cancel_ad(callback: CallbackQuery, state: FSMContext) -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # ORDER BOOK (Taker browsing)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.callback_query(F.data == "market:browse")
 async def cb_market_browse(
@@ -284,7 +301,10 @@ async def _show_order_book(
     if not data["orders"]:
         text = "🛒 <b>P2P Market</b>\n\n📭 No active orders at the moment."
     else:
-        text = f"🛒 <b>P2P Market</b> — {data['total_count']} ads available\n\nTap an order to view details:"
+        text = (
+            f"🛒 <b>P2P Market</b> — {data['total_count']} ads available\n\n"
+            "Tap an order to view details:"
+        )
 
     await callback.message.edit_text(  # type: ignore[union-attr]
         text,
@@ -296,6 +316,7 @@ async def _show_order_book(
 
 # ── Order detail view ──────────────────────────────────────────────────────────
 
+
 @router.callback_query(F.data.startswith("order:view:"))
 async def cb_order_view(
     callback: CallbackQuery,
@@ -303,9 +324,7 @@ async def cb_order_view(
 ) -> None:
     """Show detailed view of a single order from the Order Book."""
     order_id = callback.data.split(":")[2]  # type: ignore[union-attr]
-    result = await session.execute(
-        select(Order).where(Order.id == uuid.UUID(order_id))
-    )
+    result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
     order = result.scalar_one_or_none()
     if order is None:
         await callback.answer("Order not found.", show_alert=True)

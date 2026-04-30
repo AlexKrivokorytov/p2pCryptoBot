@@ -10,8 +10,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ── rate_provider: get_crypto_usdt_price ─────────────────────────────────────
+
 
 @pytest.mark.asyncio
 @patch("providers.rate_provider._fetch_binance_price", new_callable=AsyncMock)
@@ -71,6 +71,7 @@ async def test_get_crypto_usdt_price_unknown_asset(mock_fetch: AsyncMock) -> Non
 
 # ── rate_provider: get_usdt_fiat_rate ────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_usdt_fiat_rate_usd() -> None:
     """USD returns 1.0 (pegged) without a network call."""
@@ -127,11 +128,13 @@ async def test_get_usdt_fiat_rate_unknown_fiat() -> None:
 
 # ── rate_provider: TTL cache ─────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("providers.rate_provider.aiohttp.ClientSession")
 async def test_price_cache_hit(mock_session_cls: MagicMock) -> None:
     """Second call within TTL does NOT make a new HTTP request."""
     import time
+
     from providers import rate_provider
 
     # Pre-populate cache with a fresh entry
@@ -149,12 +152,11 @@ async def test_price_cache_hit(mock_session_cls: MagicMock) -> None:
 
 # ── rate_service: get_market_rate ────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("services.rate_service.get_usdt_fiat_rate", new_callable=AsyncMock)
 @patch("services.rate_service.get_crypto_usdt_price", new_callable=AsyncMock)
-async def test_get_market_rate_btc_usd(
-    mock_crypto: AsyncMock, mock_fiat: AsyncMock
-) -> None:
+async def test_get_market_rate_btc_usd(mock_crypto: AsyncMock, mock_fiat: AsyncMock) -> None:
     """BTC/USD rate = BTCUSDT * 1.0."""
     from services.rate_service import get_market_rate
 
@@ -168,9 +170,7 @@ async def test_get_market_rate_btc_usd(
 @pytest.mark.asyncio
 @patch("services.rate_service.get_usdt_fiat_rate", new_callable=AsyncMock)
 @patch("services.rate_service.get_crypto_usdt_price", new_callable=AsyncMock)
-async def test_get_market_rate_btc_eur(
-    mock_crypto: AsyncMock, mock_fiat: AsyncMock
-) -> None:
+async def test_get_market_rate_btc_eur(mock_crypto: AsyncMock, mock_fiat: AsyncMock) -> None:
     """BTC/EUR rate = BTCUSDT * (1/EURUSDT)."""
     from services.rate_service import get_market_rate
 
@@ -218,11 +218,10 @@ async def test_get_market_rate_unavailable_asset(
 @pytest.mark.asyncio
 @patch("services.rate_service.get_usdt_fiat_rate", new_callable=AsyncMock)
 @patch("services.rate_service.get_crypto_usdt_price", new_callable=AsyncMock)
-async def test_get_market_rate_timeout(
-    mock_crypto: AsyncMock, mock_fiat: AsyncMock
-) -> None:
+async def test_get_market_rate_timeout(mock_crypto: AsyncMock, mock_fiat: AsyncMock) -> None:
     """Timeout returns None without raising."""
     import asyncio
+
     from services.rate_service import get_market_rate
 
     async def slow(*args: object, **kwargs: object) -> Decimal:
@@ -233,6 +232,7 @@ async def test_get_market_rate_timeout(
     mock_fiat.side_effect = slow
 
     import services.rate_service as rs
+
     original = rs._RATE_TIMEOUT
     rs._RATE_TIMEOUT = 0.01
     try:
@@ -244,6 +244,7 @@ async def test_get_market_rate_timeout(
 
 
 # ── rate_service: format_rate_hint ───────────────────────────────────────────
+
 
 def test_format_rate_hint_large_number() -> None:
     """Large rates are formatted with thousands separator."""
@@ -265,6 +266,7 @@ def test_format_rate_hint_small_rate() -> None:
 
 
 # ── rate_service: get_rate_hint_text ─────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 @patch("services.rate_service.get_market_rate", new_callable=AsyncMock)

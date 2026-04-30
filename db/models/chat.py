@@ -22,18 +22,16 @@ class ChatMessage(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    
-    order_id: Mapped[UUID] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"), index=True
-    )
-    
+
+    order_id: Mapped[UUID] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+
     sender_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE")
     )
-    
-    message_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    photo_file_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    
+
+    message_text: Mapped[str] = mapped_column(Text, nullable=True)
+    photo_file_id: Mapped[str] = mapped_column(String(256), nullable=True)
+
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=text("now()"),

@@ -2,23 +2,17 @@
 
 from __future__ import annotations
 
-import uuid
-
 import structlog
 from aiogram import Bot, F, Router
-from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards import (
-    active_trade_maker_keyboard,
     active_trade_taker_keyboard,
     back_to_menu_keyboard,
 )
 from db.models.order import Order
-from providers.crypto_pay import CryptoPayClient
-from services import order_service, notification_service
+from services import notification_service, order_service
 from utils.formatters import format_error
 
 log = structlog.get_logger(__name__)
@@ -26,6 +20,7 @@ router = Router(name="trade")
 
 
 # ── Take order ─────────────────────────────────────────────────────────────────
+
 
 @router.callback_query(F.data.startswith("trade:take:"))
 async def cb_take_order(
@@ -42,9 +37,7 @@ async def cb_take_order(
     taker_id = callback.from_user.id  # type: ignore[union-attr]
 
     try:
-        result = await order_service.take_order(
-            session, order_id=order_id, taker_id=taker_id
-        )
+        result = await order_service.take_order(session, order_id=order_id, taker_id=taker_id)
     except ValueError as exc:
         await callback.message.edit_text(  # type: ignore[union-attr]
             format_error(str(exc)),
@@ -79,6 +72,7 @@ async def cb_take_order(
 
 
 # ── Taker: fiat sent notification ──────────────────────────────────────────────
+
 
 @router.callback_query(F.data.startswith("trade:fiat_sent:"))
 async def cb_fiat_sent(callback: CallbackQuery, session: AsyncSession, bot: Bot) -> None:

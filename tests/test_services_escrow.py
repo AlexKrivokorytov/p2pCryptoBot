@@ -12,8 +12,8 @@ from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 from services import escrow_service
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 async def _create_user(session: AsyncSession, telegram_id: int, username: str) -> User:
     async with session.begin():
@@ -63,6 +63,7 @@ def _mock_crypto_pay() -> MagicMock:
 
 # ── release_escrow ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_release_escrow_sell_crypto(session: AsyncSession) -> None:
     """release_escrow sends crypto to taker_id for sell_crypto orders."""
@@ -81,7 +82,10 @@ async def test_release_escrow_sell_crypto(session: AsyncSession) -> None:
 async def test_release_escrow_buy_crypto(session: AsyncSession) -> None:
     """release_escrow sends crypto to maker_id for buy_crypto orders."""
     order = await _create_order(
-        session, OrderStatus.escrow_held, maker_id=510, taker_id=511,
+        session,
+        OrderStatus.escrow_held,
+        maker_id=510,
+        taker_id=511,
         order_type=OrderType.buy_crypto,
     )
     crypto_pay = _mock_crypto_pay()
@@ -112,9 +116,7 @@ async def test_release_escrow_not_found(session: AsyncSession) -> None:
     crypto_pay = _mock_crypto_pay()
 
     with pytest.raises(ValueError, match="not found"):
-        await escrow_service.release_escrow(
-            session, crypto_pay, order_id=str(uuid.uuid4())
-        )
+        await escrow_service.release_escrow(session, crypto_pay, order_id=str(uuid.uuid4()))
 
 
 @pytest.mark.asyncio
@@ -157,6 +159,7 @@ async def test_release_escrow_fiat_not_confirmed(session: AsyncSession) -> None:
 
 
 # ── refund_escrow ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_refund_escrow_success(session: AsyncSession) -> None:
@@ -203,9 +206,7 @@ async def test_refund_escrow_wrong_status(session: AsyncSession) -> None:
     crypto_pay = _mock_crypto_pay()
 
     with pytest.raises(ValueError, match="invalid for status"):
-        await escrow_service.refund_escrow(
-            session, crypto_pay, order_id=str(order.id), force=True
-        )
+        await escrow_service.refund_escrow(session, crypto_pay, order_id=str(order.id), force=True)
 
 
 @pytest.mark.asyncio

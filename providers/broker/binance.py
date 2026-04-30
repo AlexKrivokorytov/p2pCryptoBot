@@ -6,8 +6,9 @@ Security: API keys must have READ + TRADE permissions only — no WITHDRAW.
 from __future__ import annotations
 
 import os
-import structlog
+
 import ccxt.async_support as ccxt
+import structlog
 
 from providers.broker.base import BrokerBase
 

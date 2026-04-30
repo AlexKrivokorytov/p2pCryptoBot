@@ -3,15 +3,15 @@ and order handler lines 49-51, 70, 152-158."""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from bot.handlers import start as start_handlers
 from bot.handlers import order as order_handlers
-
+from bot.handlers import start as start_handlers
 
 # ── start.py line 24: tg_user is None guard ───────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_cmd_start_no_from_user() -> None:
@@ -29,6 +29,7 @@ async def test_cmd_start_no_from_user() -> None:
 
 # ── order.py lines 49-51: unknown asset in cb_asset_chosen ───────────────────
 
+
 @pytest.mark.asyncio
 async def test_cb_asset_chosen_invalid_asset() -> None:
     """cb_asset_chosen sends alert for an unsupported asset ticker."""
@@ -45,6 +46,7 @@ async def test_cb_asset_chosen_invalid_asset() -> None:
 
 
 # ── order.py line 70: zero amount in msg_amount ──────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_msg_amount_zero_value() -> None:
@@ -76,6 +78,7 @@ async def test_msg_amount_non_numeric() -> None:
 
 # ── order.py: ad creation failure in cb_ad_confirmed ─────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("bot.handlers.order.order_service.create_order", new_callable=AsyncMock)
 async def test_cb_ad_confirmed_service_error(mock_create: AsyncMock) -> None:
@@ -87,14 +90,16 @@ async def test_cb_ad_confirmed_service_error(mock_create: AsyncMock) -> None:
     callback.data = "ad:confirmed"
 
     state = AsyncMock()
-    state.get_data = AsyncMock(return_value={
-        "order_type": "sell_crypto",
-        "asset": "USDT",
-        "amount": 100.0,
-        "fiat_currency": "USD",
-        "fiat_amount": 90.0,
-        "payment_method": "Sberbank",
-    })
+    state.get_data = AsyncMock(
+        return_value={
+            "order_type": "sell_crypto",
+            "asset": "USDT",
+            "amount": 100.0,
+            "fiat_currency": "USD",
+            "fiat_amount": 90.0,
+            "payment_method": "Sberbank",
+        }
+    )
 
     session = AsyncMock()
     crypto_pay = AsyncMock()

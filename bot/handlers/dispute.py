@@ -48,8 +48,9 @@ async def msg_dispute_reason(message: Message, state: FSMContext) -> None:
 
 
 def _dispute_confirm_inline():  # type: ignore[no-untyped-def]
-    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+    from aiogram.types import InlineKeyboardButton
     from aiogram.utils.keyboard import InlineKeyboardBuilder
+
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="✅ Confirm", callback_data="dispute:confirmed"),

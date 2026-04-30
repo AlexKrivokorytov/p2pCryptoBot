@@ -11,8 +11,6 @@ NOTE: This migration uses synchronous psycopg2 (via Alembic env.py).
 
 from __future__ import annotations
 
-import uuid
-
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import ENUM as PGENUM
@@ -25,12 +23,20 @@ depends_on: str | None = None
 
 # Reusable ENUM types with create_type=False — enums are created via op.execute below
 order_status = PGENUM(
-    "pending", "escrow_held", "completed", "dispute", "cancelled",
+    "pending",
+    "escrow_held",
+    "completed",
+    "dispute",
+    "cancelled",
     name="order_status",
     create_type=False,
 )
 supported_asset = PGENUM(
-    "BTC", "TON", "USDT", "USDC", "ETH",
+    "BTC",
+    "TON",
+    "USDT",
+    "USDC",
+    "ETH",
     name="supported_asset",
     create_type=False,
 )
@@ -43,10 +49,7 @@ def upgrade() -> None:
         "CREATE TYPE order_status AS ENUM "
         "('pending', 'escrow_held', 'completed', 'dispute', 'cancelled')"
     )
-    op.execute(
-        "CREATE TYPE supported_asset AS ENUM "
-        "('BTC', 'TON', 'USDT', 'USDC', 'ETH')"
-    )
+    op.execute("CREATE TYPE supported_asset AS ENUM ('BTC', 'TON', 'USDT', 'USDC', 'ETH')")
 
     # ── users ───────────────────────────────────────────────────────────────────
     op.create_table(

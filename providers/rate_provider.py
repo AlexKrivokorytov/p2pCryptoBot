@@ -37,7 +37,7 @@ _ASSET_TO_BINANCE_SYMBOL: dict[str, str] = {
     "BTC": "BTCUSDT",
     "ETH": "ETHUSDT",
     "TON": "TONUSDT",
-    "USDT": None,      # USDT is the quote currency — always 1.0
+    "USDT": None,  # USDT is the quote currency — always 1.0
     "USDC": "USDCUSDT",
     "BNB": "BNBUSDT",
 }
@@ -45,14 +45,14 @@ _ASSET_TO_BINANCE_SYMBOL: dict[str, str] = {
 # Supported fiat currencies mapped to USDT exchange rate sources.
 # USD ≈ USDT (pegged), EUR/GBP etc. via Binance's cross pairs where available.
 _FIAT_USDT_SYMBOLS: dict[str, str | None] = {
-    "USD":  None,       # USDT ≈ USD, rate = 1.0
-    "USDT": None,       # identity
-    "EUR":  "EURUSDT",  # Binance has EUR/USDT
-    "GBP":  "GBPUSDT",  # Binance has GBP/USDT
-    "RUB":  None,       # Binance deprecated RUB pairs — use fallback
-    "TRY":  "USDTRY",   # Turkish Lira (inverted: USDT/TRY)
-    "BRL":  "USDTBRL",  # Brazilian Real (inverted)
-    "UAH":  None,       # Not available — use fallback
+    "USD": None,  # USDT ≈ USD, rate = 1.0
+    "USDT": None,  # identity
+    "EUR": "EURUSDT",  # Binance has EUR/USDT
+    "GBP": "GBPUSDT",  # Binance has GBP/USDT
+    "RUB": None,  # Binance deprecated RUB pairs — use fallback
+    "TRY": "USDTRY",  # Turkish Lira (inverted: USDT/TRY)
+    "BRL": "USDTBRL",  # Brazilian Real (inverted)
+    "UAH": None,  # Not available — use fallback
 }
 
 # Timeout for each Binance request
@@ -82,17 +82,19 @@ async def _fetch_binance_price(symbol: str) -> Decimal | None:
 
     try:
         url = f"{_BINANCE_BASE}/api/v3/ticker/price"
-        async with aiohttp.ClientSession(timeout=_REQUEST_TIMEOUT) as session:
-            async with session.get(url, params={"symbol": symbol}) as resp:
-                if resp.status != 200:
-                    log.warning(
-                        "binance_http_error",
-                        symbol=symbol,
-                        status=resp.status,
-                        step="_fetch_binance_price",
-                    )
-                    return None
-                data: dict[str, Any] = await resp.json()
+        async with (
+            aiohttp.ClientSession(timeout=_REQUEST_TIMEOUT) as session,
+            session.get(url, params={"symbol": symbol}) as resp,
+        ):
+            if resp.status != 200:
+                log.warning(
+                    "binance_http_error",
+                    symbol=symbol,
+                    status=resp.status,
+                    step="_fetch_binance_price",
+                )
+                return None
+            data: dict[str, Any] = await resp.json()
 
         price = Decimal(data["price"])
         _price_cache[symbol] = (price, time.monotonic())

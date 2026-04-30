@@ -28,31 +28,30 @@ async def expire_pending_orders(session_pool: async_sessionmaker[AsyncSession]) 
     cutoff = utcnow() - timedelta(seconds=ORDER_TIMEOUT_SEC)
     cancelled_count = 0
 
-    async with session_pool() as session:
-        async with session.begin():
-            result = await session.execute(
-                select(Order)
-                .where(
-                    Order.status == OrderStatus.pending_funding,
-                    Order.created_at < cutoff,
-                )
-                .with_for_update(skip_locked=True)
+    async with session_pool() as session, session.begin():
+        result = await session.execute(
+            select(Order)
+            .where(
+                Order.status == OrderStatus.pending_funding,
+                Order.created_at < cutoff,
             )
-            orders = result.scalars().all()
+            .with_for_update(skip_locked=True)
+        )
+        orders = result.scalars().all()
 
-            for order in orders:
-                order.status = OrderStatus.cancelled
-                cancelled_count += 1
-                log.info(
-                    "order_expired",
-                    order_id=str(order.id),
-                    user_id=order.maker_id,
-                    asset=order.asset,
-                    amount=str(order.amount),
-                    status=OrderStatus.cancelled.value,
-                    step="cleanup_task",
-                    reason="timeout",
-                )
+        for order in orders:
+            order.status = OrderStatus.cancelled
+            cancelled_count += 1
+            log.info(
+                "order_expired",
+                order_id=str(order.id),
+                user_id=order.maker_id,
+                asset=order.asset,
+                amount=str(order.amount),
+                status=OrderStatus.cancelled.value,
+                step="cleanup_task",
+                reason="timeout",
+            )
 
     return cancelled_count
 

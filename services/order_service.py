@@ -7,7 +7,7 @@ import uuid
 from typing import Any
 
 import structlog
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
@@ -26,9 +26,9 @@ def _validate_asset(asset: str) -> None:
     """Raise ValueError if *asset* is not in the supported list."""
     try:
         SupportedAsset(asset)
-    except ValueError:
+    except ValueError as err:
         allowed = [a.value for a in SupportedAsset]
-        raise ValueError(f"Unsupported asset {asset!r}. Allowed: {allowed}")
+        raise ValueError(f"Unsupported asset {asset!r}. Allowed: {allowed}") from err
 
 
 def _validate_amount(amount: float, label: str = "amount") -> None:
@@ -85,9 +85,9 @@ async def create_order(
     # Validate order_type
     try:
         OrderType(order_type)
-    except ValueError:
+    except ValueError as err:
         allowed = [t.value for t in OrderType]
-        raise ValueError(f"Invalid order_type {order_type!r}. Allowed: {allowed}")
+        raise ValueError(f"Invalid order_type {order_type!r}. Allowed: {allowed}") from err
 
     total_fee = (amount * fee_percent / 100) + fee_fixed
     spend_id = str(uuid.uuid4())
@@ -213,9 +213,7 @@ async def take_order(
         if order is None:
             raise ValueError(f"Order {order_id!r} not found")
         if order.status != OrderStatus.active:
-            raise ValueError(
-                f"take_order requires status=active, got {order.status!r}"
-            )
+            raise ValueError(f"take_order requires status=active, got {order.status!r}")
         if order.maker_id == taker_id:
             raise ValueError("Cannot take your own order")
 
@@ -417,9 +415,7 @@ async def cancel_order(
                 f"Order {order_id!r} has funds in escrow — cancellation requires mediation"
             )
         if order.status not in {OrderStatus.pending_funding, OrderStatus.active}:
-            raise ValueError(
-                f"Cannot cancel order {order_id!r} in status {order.status!r}"
-            )
+            raise ValueError(f"Cannot cancel order {order_id!r} in status {order.status!r}")
         order.status = OrderStatus.cancelled
 
     log.info(

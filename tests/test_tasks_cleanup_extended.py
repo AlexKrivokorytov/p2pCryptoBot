@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import uuid
 from datetime import timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -16,8 +17,8 @@ from db.models.user import User
 from tasks import cleanup
 from utils.datetime_helpers import utcnow
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 async def _create_expired_order(
     session: AsyncSession, maker_id: int, status: OrderStatus, offset_sec: int
@@ -44,6 +45,7 @@ async def _create_expired_order(
 
 # ── start_cleanup_task ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_start_cleanup_task_cancels_cleanly(engine) -> None:
     """start_cleanup_task stops gracefully on CancelledError."""
@@ -53,10 +55,8 @@ async def test_start_cleanup_task_cancels_cleanly(engine) -> None:
     await asyncio.sleep(0.05)
     task.cancel()
 
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await task
-    except asyncio.CancelledError:
-        pass  # Expected — task was cancelled
 
 
 @pytest.mark.asyncio
@@ -72,15 +72,15 @@ async def test_start_cleanup_task_handles_exception(engine) -> None:
             raise RuntimeError("DB temporarily down")
         return 0
 
-    with patch.object(cleanup, "expire_pending_orders", side_effect=failing_expire):
-        with patch.object(cleanup, "CLEANUP_INTERVAL_SEC", 0):
-            task = asyncio.create_task(cleanup.start_cleanup_task(factory))
-            await asyncio.sleep(0.1)
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+    with (
+        patch.object(cleanup, "expire_pending_orders", side_effect=failing_expire),
+        patch.object(cleanup, "CLEANUP_INTERVAL_SEC", 0),
+    ):
+        task = asyncio.create_task(cleanup.start_cleanup_task(factory))
+        await asyncio.sleep(0.1)
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
     assert call_count >= 2, "Should have retried after the error"
 
@@ -93,7 +93,9 @@ async def test_start_cleanup_task_logs_when_orders_cancelled(engine) -> None:
 
     # Create an expired pending_funding order
     async with factory() as session:
-        await _create_expired_order(session, maker_id=401, status=OrderStatus.pending_funding, offset_sec=-(timeout + 200))
+        await _create_expired_order(
+            session, maker_id=401, status=OrderStatus.pending_funding, offset_sec=-(timeout + 200)
+        )
 
     cancelled_counts = []
 
@@ -104,14 +106,14 @@ async def test_start_cleanup_task_logs_when_orders_cancelled(engine) -> None:
         cancelled_counts.append(count)
         return count
 
-    with patch.object(cleanup, "expire_pending_orders", side_effect=tracking_expire):
-        with patch.object(cleanup, "CLEANUP_INTERVAL_SEC", 0):
-            task = asyncio.create_task(cleanup.start_cleanup_task(factory))
-            await asyncio.sleep(0.2)
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+    with (
+        patch.object(cleanup, "expire_pending_orders", side_effect=tracking_expire),
+        patch.object(cleanup, "CLEANUP_INTERVAL_SEC", 0),
+    ):
+        task = asyncio.create_task(cleanup.start_cleanup_task(factory))
+        await asyncio.sleep(0.2)
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
     assert any(c > 0 for c in cancelled_counts), "Expected at least one cancellation"

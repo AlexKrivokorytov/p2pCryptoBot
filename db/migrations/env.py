@@ -47,6 +47,7 @@ target_metadata = Base.metadata
 
 # ── Offline mode ───────────────────────────────────────────────────────────────
 
+
 def run_migrations_offline() -> None:
     """Run migrations without a live DB connection (for SQL dump generation)."""
     url = config.get_main_option("sqlalchemy.url")
@@ -62,6 +63,7 @@ def run_migrations_offline() -> None:
 
 
 # ── Online mode (sync psycopg2) ────────────────────────────────────────────────
+
 
 def run_migrations_online() -> None:
     """Run migrations with a live synchronous psycopg2 connection.

@@ -49,7 +49,12 @@ async def test_webhook_hmac_failed() -> None:
     crypto_pay = MagicMock()
     crypto_pay.verify_webhook_signature.return_value = False
 
-    request = make_mocked_request("POST", "/webhook/cryptopay", app=_mock_app(None, crypto_pay), headers={"crypto-pay-api-signature": "bad"})
+    request = make_mocked_request(
+        "POST",
+        "/webhook/cryptopay",
+        app=_mock_app(None, crypto_pay),
+        headers={"crypto-pay-api-signature": "bad"},
+    )
     # Mock read() for body
     request.read = AsyncMock(return_value=b"{}")
 
@@ -77,28 +82,20 @@ async def test_webhook_paid_success(engine) -> None:
     """Webhook activates order (pending_funding → active) when status=paid."""
     factory = async_sessionmaker(engine, expire_on_commit=False)
 
-    async with factory() as session:
-        async with session.begin():
-            order = await _create_order(session, str(uuid.uuid4()))
-            order_id = order.id
-            payload_uuid = str(order_id)  # Use real UUID as payload
+    async with factory() as session, session.begin():
+        order = await _create_order(session, str(uuid.uuid4()))
+        order_id = order.id
+        payload_uuid = str(order_id)  # Use real UUID as payload
 
     # Update crypto_pay_payload to match the actual order id
-    async with factory() as session:
-        async with session.begin():
-            db_order = await session.get(Order, order_id)
-            db_order.crypto_pay_payload = payload_uuid
+    async with factory() as session, session.begin():
+        db_order = await session.get(Order, order_id)
+        db_order.crypto_pay_payload = payload_uuid
 
     crypto_pay = MagicMock()
     crypto_pay.verify_webhook_signature.return_value = True
 
-    body = {
-        "payload": {
-            "status": "paid",
-            "payload": payload_uuid,
-            "invoice_id": 999
-        }
-    }
+    body = {"payload": {"status": "paid", "payload": payload_uuid, "invoice_id": 999}}
 
     request = make_mocked_request("POST", "/webhook/cryptopay", app=_mock_app(factory, crypto_pay))
     request.read = AsyncMock(return_value=json.dumps(body).encode())

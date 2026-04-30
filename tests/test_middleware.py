@@ -16,14 +16,14 @@ async def test_db_session_middleware() -> None:
     session_pool = MagicMock()
     session = AsyncMock()
     session_pool.return_value.__aenter__.return_value = session
-    
+
     middleware = DbSessionMiddleware(session_pool)
     handler = AsyncMock()
     event = MagicMock(spec=TelegramObject)
     data = {}
-    
+
     await middleware(handler, event, data)
-    
+
     assert "session" in data
     assert data["session"] == session
     handler.assert_called_once_with(event, data)
@@ -37,9 +37,9 @@ async def test_crypto_pay_middleware() -> None:
     handler = AsyncMock()
     event = MagicMock(spec=TelegramObject)
     data = {}
-    
+
     await middleware(handler, event, data)
-    
+
     assert "crypto_pay" in data
     assert data["crypto_pay"] == client
     handler.assert_called_once_with(event, data)

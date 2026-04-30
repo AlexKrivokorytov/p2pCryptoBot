@@ -9,8 +9,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from db.models.order import Order, SupportedAsset
 
-
 # ── Main menu ──────────────────────────────────────────────────────────────────
+
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     """Return the main menu keyboard."""
@@ -35,6 +35,7 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 
 # ── Ad type selection ──────────────────────────────────────────────────────────
 
+
 def ad_type_keyboard() -> InlineKeyboardMarkup:
     """Return keyboard for choosing sell or buy crypto."""
     builder = InlineKeyboardBuilder()
@@ -47,6 +48,7 @@ def ad_type_keyboard() -> InlineKeyboardMarkup:
 
 
 # ── Asset selection ────────────────────────────────────────────────────────────
+
 
 def asset_keyboard(prefix: str = "asset") -> InlineKeyboardMarkup:
     """Return inline keyboard for selecting a supported crypto asset.
@@ -65,7 +67,12 @@ def asset_keyboard(prefix: str = "asset") -> InlineKeyboardMarkup:
 # ── Payment method selection ───────────────────────────────────────────────────
 
 COMMON_PAYMENT_METHODS: list[str] = [
-    "Sberbank", "Tinkoff", "Revolut", "SWIFT", "Cash", "Other",
+    "Sberbank",
+    "Tinkoff",
+    "Revolut",
+    "SWIFT",
+    "Cash",
+    "Other",
 ]
 
 
@@ -81,6 +88,7 @@ def payment_method_keyboard() -> InlineKeyboardMarkup:
 
 # ── Ad confirmation ────────────────────────────────────────────────────────────
 
+
 def ad_confirm_keyboard() -> InlineKeyboardMarkup:
     """Return confirm/cancel keyboard for ad review step."""
     builder = InlineKeyboardBuilder()
@@ -92,6 +100,7 @@ def ad_confirm_keyboard() -> InlineKeyboardMarkup:
 
 
 # ── Payment link ───────────────────────────────────────────────────────────────
+
 
 def payment_keyboard(pay_url: str, order_id: str) -> InlineKeyboardMarkup:
     """Return the pay-now + check-status keyboard.
@@ -110,6 +119,7 @@ def payment_keyboard(pay_url: str, order_id: str) -> InlineKeyboardMarkup:
 
 
 # ── Order Book ─────────────────────────────────────────────────────────────────
+
 
 def order_book_keyboard(
     orders: list[Order],
@@ -145,9 +155,7 @@ def order_book_keyboard(
         nav_buttons.append(
             InlineKeyboardButton(text="⬅️ Prev", callback_data=f"market:page:{page - 1}")
         )
-    nav_buttons.append(
-        InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="noop")
-    )
+    nav_buttons.append(InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="noop"))
     if page < total_pages:
         nav_buttons.append(
             InlineKeyboardButton(text="➡️ Next", callback_data=f"market:page:{page + 1}")
@@ -159,6 +167,7 @@ def order_book_keyboard(
 
 # ── Order detail (for Taker) ───────────────────────────────────────────────────
 
+
 def order_detail_keyboard(order_id: str) -> InlineKeyboardMarkup:
     """Return detail view keyboard with Accept Trade button.
 
@@ -169,23 +178,22 @@ def order_detail_keyboard(order_id: str) -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(text="✅ Accept Trade", callback_data=f"trade:take:{order_id}")
     )
-    builder.row(
-        InlineKeyboardButton(text="🔙 Back to Market", callback_data="market:browse")
-    )
+    builder.row(InlineKeyboardButton(text="🔙 Back to Market", callback_data="market:browse"))
     return builder.as_markup()
 
 
 # ── Active trade keyboards ─────────────────────────────────────────────────────
 
+
 def active_trade_maker_keyboard(order_id: str | uuid.UUID) -> InlineKeyboardMarkup:
     """Keyboard for the Maker during an active trade."""
     if isinstance(order_id, uuid.UUID):
         order_id = str(order_id)
-        
+
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="💬 Chat with Taker", callback_data=f"chat:enter:{order_id}"),
-        InlineKeyboardButton(text="⚖️ Dispute", callback_data=f"dispute:raise:{order_id}")
+        InlineKeyboardButton(text="⚖️ Dispute", callback_data=f"dispute:raise:{order_id}"),
     )
     builder.row(
         InlineKeyboardButton(text="✅ Release Escrow", callback_data=f"escrow:confirm:{order_id}")
@@ -197,19 +205,20 @@ def active_trade_taker_keyboard(order_id: str | uuid.UUID) -> InlineKeyboardMark
     """Keyboard for the Taker during an active trade."""
     if isinstance(order_id, uuid.UUID):
         order_id = str(order_id)
-        
+
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="💸 I've sent fiat", callback_data=f"trade:fiat_sent:{order_id}")
     )
     builder.row(
         InlineKeyboardButton(text="💬 Chat with Maker", callback_data=f"chat:enter:{order_id}"),
-        InlineKeyboardButton(text="⚖️ Dispute", callback_data=f"dispute:raise:{order_id}")
+        InlineKeyboardButton(text="⚖️ Dispute", callback_data=f"dispute:raise:{order_id}"),
     )
     return builder.as_markup()
 
 
 # ── Fiat confirmation (legacy compatibility) ───────────────────────────────────
+
 
 def fiat_confirm_keyboard(order_id: str) -> InlineKeyboardMarkup:
     """Return keyboard for Maker to confirm fiat receipt.
@@ -221,6 +230,7 @@ def fiat_confirm_keyboard(order_id: str) -> InlineKeyboardMarkup:
 
 
 # ── Dispute resolution (moderator) ─────────────────────────────────────────────
+
 
 def dispute_resolve_keyboard(order_id: str) -> InlineKeyboardMarkup:
     """Return moderator decision keyboard for dispute resolution.
@@ -250,6 +260,7 @@ def dispute_resolve_keyboard(order_id: str) -> InlineKeyboardMarkup:
 
 # ── Generic back button ────────────────────────────────────────────────────────
 
+
 def back_to_menu_keyboard() -> InlineKeyboardMarkup:
     """Return a single 'Back to menu' button."""
     builder = InlineKeyboardBuilder()
@@ -270,9 +281,7 @@ def wallet_chain_keyboard() -> InlineKeyboardMarkup:
     """Keyboard for selecting a blockchain network to generate a wallet on."""
     builder = InlineKeyboardBuilder()
     for chain, label in WALLET_CHAIN_LABELS.items():
-        builder.row(
-            InlineKeyboardButton(text=label, callback_data=f"wallet:generate:{chain}")
-        )
+        builder.row(InlineKeyboardButton(text=label, callback_data=f"wallet:generate:{chain}"))
     builder.row(InlineKeyboardButton(text="🔙 Back", callback_data="menu:main"))
     return builder.as_markup()
 
@@ -297,6 +306,7 @@ def wallet_actions_keyboard() -> InlineKeyboardMarkup:
 
 
 # ── Admin Dashboard keyboards ──────────────────────────────────────────────────
+
 
 def admin_dashboard_keyboard() -> InlineKeyboardMarkup:
     """Main admin panel navigation keyboard."""
@@ -323,9 +333,7 @@ def admin_disputes_keyboard(orders: list) -> InlineKeyboardMarkup:
             )
         )
     if not orders:
-        builder.row(
-            InlineKeyboardButton(text="✅ No disputes!", callback_data="admin:stats")
-        )
+        builder.row(InlineKeyboardButton(text="✅ No disputes!", callback_data="admin:stats"))
     builder.row(InlineKeyboardButton(text="🏠 Main menu", callback_data="menu:main"))
     return builder.as_markup()
 

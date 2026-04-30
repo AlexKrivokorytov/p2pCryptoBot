@@ -24,6 +24,7 @@ log = structlog.get_logger(__name__)
 
 # ── Abstract Base ──────────────────────────────────────────────────────────────
 
+
 class WalletProvider(abc.ABC):
     """Abstract base class for all blockchain wallet providers.
 
@@ -82,6 +83,7 @@ class WalletProvider(abc.ABC):
 
 # ── EVM Provider ───────────────────────────────────────────────────────────────
 
+
 def _generate_evm_account() -> dict[str, str]:
     """Generate a fresh EVM account synchronously.
 
@@ -101,9 +103,9 @@ def _generate_evm_account() -> dict[str, str]:
     acct = Account.from_mnemonic(mnemonic)
 
     return {
-        "address": acct.address,          # EIP-55 checksum address, e.g. 0xABCD…
-        "private_key": acct.key.hex(),    # 64-char hex (without 0x) — consistent with eth-account
-        "mnemonic": mnemonic,             # 24-word BIP-39 phrase
+        "address": acct.address,  # EIP-55 checksum address, e.g. 0xABCD…
+        "private_key": acct.key.hex(),  # 64-char hex (without 0x) — consistent with eth-account
+        "mnemonic": mnemonic,  # 24-word BIP-39 phrase
     }
 
 
@@ -151,13 +153,13 @@ class EvmWalletProvider(WalletProvider):
             Balance as :class:`~decimal.Decimal`. Returns ``Decimal("0")`` on any RPC error.
         """
         # BEP-20 / ERC-20 contract addresses on BSC mainnet
-        _ERC20_CONTRACTS: dict[str, str] = {
+        erc20_contracts: dict[str, str] = {
             "USDT": "0x55d398326f99059fF775485246999027B3197955",
             "USDC": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
             "BUSD": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
         }
         # Minimal ERC-20 ABI — only balanceOf needed
-        _ERC20_ABI = [
+        erc20_abi = [
             {
                 "constant": True,
                 "inputs": [{"name": "_owner", "type": "address"}],
@@ -176,17 +178,17 @@ class EvmWalletProvider(WalletProvider):
                 # Native coin balance
                 raw = await w3.eth.get_balance(AsyncWeb3.to_checksum_address(address))
                 balance = Decimal(str(AsyncWeb3.from_wei(raw, "ether")))
-            elif asset_upper in _ERC20_CONTRACTS:
-                contract_addr = _ERC20_CONTRACTS[asset_upper]
+            elif asset_upper in erc20_contracts:
+                contract_addr = erc20_contracts[asset_upper]
                 contract = w3.eth.contract(
                     address=AsyncWeb3.to_checksum_address(contract_addr),
-                    abi=_ERC20_ABI,
+                    abi=erc20_abi,
                 )
                 raw = await contract.functions.balanceOf(
                     AsyncWeb3.to_checksum_address(address)
                 ).call()
                 # All listed tokens use 18 decimals
-                balance = Decimal(raw) / Decimal(10 ** 18)
+                balance = Decimal(raw) / Decimal(10**18)
             else:
                 log.warning(
                     "evm_balance_unsupported_asset",
@@ -237,6 +239,7 @@ class EvmWalletProvider(WalletProvider):
 
 # ── TON Provider ───────────────────────────────────────────────────────────────
 
+
 def _generate_ton_account() -> dict[str, str]:
     """Generate a fresh TON wallet (v4R2) synchronously.
 
@@ -249,9 +252,6 @@ def _generate_ton_account() -> dict[str, str]:
     from pytoniq_core.crypto.keys import (  # type: ignore[import-untyped]
         mnemonic_new,
         mnemonic_to_private_key,
-    )
-    from pytoniq_core.crypto.signature import (  # type: ignore[import-untyped]
-        verify_sign,
     )
 
     # 24-word TON mnemonic (not BIP-39 standard — TON uses its own KDF)
@@ -268,9 +268,9 @@ def _generate_ton_account() -> dict[str, str]:
     address = wallet.address.to_str(is_user_friendly=True, is_bounceable=False)
 
     return {
-        "address": address,               # non-bounceable UQ… string
-        "private_key": private_key.hex(), # 64-byte Ed25519 private key hex
-        "mnemonic": mnemonic_phrase,      # 24-word TON mnemonic
+        "address": address,  # non-bounceable UQ… string
+        "private_key": private_key.hex(),  # 64-byte Ed25519 private key hex
+        "mnemonic": mnemonic_phrase,  # 24-word TON mnemonic
     }
 
 
@@ -350,24 +350,26 @@ class TonWalletProvider(WalletProvider):
 
             url = self.endpoint.rstrip("/").replace("/jsonRPC", "") + "/getAddressBalance"
 
-            async with aiohttp.ClientSession(headers=headers) as http:
-                async with http.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status != 200:
-                        log.warning(
-                            "ton_balance_http_error",
-                            status=resp.status,
-                            address=address,
-                            step="TonWalletProvider.get_balance",
-                        )
-                        return Decimal("0")
-                    data = await resp.json()
+            async with (
+                aiohttp.ClientSession(headers=headers) as http,
+                http.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp,
+            ):
+                if resp.status != 200:
+                    log.warning(
+                        "ton_balance_http_error",
+                        status=resp.status,
+                        address=address,
+                        step="TonWalletProvider.get_balance",
+                    )
+                    return Decimal("0")
+                data = await resp.json()
 
             if not data.get("ok"):
                 return Decimal("0")
 
             # Balance is in nanotons (1 TON = 1e9 nanotons)
             nanotons = int(data["result"])
-            balance = Decimal(nanotons) / Decimal(10 ** 9)
+            balance = Decimal(nanotons) / Decimal(10**9)
 
             log.info(
                 "ton_balance_fetched",

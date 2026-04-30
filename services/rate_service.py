@@ -46,7 +46,7 @@ async def get_market_rate(asset: str, fiat: str) -> Decimal | None:
             ),
             timeout=_RATE_TIMEOUT,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         log.warning(
             "rate_lookup_timeout",
             asset=asset,
@@ -91,11 +91,8 @@ def format_rate_hint(asset: str, fiat: str, rate: Decimal) -> str:
         ``📊 <b>Binance reference rate:</b> 1 BTC ≈ <code>65,000.00</code> USD``
     """
     # Format with commas, 2 decimal places for fiat display
-    if rate >= 1:
-        formatted = f"{rate:,.2f}"
-    else:
-        # Small rates (e.g. USDT/USD ≈ 1.0002) — show 6 decimals
-        formatted = f"{rate:.6f}"
+    # Small rates (e.g. USDT/USD ≈ 1.0002) — show 6 decimals
+    formatted = f"{rate:,.2f}" if rate >= 1 else f"{rate:.6f}"
 
     return (
         f"📊 <b>Binance reference rate:</b>\n"

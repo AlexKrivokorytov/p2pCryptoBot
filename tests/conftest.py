@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-import pytest
+
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from db.models.base import Base
 
 # ── Set test env vars before any imports touch os.environ ─────────────────────
-os.environ.setdefault("POSTGRES_URI", "postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test")
+os.environ.setdefault(
+    "POSTGRES_URI", "postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test"
+)
 os.environ.setdefault("AES_KEY", "0" * 64)
 os.environ.setdefault("CRYPTOPAY_TOKEN", "test")
 os.environ.setdefault("CRYPTOPAY_CALLBACK_SECRET", "testsecret")

@@ -52,9 +52,7 @@ async def raise_dispute(
         if order is None:
             raise ValueError(f"Order {order_id!r} not found")
         if order.status not in {OrderStatus.active, OrderStatus.escrow_held}:
-            raise ValueError(
-                f"Cannot raise dispute on order in status {order.status!r}"
-            )
+            raise ValueError(f"Cannot raise dispute on order in status {order.status!r}")
         order.status = OrderStatus.dispute
         order.dispute_reason = reason
 
@@ -102,16 +100,12 @@ async def resolve_dispute(
 
     # Validate order is in dispute state first (read-only check)
     async with session.begin():
-        result = await session.execute(
-            select(Order).where(Order.id == uuid.UUID(order_id))
-        )
+        result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
         order = result.scalar_one_or_none()
         if order is None:
             raise ValueError(f"Order {order_id!r} not found")
         if order.status != OrderStatus.dispute:
-            raise ValueError(
-                f"resolve_dispute requires status=dispute, got {order.status!r}"
-            )
+            raise ValueError(f"resolve_dispute requires status=dispute, got {order.status!r}")
 
     # Execute the appropriate escrow action
     if decision == "taker_wins":

@@ -47,9 +47,15 @@ async def test_expire_pending_orders(engine) -> None:
     timeout = int(os.environ.get("ORDER_TIMEOUT_SEC", "1800"))
 
     async with factory() as session:
-        o1 = await _create_order(session, OrderStatus.pending_funding, offset_seconds=-(timeout + 100))  # should cancel
-        o2 = await _create_order(session, OrderStatus.pending_funding, offset_seconds=-10)  # should NOT cancel (too new)
-        o3 = await _create_order(session, OrderStatus.escrow_held, offset_seconds=-(timeout + 100))  # should NOT cancel (wrong status)
+        o1 = await _create_order(
+            session, OrderStatus.pending_funding, offset_seconds=-(timeout + 100)
+        )  # should cancel
+        o2 = await _create_order(
+            session, OrderStatus.pending_funding, offset_seconds=-10
+        )  # should NOT cancel (too new)
+        o3 = await _create_order(
+            session, OrderStatus.escrow_held, offset_seconds=-(timeout + 100)
+        )  # should NOT cancel (wrong status)
 
         o1_id, o2_id, o3_id = o1.id, o2.id, o3.id
 

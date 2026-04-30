@@ -16,11 +16,11 @@ from services import notification_service
 async def test_notify_maker_taker_found_success() -> None:
     """Successfully notifies the maker about a new taker."""
     bot = AsyncMock(spec=Bot)
-    
+
     result = await notification_service.notify_maker_taker_found(
         bot, maker_id=123, taker_username="testuser", order_id="uuid-1234"
     )
-    
+
     assert result is True
     bot.send_message.assert_called_once()
     args = bot.send_message.call_args[0]
@@ -33,11 +33,11 @@ async def test_notify_maker_taker_found_success() -> None:
 async def test_notify_maker_taker_found_no_username() -> None:
     """Handles taker without a username gracefully."""
     bot = AsyncMock(spec=Bot)
-    
+
     result = await notification_service.notify_maker_taker_found(
         bot, maker_id=123, taker_username=None, order_id="uuid-1234"
     )
-    
+
     assert result is True
     args = bot.send_message.call_args[0]
     assert "A user" in args[1]
@@ -47,12 +47,14 @@ async def test_notify_maker_taker_found_no_username() -> None:
 async def test_notify_maker_taker_found_error() -> None:
     """Handles TelegramAPIError gracefully."""
     bot = AsyncMock(spec=Bot)
-    bot.send_message.side_effect = TelegramAPIError(method=SendMessage(chat_id=1, text=""), message="Forbidden: bot was blocked by the user")
-    
+    bot.send_message.side_effect = TelegramAPIError(
+        method=SendMessage(chat_id=1, text=""), message="Forbidden: bot was blocked by the user"
+    )
+
     result = await notification_service.notify_maker_taker_found(
         bot, maker_id=123, taker_username="test", order_id="uuid-1234"
     )
-    
+
     assert result is False
 
 
@@ -60,11 +62,11 @@ async def test_notify_maker_taker_found_error() -> None:
 async def test_notify_maker_fiat_sent_success() -> None:
     """Successfully notifies the maker about fiat being sent."""
     bot = AsyncMock(spec=Bot)
-    
+
     result = await notification_service.notify_maker_fiat_sent(
         bot, maker_id=123, order_id="uuid-1234"
     )
-    
+
     assert result is True
     bot.send_message.assert_called_once()
     args = bot.send_message.call_args[0]
@@ -76,10 +78,12 @@ async def test_notify_maker_fiat_sent_success() -> None:
 async def test_notify_maker_fiat_sent_error() -> None:
     """Handles TelegramAPIError gracefully during fiat sent notification."""
     bot = AsyncMock(spec=Bot)
-    bot.send_message.side_effect = TelegramAPIError(method=SendMessage(chat_id=1, text=""), message="Forbidden: bot was blocked by the user")
-    
+    bot.send_message.side_effect = TelegramAPIError(
+        method=SendMessage(chat_id=1, text=""), message="Forbidden: bot was blocked by the user"
+    )
+
     result = await notification_service.notify_maker_fiat_sent(
         bot, maker_id=123, order_id="uuid-1234"
     )
-    
+
     assert result is False

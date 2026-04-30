@@ -25,7 +25,7 @@ ROUTERS: list[Router] = [
     chat.router,
     profile.router,
     wallet.router,
-    admin.router,   # admin last — catch-all admin filters
+    admin.router,  # admin last — catch-all admin filters
 ]
 
 __all__ = ["ROUTERS"]

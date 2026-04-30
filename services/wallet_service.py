@@ -35,9 +35,7 @@ def _get_provider(chain: str) -> WalletProvider:
         ValueError: If *chain* is not in ``SUPPORTED_CHAINS``.
     """
     if chain not in SUPPORTED_CHAINS:
-        raise ValueError(
-            f"Unsupported chain: {chain!r}. Supported: {sorted(SUPPORTED_CHAINS)}"
-        )
+        raise ValueError(f"Unsupported chain: {chain!r}. Supported: {sorted(SUPPORTED_CHAINS)}")
     if chain not in _provider_cache:
         from bot.config import settings  # local import avoids circular deps
 
@@ -48,9 +46,7 @@ def _get_provider(chain: str) -> WalletProvider:
     return _provider_cache[chain]
 
 
-async def generate_and_save_wallet(
-    session: AsyncSession, user_id: int, chain: str
-) -> UserWallet:
+async def generate_and_save_wallet(session: AsyncSession, user_id: int, chain: str) -> UserWallet:
     """Generate a new wallet for a user on the given chain and persist it encrypted.
 
     Args:
@@ -68,9 +64,7 @@ async def generate_and_save_wallet(
     wallet_data = await provider.generate_wallet(user_id)
 
     encrypted_pk = encrypt(wallet_data["private_key"])
-    encrypted_mnemonic = (
-        encrypt(wallet_data["mnemonic"]) if wallet_data.get("mnemonic") else None
-    )
+    encrypted_mnemonic = encrypt(wallet_data["mnemonic"]) if wallet_data.get("mnemonic") else None
 
     wallet = UserWallet(
         user_id=user_id,
@@ -93,9 +87,7 @@ async def generate_and_save_wallet(
     return wallet
 
 
-async def get_user_wallets(
-    session: AsyncSession, user_id: int
-) -> list[UserWallet]:
+async def get_user_wallets(session: AsyncSession, user_id: int) -> list[UserWallet]:
     """Return all active wallets for a user ordered by creation date.
 
     Args:

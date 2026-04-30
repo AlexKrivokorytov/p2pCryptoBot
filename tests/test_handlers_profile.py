@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bot.handlers import profile as profile_handlers
@@ -17,19 +16,17 @@ from services import user_service
 async def test_user_service_increment_stats(engine) -> None:
     """Test incrementing user trade statistics."""
     factory = async_sessionmaker(engine, expire_on_commit=False)
-    
-    async with factory() as session:
-        async with session.begin():
-            user = User(telegram_id=999, username="tester", total_trades=0, successful_trades=0)
-            session.add(user)
-            
-    async with factory() as session:
-        async with session.begin():
-            # Successful trade
-            await user_service.increment_user_trade_stats(session, 999, successful=True)
-            # Failed trade
-            await user_service.increment_user_trade_stats(session, 999, successful=False)
-            
+
+    async with factory() as session, session.begin():
+        user = User(telegram_id=999, username="tester", total_trades=0, successful_trades=0)
+        session.add(user)
+
+    async with factory() as session, session.begin():
+        # Successful trade
+        await user_service.increment_user_trade_stats(session, 999, successful=True)
+        # Failed trade
+        await user_service.increment_user_trade_stats(session, 999, successful=False)
+
     async with factory() as session:
         user = await user_service.get_user_profile(session, 999)
         assert user is not None

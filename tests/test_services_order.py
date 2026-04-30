@@ -12,8 +12,8 @@ from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 from services import order_service
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 async def _create_user(session: AsyncSession, telegram_id: int, username: str) -> User:
     async with session.begin():
@@ -66,6 +66,7 @@ def _mock_crypto_pay(invoice_id: str = "inv_001") -> MagicMock:
 
 # ── _validate_asset ────────────────────────────────────────────────────────────
 
+
 def test_validate_asset_invalid() -> None:
     """Unsupported asset raises ValueError."""
     with pytest.raises(ValueError, match="Unsupported asset"):
@@ -81,6 +82,7 @@ def test_validate_asset_valid() -> None:
 
 # ── _validate_amount ───────────────────────────────────────────────────────────
 
+
 def test_validate_amount_zero() -> None:
     """Zero amount raises ValueError."""
     with pytest.raises(ValueError, match="must be positive"):
@@ -94,6 +96,7 @@ def test_validate_amount_negative() -> None:
 
 
 # ── create_order ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_create_order_success(session: AsyncSession) -> None:
@@ -127,8 +130,14 @@ async def test_create_order_invalid_asset(session: AsyncSession) -> None:
 
     with pytest.raises(ValueError, match="Unsupported asset"):
         await order_service.create_order(
-            session, crypto_pay, maker_id=601, order_type="sell_crypto",
-            asset="DOGE99", amount=10.0, fiat_currency="RUB", fiat_amount=100.0,
+            session,
+            crypto_pay,
+            maker_id=601,
+            order_type="sell_crypto",
+            asset="DOGE99",
+            amount=10.0,
+            fiat_currency="RUB",
+            fiat_amount=100.0,
         )
 
 
@@ -139,8 +148,14 @@ async def test_create_order_invalid_amount(session: AsyncSession) -> None:
 
     with pytest.raises(ValueError, match="must be positive"):
         await order_service.create_order(
-            session, crypto_pay, maker_id=601, order_type="sell_crypto",
-            asset="USDT", amount=0.0, fiat_currency="RUB", fiat_amount=100.0,
+            session,
+            crypto_pay,
+            maker_id=601,
+            order_type="sell_crypto",
+            asset="USDT",
+            amount=0.0,
+            fiat_currency="RUB",
+            fiat_amount=100.0,
         )
 
 
@@ -151,8 +166,14 @@ async def test_create_order_invalid_type(session: AsyncSession) -> None:
 
     with pytest.raises(ValueError, match="Invalid order_type"):
         await order_service.create_order(
-            session, crypto_pay, maker_id=601, order_type="trade_swap",
-            asset="USDT", amount=10.0, fiat_currency="RUB", fiat_amount=100.0,
+            session,
+            crypto_pay,
+            maker_id=601,
+            order_type="trade_swap",
+            asset="USDT",
+            amount=10.0,
+            fiat_currency="RUB",
+            fiat_amount=100.0,
         )
 
 
@@ -179,6 +200,7 @@ async def test_create_order_with_fee(session: AsyncSession) -> None:
 
 
 # ── activate_order ─────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_activate_order_success(session: AsyncSession) -> None:
@@ -207,6 +229,7 @@ async def test_activate_order_wrong_status(session: AsyncSession) -> None:
 
 
 # ── take_order ─────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_take_order_success(session: AsyncSession) -> None:
@@ -247,6 +270,7 @@ async def test_take_order_self_take(session: AsyncSession) -> None:
 
 # ── get_active_orders ──────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_active_orders_empty(session: AsyncSession) -> None:
     """get_active_orders returns empty list when no active orders exist."""
@@ -285,15 +309,14 @@ async def test_get_active_orders_filter_asset(session: AsyncSession) -> None:
 
 # ── confirm_fiat_payment ───────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_confirm_fiat_success(session: AsyncSession) -> None:
     """Successful fiat confirmation sets status to completed."""
     order = await _create_order(session, OrderStatus.escrow_held, maker_id=604, taker_id=605)
     crypto_pay = _mock_crypto_pay()
 
-    result = await order_service.confirm_fiat_payment(
-        session, crypto_pay, order_id=str(order.id)
-    )
+    result = await order_service.confirm_fiat_payment(session, crypto_pay, order_id=str(order.id))
 
     assert result["status"] == OrderStatus.completed
 
@@ -306,9 +329,7 @@ async def test_confirm_fiat_transfer_fails_sets_dispute(session: AsyncSession) -
     cp = MagicMock()
     cp.transfer = AsyncMock(side_effect=Exception("API timeout"))
 
-    result = await order_service.confirm_fiat_payment(
-        session, cp, order_id=str(order.id)
-    )
+    result = await order_service.confirm_fiat_payment(session, cp, order_id=str(order.id))
 
     assert result["status"] == OrderStatus.dispute
 
@@ -319,9 +340,7 @@ async def test_confirm_fiat_order_not_found(session: AsyncSession) -> None:
     crypto_pay = _mock_crypto_pay()
 
     with pytest.raises(ValueError, match="not found"):
-        await order_service.confirm_fiat_payment(
-            session, crypto_pay, order_id=str(uuid.uuid4())
-        )
+        await order_service.confirm_fiat_payment(session, crypto_pay, order_id=str(uuid.uuid4()))
 
 
 @pytest.mark.asyncio
@@ -331,12 +350,11 @@ async def test_confirm_fiat_wrong_status(session: AsyncSession) -> None:
     crypto_pay = _mock_crypto_pay()
 
     with pytest.raises(ValueError, match="Cannot confirm fiat"):
-        await order_service.confirm_fiat_payment(
-            session, crypto_pay, order_id=str(order.id)
-        )
+        await order_service.confirm_fiat_payment(session, crypto_pay, order_id=str(order.id))
 
 
 # ── cancel_order ───────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_cancel_pending_funding(session: AsyncSession) -> None:

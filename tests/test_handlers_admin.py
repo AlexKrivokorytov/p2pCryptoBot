@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.handlers import admin as admin_handlers
 from bot.states import ArbitrationFSM
 
-
 # ── Fixtures ─────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture(autouse=True)
 def mock_admin_ids() -> None:
@@ -22,6 +22,7 @@ def mock_admin_ids() -> None:
 
 
 # ── /arbitrate command ────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_cmd_arbitrate_not_admin() -> None:
@@ -52,6 +53,7 @@ async def test_cmd_arbitrate_admin() -> None:
 
 # ── /admin command ────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_cmd_admin_not_admin() -> None:
     """Non-admin receives rejection for /admin."""
@@ -77,6 +79,7 @@ async def test_cmd_admin_shows_dashboard() -> None:
 
 
 # ── /stats command ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.admin_service.get_platform_stats", new_callable=AsyncMock)
@@ -111,11 +114,10 @@ async def test_cmd_stats_not_admin(session: AsyncSession) -> None:
 
 # ── /disputes command ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.admin_service.get_dispute_queue", new_callable=AsyncMock)
-async def test_cmd_disputes_no_disputes(
-    mock_queue: AsyncMock, session: AsyncSession
-) -> None:
+async def test_cmd_disputes_no_disputes(mock_queue: AsyncMock, session: AsyncSession) -> None:
     """Admin /disputes shows empty state message."""
     mock_queue.return_value = []
     message = AsyncMock()
@@ -141,11 +143,10 @@ async def test_cmd_disputes_not_admin(session: AsyncSession) -> None:
 
 # ── Dispute resolution callback ───────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.dispute_service.resolve_dispute", new_callable=AsyncMock)
-async def test_cb_dispute_resolve_not_admin(
-    mock_resolve: AsyncMock, session: AsyncSession
-) -> None:
+async def test_cb_dispute_resolve_not_admin(mock_resolve: AsyncMock, session: AsyncSession) -> None:
     """Non-admin resolving via callback is rejected."""
     callback = AsyncMock()
     callback.from_user.id = 123
@@ -161,9 +162,7 @@ async def test_cb_dispute_resolve_not_admin(
 
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.dispute_service.resolve_dispute", new_callable=AsyncMock)
-async def test_cb_dispute_resolve_success(
-    mock_resolve: AsyncMock, session: AsyncSession
-) -> None:
+async def test_cb_dispute_resolve_success(mock_resolve: AsyncMock, session: AsyncSession) -> None:
     """Admin successfully resolves dispute."""
     mock_resolve.return_value = {"status": "completed"}
 
@@ -185,9 +184,7 @@ async def test_cb_dispute_resolve_success(
 
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.dispute_service.resolve_dispute", new_callable=AsyncMock)
-async def test_cb_dispute_resolve_error(
-    mock_resolve: AsyncMock, session: AsyncSession
-) -> None:
+async def test_cb_dispute_resolve_error(mock_resolve: AsyncMock, session: AsyncSession) -> None:
     """Admin dispute resolution handles service errors gracefully."""
     mock_resolve.side_effect = ValueError("Order not found")
 
@@ -204,6 +201,7 @@ async def test_cb_dispute_resolve_error(
 
 
 # ── msg_arb_order_id ──────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_msg_arb_order_id_invalid() -> None:

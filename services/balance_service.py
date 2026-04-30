@@ -40,9 +40,7 @@ class WalletBalance:
     error: bool = False
 
 
-async def _fetch_single_balance(
-    wallet: UserWallet, asset: str
-) -> tuple[str, Decimal]:
+async def _fetch_single_balance(wallet: UserWallet, asset: str) -> tuple[str, Decimal]:
     """Fetch one asset balance with timeout protection.
 
     Args:
@@ -59,7 +57,7 @@ async def _fetch_single_balance(
             timeout=_BALANCE_TIMEOUT_SEC,
         )
         return asset, balance
-    except asyncio.TimeoutError:
+    except TimeoutError:
         log.warning(
             "balance_timeout",
             address=wallet.address,
@@ -80,9 +78,7 @@ async def _fetch_single_balance(
         return asset, Decimal("0")
 
 
-async def get_portfolio_balances(
-    session: AsyncSession, user_id: int
-) -> list[WalletBalance]:
+async def get_portfolio_balances(session: AsyncSession, user_id: int) -> list[WalletBalance]:
     """Fetch balances for all active wallets of a user in parallel.
 
     For each wallet, queries all predefined assets concurrently.

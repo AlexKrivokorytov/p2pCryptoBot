@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 from datetime import timedelta
 
-from bot.handlers import start as start_handlers
 from db.models.order import Order, OrderStatus
 from utils import datetime_helpers, formatters
 
@@ -19,7 +18,7 @@ def test_utcnow() -> None:
 def test_is_order_expired() -> None:
     """Test order expiry logic."""
     order = Order(created_at=datetime_helpers.utcnow() - timedelta(seconds=100))
-    
+
     assert datetime_helpers.is_order_expired(order, 50) is True
     assert datetime_helpers.is_order_expired(order, 150) is False
 
@@ -27,10 +26,10 @@ def test_is_order_expired() -> None:
 def test_seconds_until_expiry() -> None:
     """Test seconds until expiry calculation."""
     order = Order(created_at=datetime_helpers.utcnow() - timedelta(seconds=10))
-    
+
     remaining = datetime_helpers.seconds_until_expiry(order, 30)
     assert 15 <= remaining <= 21
-    
+
     expired = datetime_helpers.seconds_until_expiry(order, 5)
     assert expired == 0
 
@@ -57,12 +56,7 @@ def test_format_order_summary() -> None:
 
 def test_format_payment_instructions() -> None:
     """Test payment instructions formatting."""
-    order = Order(
-        id=uuid.uuid4(),
-        asset="BTC",
-        amount=0.001,
-        payment_url="https://pay.link"
-    )
+    order = Order(id=uuid.uuid4(), asset="BTC", amount=0.001, payment_url="https://pay.link")
     instr = formatters.format_payment_instructions(order)
     assert "Pay via Crypto Pay" in instr
     assert "0.001 BTC" in instr

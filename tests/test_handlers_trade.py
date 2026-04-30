@@ -11,9 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers import trade as trade_handlers
 from db.models.order import Order, OrderStatus, OrderType
-
-
 from db.models.user import User
+
 
 async def _create_test_order(session: AsyncSession, order_id: str, maker_id: int) -> Order:
     async with session.begin():
@@ -21,7 +20,7 @@ async def _create_test_order(session: AsyncSession, order_id: str, maker_id: int
         if not user:
             user = User(telegram_id=maker_id, username=f"user_{maker_id}", first_name="T")
             session.add(user)
-            
+
         order = Order(
             id=uuid.UUID(order_id),
             maker_id=maker_id,
@@ -57,12 +56,8 @@ async def test_cb_take_order_success(
 
     await trade_handlers.cb_take_order(callback, session, bot)
 
-    mock_take.assert_called_once_with(
-        session, order_id="5a1fc458", taker_id=123
-    )
-    mock_notify.assert_called_once_with(
-        bot, 999, "taker_usr", "5a1fc458"
-    )
+    mock_take.assert_called_once_with(session, order_id="5a1fc458", taker_id=123)
+    mock_notify.assert_called_once_with(bot, 999, "taker_usr", "5a1fc458")
     callback.message.edit_text.assert_called_once()
     assert "Trade accepted!" in callback.message.edit_text.call_args[0][0]
     callback.answer.assert_called_once()

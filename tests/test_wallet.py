@@ -12,8 +12,8 @@ from db.models.user import User
 from db.models.wallet import UserWallet, WalletChain
 from services import wallet_service
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 async def _create_test_user(session: AsyncSession, user_id: int) -> User:
     """Persist a minimal User row for FK constraints."""
@@ -23,7 +23,9 @@ async def _create_test_user(session: AsyncSession, user_id: int) -> User:
         return user
 
 
-def _make_provider_mock(address: str, private_key: str = "pk", mnemonic: str = "m1 m2") -> AsyncMock:
+def _make_provider_mock(
+    address: str, private_key: str = "pk", mnemonic: str = "m1 m2"
+) -> AsyncMock:
     """Build a WalletProvider AsyncMock returning the given wallet data."""
     provider = AsyncMock()
     provider.generate_wallet.return_value = {
@@ -35,6 +37,7 @@ def _make_provider_mock(address: str, private_key: str = "pk", mnemonic: str = "
 
 
 # ── Service: generate_and_save_wallet ─────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 @patch("services.wallet_service._get_provider")
@@ -50,11 +53,8 @@ async def test_generate_and_save_wallet_ton(mock_get_provider: MagicMock, engine
     async with factory() as session:
         await _create_test_user(session, 111)
 
-    async with factory() as session:
-        async with session.begin():
-            wallet = await wallet_service.generate_and_save_wallet(
-                session, 111, WalletChain.ton
-            )
+    async with factory() as session, session.begin():
+        wallet = await wallet_service.generate_and_save_wallet(session, 111, WalletChain.ton)
 
     assert wallet.address == "UQTestTONAddress"
     assert wallet.chain == WalletChain.ton
@@ -76,17 +76,15 @@ async def test_generate_and_save_wallet_evm(mock_get_provider: MagicMock, engine
     async with factory() as session:
         await _create_test_user(session, 333)
 
-    async with factory() as session:
-        async with session.begin():
-            wallet = await wallet_service.generate_and_save_wallet(
-                session, 333, WalletChain.evm
-            )
+    async with factory() as session, session.begin():
+        wallet = await wallet_service.generate_and_save_wallet(session, 333, WalletChain.evm)
 
     assert wallet.address == "0xEvmTestAddress"
     assert wallet.chain == WalletChain.evm
 
 
 # ── Service: get_user_wallets ──────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 @patch("services.wallet_service._get_provider")
@@ -98,9 +96,8 @@ async def test_get_user_wallets(mock_get_provider: MagicMock, engine) -> None:
     async with factory() as session:
         await _create_test_user(session, 222)
 
-    async with factory() as session:
-        async with session.begin():
-            await wallet_service.generate_and_save_wallet(session, 222, WalletChain.ton)
+    async with factory() as session, session.begin():
+        await wallet_service.generate_and_save_wallet(session, 222, WalletChain.ton)
 
     async with factory() as session:
         wallets = await wallet_service.get_user_wallets(session, 222)
@@ -118,11 +115,10 @@ async def test_generate_wallet_invalid_chain(session: AsyncSession) -> None:
 
 # ── Handler: cmd_wallet ────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("bot.handlers.wallet.wallet_service.get_user_wallets", new_callable=AsyncMock)
-async def test_cmd_wallet_no_wallets(
-    mock_get_wallets: AsyncMock, session: AsyncSession
-) -> None:
+async def test_cmd_wallet_no_wallets(mock_get_wallets: AsyncMock, session: AsyncSession) -> None:
     """Wallet command shows empty-state text when user has no wallets."""
     mock_get_wallets.return_value = []
 
@@ -140,13 +136,14 @@ async def test_cmd_wallet_no_wallets(
 
 @pytest.mark.asyncio
 @patch("bot.handlers.wallet.wallet_service.get_user_wallets", new_callable=AsyncMock)
-async def test_cmd_wallet_with_wallets(
-    mock_get_wallets: AsyncMock, session: AsyncSession
-) -> None:
+async def test_cmd_wallet_with_wallets(mock_get_wallets: AsyncMock, session: AsyncSession) -> None:
     """Wallet command shows address when user already has wallets."""
     wallet = UserWallet(
-        id=1, user_id=111, chain=WalletChain.ton.value,
-        address="UQSomeAddress", encrypted_private_key="enc"
+        id=1,
+        user_id=111,
+        chain=WalletChain.ton.value,
+        address="UQSomeAddress",
+        encrypted_private_key="enc",
     )
     mock_get_wallets.return_value = [wallet]
 
@@ -162,15 +159,17 @@ async def test_cmd_wallet_with_wallets(
 
 # ── Handler: cb_generate_wallet ───────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("bot.handlers.wallet.wallet_service.generate_and_save_wallet", new_callable=AsyncMock)
-async def test_cb_generate_wallet_success(
-    mock_generate: AsyncMock, session: AsyncSession
-) -> None:
+async def test_cb_generate_wallet_success(mock_generate: AsyncMock, session: AsyncSession) -> None:
     """Generate wallet callback creates wallet and shows address in response."""
     mock_generate.return_value = UserWallet(
-        id=1, user_id=111, chain=WalletChain.evm.value,
-        address="0xNewEvmAddress", encrypted_private_key="enc"
+        id=1,
+        user_id=111,
+        chain=WalletChain.evm.value,
+        address="0xNewEvmAddress",
+        encrypted_private_key="enc",
     )
 
     callback = AsyncMock()
@@ -201,6 +200,7 @@ async def test_cb_generate_wallet_invalid_chain(session: AsyncSession) -> None:
 
 
 # ── Provider: EvmWalletProvider (real) ───────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_evm_provider_generates_real_address() -> None:
@@ -240,13 +240,17 @@ async def test_evm_provider_deterministic_from_mnemonic() -> None:
 
     Account.enable_unaudited_hdwallet_features()
 
-    mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+    mnemonic = (
+        "abandon abandon abandon abandon abandon abandon "
+        "abandon abandon abandon abandon abandon about"
+    )
     acct1 = Account.from_mnemonic(mnemonic)
     acct2 = Account.from_mnemonic(mnemonic)
     assert acct1.address == acct2.address, "Same mnemonic must yield same address"
 
 
 # ── Provider: TonWalletProvider (real) ───────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_ton_provider_generates_address() -> None:

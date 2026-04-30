@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from db.models.order import Order, OrderStatus
 
-
 _STATUS_EMOJI: dict[str, str] = {
     OrderStatus.pending_funding: "🕐",
     OrderStatus.active: "📢",

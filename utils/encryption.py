@@ -31,7 +31,7 @@ def _get_key() -> bytes:
     if len(raw) != 64:
         raise ValueError(
             "AES_KEY must be a 64-character hex string (32 bytes). "
-            "Generate with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            'Generate with: python -c "import secrets; print(secrets.token_hex(32))"'
         )
     return bytes.fromhex(raw)
 

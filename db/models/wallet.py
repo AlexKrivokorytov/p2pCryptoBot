@@ -11,11 +11,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.models.base import Base
 
 
-class WalletChain(str, enum.Enum):
+class WalletChain(enum.StrEnum):
     """Supported blockchain networks.
 
     Values match the ``wallet_chain`` Postgres ENUM type created in migration 0005.
     """
+
     ton = "ton"
     evm = "evm"
 
@@ -44,7 +45,7 @@ class UserWallet(Base):
     # AES-256-GCM encrypted private key stored as hex string (nonce + ciphertext)
     encrypted_private_key: Mapped[str] = mapped_column(String(1024), nullable=False)
     # Encrypted mnemonic phrase (optional — not all chains use mnemonics)
-    encrypted_mnemonic: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    encrypted_mnemonic: Mapped[str] = mapped_column(String(2048), nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -52,4 +53,6 @@ class UserWallet(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<UserWallet user_id={self.user_id} chain={self.chain} address={self.address[:12]}…>"
+        return (
+            f"<UserWallet user_id={self.user_id} chain={self.chain} address={self.address[:12]}…>"
+        )

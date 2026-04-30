@@ -12,8 +12,8 @@ from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 from services import dispute_service
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 async def _create_user(session: AsyncSession, telegram_id: int, username: str) -> User:
     async with session.begin():
@@ -61,6 +61,7 @@ def _mock_crypto_pay() -> MagicMock:
 
 # ── raise_dispute ──────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_raise_dispute_from_active(session: AsyncSession) -> None:
     """Dispute can be raised from active status."""
@@ -95,6 +96,7 @@ async def test_raise_dispute_wrong_status(session: AsyncSession) -> None:
 
 # ── resolve_dispute ────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_resolve_dispute_cancel_decision(session: AsyncSession) -> None:
     """Decision 'cancel' triggers refund_escrow and returns cancelled status."""
@@ -116,8 +118,7 @@ async def test_resolve_dispute_order_not_found(session: AsyncSession) -> None:
 
     with pytest.raises(ValueError, match="not found"):
         await dispute_service.resolve_dispute(
-            session, crypto_pay, order_id=str(uuid.uuid4()),
-            decision="taker_wins", moderator_id=999
+            session, crypto_pay, order_id=str(uuid.uuid4()), decision="taker_wins", moderator_id=999
         )
 
 
@@ -129,12 +130,12 @@ async def test_resolve_dispute_wrong_status(session: AsyncSession) -> None:
 
     with pytest.raises(ValueError, match="requires status=dispute"):
         await dispute_service.resolve_dispute(
-            session, crypto_pay, order_id=str(order.id),
-            decision="taker_wins", moderator_id=999
+            session, crypto_pay, order_id=str(order.id), decision="taker_wins", moderator_id=999
         )
 
 
 # ── ai_mediator_suggest ────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_ai_mediator_no_key() -> None:
@@ -142,6 +143,7 @@ async def test_ai_mediator_no_key() -> None:
     with patch.dict("os.environ", {}, clear=False):
         # Ensure key is absent
         import os
+
         os.environ.pop("GEMINI_API_KEY", None)
 
         result = await dispute_service.ai_mediator_suggest(
@@ -159,7 +161,10 @@ async def test_ai_mediator_with_key_stub() -> None:
     with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key-abc123"}):
         result = await dispute_service.ai_mediator_suggest(
             order_id=str(uuid.uuid4()),
-            chat_history=[{"role": "maker", "text": "I paid!"}, {"role": "taker", "text": "I got nothing."}],
+            chat_history=[
+                {"role": "maker", "text": "I paid!"},
+                {"role": "taker", "text": "I got nothing."},
+            ],
         )
 
     assert result["suggestion"] == "neutral"

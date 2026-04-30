@@ -5,12 +5,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 
-import pytest
-
 from utils.hmac_helpers import compare_hmac, compute_hmac_sha256
 
-
 # ── compare_hmac ──────────────────────────────────────────────────────────────
+
 
 def test_compare_hmac_equal() -> None:
     """Returns True for identical HMAC strings."""
@@ -39,6 +37,7 @@ def test_compare_hmac_one_empty() -> None:
 
 
 # ── compute_hmac_sha256 ───────────────────────────────────────────────────────
+
 
 def test_compute_hmac_sha256_returns_hex_string() -> None:
     """Returns a lowercase hex string of length 64 (SHA-256 digest)."""

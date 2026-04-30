@@ -14,7 +14,7 @@ from bot.keyboards import (
     active_trade_maker_keyboard,
     back_to_menu_keyboard,
 )
-from db.models.order import Order, OrderStatus
+from db.models.order import Order
 from providers.crypto_pay import CryptoPayClient
 from services import escrow_service
 from utils.formatters import format_error
@@ -71,9 +71,7 @@ async def cb_escrow_confirm(
 async def cb_order_status(callback: CallbackQuery, session: AsyncSession) -> None:
     """Check current order status."""
     order_id = callback.data.split(":")[2]  # type: ignore[union-attr]
-    result = await session.execute(
-        select(Order).where(Order.id == uuid.UUID(order_id))
-    )
+    result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
     order = result.scalar_one_or_none()
     if order is None:
         await callback.answer("Order not found.", show_alert=True)

@@ -8,12 +8,12 @@ import pytest
 from aiogram.fsm.context import FSMContext
 
 from bot.handlers import order as order_handlers
-from bot.states import CreateAdFSM, BrowseOrderBookFSM
-
+from bot.states import CreateAdFSM
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CREATE AD FLOW
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_cb_ad_create() -> None:
@@ -184,7 +184,9 @@ async def test_cb_ad_confirmed_success() -> None:
     session = AsyncMock()
     crypto_pay = AsyncMock()
 
-    with patch("bot.handlers.order.order_service.create_order", new_callable=AsyncMock) as mock_create:
+    with patch(
+        "bot.handlers.order.order_service.create_order", new_callable=AsyncMock
+    ) as mock_create:
         mock_create.return_value = {"order_id": "uuid-123", "payment_url": "http://pay.me"}
         await order_handlers.cb_ad_confirmed(callback, state, session, crypto_pay)
 
@@ -211,6 +213,7 @@ async def test_cb_cancel_ad() -> None:
 # ORDER BOOK BROWSING
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_cb_market_browse() -> None:
     """Test market browse callback fetches active orders."""
@@ -218,7 +221,9 @@ async def test_cb_market_browse() -> None:
     state = AsyncMock(spec=FSMContext)
     session = AsyncMock()
 
-    with patch("bot.handlers.order.order_service.get_active_orders", new_callable=AsyncMock) as mock_get:
+    with patch(
+        "bot.handlers.order.order_service.get_active_orders", new_callable=AsyncMock
+    ) as mock_get:
         mock_get.return_value = {
             "orders": [],
             "page": 1,

@@ -25,11 +25,10 @@ from bot.keyboards import (
     admin_dashboard_keyboard,
     admin_dispute_action_keyboard,
     admin_disputes_keyboard,
-    back_to_menu_keyboard,
     dispute_resolve_keyboard,
 )
 from bot.states import ArbitrationFSM
-from db.models.order import Order, OrderStatus
+from db.models.order import Order
 from providers.crypto_pay import CryptoPayClient
 from services import admin_service, dispute_service
 from utils.formatters import format_error
@@ -44,6 +43,7 @@ def _is_admin(user_id: int) -> bool:
 
 
 # ── /admin  ────────────────────────────────────────────────────────────────────
+
 
 @router.message(Command("admin"))
 async def cmd_admin(message: Message) -> None:
@@ -60,6 +60,7 @@ async def cmd_admin(message: Message) -> None:
 
 
 # ── /stats ─────────────────────────────────────────────────────────────────────
+
 
 @router.message(Command("stats"))
 async def cmd_stats(message: Message, session: AsyncSession) -> None:
@@ -94,6 +95,7 @@ async def cb_admin_stats(callback: CallbackQuery, session: AsyncSession) -> None
 
 # ── /disputes ──────────────────────────────────────────────────────────────────
 
+
 @router.message(Command("disputes"))
 async def cmd_disputes(message: Message, session: AsyncSession) -> None:
     """Show the dispute queue (admin only)."""
@@ -105,13 +107,10 @@ async def cmd_disputes(message: Message, session: AsyncSession) -> None:
     count = len(orders)
     header = (
         f"⚖️ <b>Dispute Queue</b> — {count} open dispute{'s' if count != 1 else ''}\n\n"
-        if count else
-        "⚖️ <b>Dispute Queue</b>\n\n✅ No open disputes right now."
+        if count
+        else "⚖️ <b>Dispute Queue</b>\n\n✅ No open disputes right now."
     )
-    lines = [
-        admin_service.format_dispute_order(o, i)
-        for i, o in enumerate(orders, start=1)
-    ]
+    lines = [admin_service.format_dispute_order(o, i) for i, o in enumerate(orders, start=1)]
     text = header + "\n".join(lines)
     await message.answer(
         text,
@@ -131,13 +130,10 @@ async def cb_admin_disputes(callback: CallbackQuery, session: AsyncSession) -> N
     count = len(orders)
     header = (
         f"⚖️ <b>Dispute Queue</b> — {count} open dispute{'s' if count != 1 else ''}\n\n"
-        if count else
-        "⚖️ <b>Dispute Queue</b>\n\n✅ No open disputes right now."
+        if count
+        else "⚖️ <b>Dispute Queue</b>\n\n✅ No open disputes right now."
     )
-    lines = [
-        admin_service.format_dispute_order(o, i)
-        for i, o in enumerate(orders, start=1)
-    ]
+    lines = [admin_service.format_dispute_order(o, i) for i, o in enumerate(orders, start=1)]
     text = header + "\n".join(lines)
     await callback.message.edit_text(  # type: ignore[union-attr]
         text,
@@ -149,31 +145,25 @@ async def cb_admin_disputes(callback: CallbackQuery, session: AsyncSession) -> N
 
 # ── Dispute detail view ────────────────────────────────────────────────────────
 
+
 @router.callback_query(F.data.startswith("admin:dispute:view:"))
-async def cb_dispute_view(
-    callback: CallbackQuery, session: AsyncSession
-) -> None:
+async def cb_dispute_view(callback: CallbackQuery, session: AsyncSession) -> None:
     """Show full detail of a single disputed order with resolve actions."""
     if not _is_admin(callback.from_user.id):  # type: ignore[union-attr]
         await callback.answer("⛔ Admins only.", show_alert=True)
         return
 
     order_id_str = callback.data.split(":")[-1]  # type: ignore[union-attr]
-    result = await session.execute(
-        select(Order).where(Order.id == uuid.UUID(order_id_str))
-    )
+    result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id_str)))
     order = result.scalar_one_or_none()
 
     if order is None:
         await callback.answer("Order not found.", show_alert=True)
         return
 
-    maker_name = (
-        getattr(order.maker, "username", None) or str(order.maker_id)
-    )
+    maker_name = getattr(order.maker, "username", None) or str(order.maker_id)
     taker_name = (
-        getattr(order.taker, "username", None) or str(order.taker_id)
-        if order.taker_id else "—"
+        getattr(order.taker, "username", None) or str(order.taker_id) if order.taker_id else "—"
     )
 
     text = (
@@ -196,6 +186,7 @@ async def cb_dispute_view(
 
 
 # ── Dispute resolution callback ────────────────────────────────────────────────
+
 
 @router.callback_query(F.data.startswith("dispute:resolve:"))
 async def cb_dispute_resolve(
@@ -250,6 +241,7 @@ async def cb_dispute_resolve(
 
 
 # ── /arbitrate (FSM flow) ──────────────────────────────────────────────────────
+
 
 @router.message(Command("arbitrate"))
 async def cmd_arbitrate(message: Message, state: FSMContext) -> None:

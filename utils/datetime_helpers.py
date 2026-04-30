@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from db.models.order import Order
 
 
 def utcnow() -> datetime:
     """Return current UTC time as a timezone-aware datetime."""
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(datetime.UTC)
 
 
 def is_order_expired(order: Order, timeout_sec: int) -> bool:
@@ -25,7 +25,7 @@ def is_order_expired(order: Order, timeout_sec: int) -> bool:
     created = order.created_at
     # Ensure timezone-aware comparison
     if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
+        created = created.replace(tzinfo=UTC)
     deadline = created + timedelta(seconds=timeout_sec)
     return utcnow() > deadline
 
@@ -42,7 +42,7 @@ def seconds_until_expiry(order: Order, timeout_sec: int) -> int:
     """
     created = order.created_at
     if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
+        created = created.replace(tzinfo=UTC)
     deadline = created + timedelta(seconds=timeout_sec)
     remaining = (deadline - utcnow()).total_seconds()
     return max(0, int(remaining))

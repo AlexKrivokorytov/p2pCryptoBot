@@ -24,6 +24,7 @@ router = Router(name="wallet")
 
 # ── Text builders ──────────────────────────────────────────────────────────────
 
+
 async def _build_wallet_text(session: AsyncSession, user_id: int) -> str:
     """Build the wallet overview text (addresses only, no balance)."""
     wallets = await wallet_service.get_user_wallets(session, user_id)
@@ -71,6 +72,7 @@ async def _build_balance_text(session: AsyncSession, user_id: int) -> str:
 
 
 # ── Handlers ───────────────────────────────────────────────────────────────────
+
 
 @router.message(Command("wallet"))
 async def cmd_wallet(message: Message, session: AsyncSession) -> None:

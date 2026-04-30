@@ -22,8 +22,7 @@ def _require(key: str) -> str:
     value = os.environ.get(key, "").strip()
     if not value:
         raise RuntimeError(
-            f"Missing required environment variable: {key!r}. "
-            "Ensure it is set in your .env file."
+            f"Missing required environment variable: {key!r}. Ensure it is set in your .env file."
         )
     return value
 
@@ -41,8 +40,8 @@ class Settings:
     BOT_TOKEN: str
 
     # ── Database ──────────────────────────────────────────────────────────────
-    POSTGRES_URI: str          # asyncpg URI for the bot runtime
-    ALEMBIC_DB_URL: str        # psycopg2 URI for Alembic migrations
+    POSTGRES_URI: str  # asyncpg URI for the bot runtime
+    ALEMBIC_DB_URL: str  # psycopg2 URI for Alembic migrations
 
     # ── Crypto Pay ────────────────────────────────────────────────────────────
     CRYPTOPAY_TOKEN: str
@@ -50,7 +49,7 @@ class Settings:
     CRYPTOPAY_WEBHOOK_PATH: str
 
     # ── Encryption ────────────────────────────────────────────────────────────
-    AES_KEY: str               # 64-char hex string (32 bytes)
+    AES_KEY: str  # 64-char hex string (32 bytes)
 
     # ── Admins ────────────────────────────────────────────────────────────────
     ADMIN_IDS: frozenset[int]

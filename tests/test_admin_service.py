@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
+import datetime
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from services import admin_service
-from services.admin_service import PlatformStats, format_stats_message, format_dispute_order
 from db.models.order import Order, OrderStatus
-import datetime
-
+from services import admin_service
+from services.admin_service import PlatformStats, format_dispute_order, format_stats_message
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_stats(**kwargs: object) -> PlatformStats:
     defaults = dict(
@@ -28,7 +27,7 @@ def _make_stats(**kwargs: object) -> PlatformStats:
         total_volume_completed=1_000_000.0,
         unique_makers=40,
         unique_takers=35,
-        generated_at=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=datetime.timezone.utc),
+        generated_at=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=datetime.UTC),
     )
     defaults.update(kwargs)
     return PlatformStats(**defaults)  # type: ignore[arg-type]
@@ -36,19 +35,20 @@ def _make_stats(**kwargs: object) -> PlatformStats:
 
 # ── format_stats_message ─────────────────────────────────────────────────────
 
+
 def test_format_stats_message_contains_key_fields() -> None:
     """Stats message includes orders, volume, users, and timestamp."""
     stats = _make_stats()
     text = format_stats_message(stats)
 
-    assert "100" in text            # total_orders
-    assert "30" in text             # active_orders
-    assert "50" in text             # completed_orders
-    assert "2" in text              # dispute_orders
-    assert "1,000,000.00" in text   # total_volume_completed
-    assert "40" in text             # unique_makers
-    assert "35" in text             # unique_takers
-    assert "2026-04-28" in text     # timestamp
+    assert "100" in text  # total_orders
+    assert "30" in text  # active_orders
+    assert "50" in text  # completed_orders
+    assert "2" in text  # dispute_orders
+    assert "1,000,000.00" in text  # total_volume_completed
+    assert "40" in text  # unique_makers
+    assert "35" in text  # unique_takers
+    assert "2026-04-28" in text  # timestamp
     assert "Platform Dashboard" in text
 
 
@@ -60,6 +60,7 @@ def test_format_stats_message_zero_volume() -> None:
 
 
 # ── format_dispute_order ─────────────────────────────────────────────────────
+
 
 def test_format_dispute_order_with_taker() -> None:
     """Dispute order formatting includes maker, taker, and reason."""
@@ -123,6 +124,7 @@ def test_format_dispute_order_long_reason_truncated() -> None:
 
 # ── get_platform_stats ────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_platform_stats_empty_db(engine) -> None:
     """Returns zeroed stats when no orders exist."""
@@ -143,6 +145,7 @@ async def test_get_platform_stats_empty_db(engine) -> None:
 
 # ── get_dispute_queue ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_dispute_queue_empty(engine) -> None:
     """Returns empty list when no disputes exist."""
@@ -156,6 +159,7 @@ async def test_get_dispute_queue_empty(engine) -> None:
 
 
 # ── get_orders_by_status ──────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_get_orders_by_status_empty(engine) -> None:

@@ -24,9 +24,7 @@ async def cmd_start(message: Message, session: AsyncSession) -> None:
         return
 
     async with session.begin():
-        result = await session.execute(
-            select(User).where(User.telegram_id == tg_user.id)
-        )
+        result = await session.execute(select(User).where(User.telegram_id == tg_user.id))
         user = result.scalar_one_or_none()
         if user is None:
             user = User(

@@ -51,14 +51,16 @@ async def msg_chat_forward(
         return
 
     sender_id = message.from_user.id  # type: ignore[union-attr]
-    
+
     # DB operations inside a single transaction
     async with session.begin():
         # Identify the recipient
         recipient_id = await chat_service.get_other_participant_id(session, order_id, sender_id)
-        
+
         if not recipient_id:
-            await message.answer(format_error("Could not find the other participant or order is invalid."))
+            await message.answer(
+                format_error("Could not find the other participant or order is invalid.")
+            )
             return
 
         text = message.html_text if message.text else message.caption
@@ -75,7 +77,7 @@ async def msg_chat_forward(
 
     # Forward to the other participant
     prefix = "<b>[New Message]</b>\n\n"
-    
+
     try:
         if photo_file_id:
             await bot.send_photo(
@@ -91,5 +93,9 @@ async def msg_chat_forward(
                 parse_mode="HTML",
             )
     except Exception as e:
-        log.error("chat_forward_failed", sender_id=sender_id, recipient_id=recipient_id, error=str(e))
-        await message.answer(format_error("Failed to deliver message. The other user might have blocked the bot."))
+        log.error(
+            "chat_forward_failed", sender_id=sender_id, recipient_id=recipient_id, error=str(e)
+        )
+        await message.answer(
+            format_error("Failed to deliver message. The other user might have blocked the bot.")
+        )

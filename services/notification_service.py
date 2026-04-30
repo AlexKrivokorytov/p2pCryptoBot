@@ -16,7 +16,7 @@ async def notify_maker_taker_found(
 ) -> bool:
     """Notify the Maker that a Taker has accepted their order."""
     taker_display = f"@{taker_username}" if taker_username else "A user"
-    
+
     text = (
         f"🔔 <b>Trade Started!</b>\n\n"
         f"Order: <code>{order_id[:8]}…</code>\n"
@@ -26,10 +26,7 @@ async def notify_maker_taker_found(
     )
     try:
         await bot.send_message(
-            maker_id, 
-            text, 
-            parse_mode="HTML",
-            reply_markup=active_trade_maker_keyboard(order_id)
+            maker_id, text, parse_mode="HTML", reply_markup=active_trade_maker_keyboard(order_id)
         )
         return True
     except TelegramAPIError as e:
@@ -37,9 +34,7 @@ async def notify_maker_taker_found(
         return False
 
 
-async def notify_maker_fiat_sent(
-    bot: Bot, maker_id: int, order_id: str
-) -> bool:
+async def notify_maker_fiat_sent(bot: Bot, maker_id: int, order_id: str) -> bool:
     """Notify the Maker that the Taker claims to have sent fiat."""
     text = (
         f"💸 <b>Fiat Transfer Confirmed by Taker!</b>\n\n"
@@ -50,10 +45,7 @@ async def notify_maker_fiat_sent(
     )
     try:
         await bot.send_message(
-            maker_id, 
-            text, 
-            parse_mode="HTML",
-            reply_markup=active_trade_maker_keyboard(order_id)
+            maker_id, text, parse_mode="HTML", reply_markup=active_trade_maker_keyboard(order_id)
         )
         return True
     except TelegramAPIError as e:

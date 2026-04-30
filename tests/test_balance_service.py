@@ -8,26 +8,28 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models.wallet import UserWallet, WalletChain
+from db.models.wallet import UserWallet
 from services import balance_service
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _make_wallet(chain: str, address: str) -> UserWallet:
     return UserWallet(
-        id=1, user_id=100, chain=chain,
-        address=address, encrypted_private_key="enc",
+        id=1,
+        user_id=100,
+        chain=chain,
+        address=address,
+        encrypted_private_key="enc",
     )
 
 
 # ── balance_service.get_portfolio_balances ────────────────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("services.balance_service.ws.get_user_wallets", new_callable=AsyncMock)
-async def test_portfolio_empty_wallets(
-    mock_get: AsyncMock, session: AsyncSession
-) -> None:
+async def test_portfolio_empty_wallets(mock_get: AsyncMock, session: AsyncSession) -> None:
     """Returns empty list when user has no wallets."""
     mock_get.return_value = []
     result = await balance_service.get_portfolio_balances(session, user_id=1)
@@ -110,6 +112,7 @@ async def test_portfolio_multiple_wallets(
 
 # ── _fetch_single_balance timeout protection ──────────────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("services.balance_service._get_provider")
 async def test_fetch_single_balance_timeout(mock_get_provider: MagicMock) -> None:
@@ -154,6 +157,7 @@ async def test_fetch_single_balance_exception(mock_get_provider: MagicMock) -> N
 
 
 # ── Handler: cb_wallet_balance ────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 @patch("bot.handlers.wallet.balance_service.get_portfolio_balances", new_callable=AsyncMock)

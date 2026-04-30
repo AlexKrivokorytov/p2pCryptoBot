@@ -54,7 +54,7 @@ async def cryptopay_webhook(request: web.Request) -> web.Response:
     try:
         data = json.loads(body)
         invoice_status: str = data["payload"]["status"]
-        order_uuid: str = data["payload"]["payload"]   # our order UUID in invoice
+        order_uuid: str = data["payload"]["payload"]  # our order UUID in invoice
         invoice_id: str = str(data["payload"]["invoice_id"])
     except (KeyError, ValueError, TypeError) as exc:
         log.warning(
@@ -87,9 +87,7 @@ async def cryptopay_webhook(request: web.Request) -> web.Response:
         elif invoice_status == "expired":
             async with session.begin():
                 result = await session.execute(
-                    select(Order)
-                    .where(Order.crypto_pay_payload == order_uuid)
-                    .with_for_update()
+                    select(Order).where(Order.crypto_pay_payload == order_uuid).with_for_update()
                 )
                 order = result.scalar_one_or_none()
 

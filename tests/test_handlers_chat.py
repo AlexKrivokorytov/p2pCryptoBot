@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from aiogram import Bot
@@ -11,20 +11,21 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bot.handlers import chat as chat_handlers
 from bot.states import TradeChatFSM
-from db.models.chat import ChatMessage
 from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 from services import chat_service
 
 
-async def _create_test_order(session: AsyncSession, order_id: str, maker_id: int, taker_id: int) -> Order:
+async def _create_test_order(
+    session: AsyncSession, order_id: str, maker_id: int, taker_id: int
+) -> Order:
     async with session.begin():
         for uid in (maker_id, taker_id):
             user = await session.get(User, uid)
             if not user:
                 user = User(telegram_id=uid, username=f"user_{uid}")
                 session.add(user)
-                
+
         order = Order(
             id=uuid.UUID(order_id),
             maker_id=maker_id,
@@ -50,11 +51,10 @@ async def test_chat_service_save_and_fetch(engine) -> None:
 
     async with factory() as session:
         await _create_test_order(session, order_id, maker_id=111, taker_id=222)
-    
-    async with factory() as session:
-        async with session.begin():
-            msg1 = await chat_service.save_message(session, order_id, 111, message_text="Hello taker")
-            msg2 = await chat_service.save_message(session, order_id, 222, message_text="Hi maker")
+
+    async with factory() as session, session.begin():
+        await chat_service.save_message(session, order_id, 111, message_text="Hello taker")
+        await chat_service.save_message(session, order_id, 222, message_text="Hi maker")
 
     async with factory() as session:
         history = await chat_service.get_order_chat_history(session, order_id)
@@ -71,7 +71,7 @@ async def test_get_other_participant_id(engine) -> None:
 
     async with factory() as session:
         await _create_test_order(session, order_id, maker_id=111, taker_id=222)
-    
+
     async with factory() as session:
         assert await chat_service.get_other_participant_id(session, order_id, 111) == 222
         assert await chat_service.get_other_participant_id(session, order_id, 222) == 111
@@ -84,9 +84,9 @@ async def test_cb_chat_enter() -> None:
     callback = AsyncMock()
     callback.data = "chat:enter:12345"
     state = AsyncMock()
-    
+
     await chat_handlers.cb_chat_enter(callback, state)
-    
+
     state.update_data.assert_called_once_with(order_id="12345")
     state.set_state.assert_called_once_with(TradeChatFSM.chatting)
     callback.message.edit_text.assert_called_once()

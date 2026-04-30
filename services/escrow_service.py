@@ -134,9 +134,7 @@ async def refund_escrow(
         if order is None:
             raise ValueError(f"Order {order_id!r} not found")
         if order.status not in {OrderStatus.escrow_held, OrderStatus.dispute}:
-            raise ValueError(
-                f"refund_escrow invalid for status {order.status!r}"
-            )
+            raise ValueError(f"refund_escrow invalid for status {order.status!r}")
 
         # Refund always goes back to the Maker (they funded the escrow)
         await crypto_pay.transfer(

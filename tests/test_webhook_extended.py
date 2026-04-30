@@ -9,11 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from bot.handlers.webhook import cryptopay_webhook
-from db.models.order import Order, OrderStatus, OrderType
-from db.models.user import User
-
+from db.models.order import Order, OrderStatus
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _make_request(
     body: bytes,
@@ -43,7 +42,11 @@ def _make_session_pool(order: Order | None) -> MagicMock:
     result.scalar_one_or_none.return_value = order
 
     session.execute = AsyncMock(return_value=result)
-    session.begin = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=None), __aexit__=AsyncMock(return_value=False)))
+    session.begin = MagicMock(
+        return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=None), __aexit__=AsyncMock(return_value=False)
+        )
+    )
 
     pool = MagicMock()
     pool.return_value = AsyncMock(
@@ -54,6 +57,7 @@ def _make_session_pool(order: Order | None) -> MagicMock:
 
 
 # ── Signature failure ─────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_webhook_invalid_signature() -> None:
@@ -69,6 +73,7 @@ async def test_webhook_invalid_signature() -> None:
 
 
 # ── Malformed payload ─────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_webhook_malformed_payload() -> None:
@@ -96,20 +101,23 @@ async def test_webhook_invalid_json() -> None:
 
 # ── Paid → calls activate_order ───────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_webhook_paid_calls_activate_order() -> None:
     """Paid invoice triggers activate_order service call."""
     order_uuid = str(uuid.uuid4())
     crypto_pay = _make_crypto_pay(valid_sig=True)
-    body = json.dumps({
-        "payload": {"status": "paid", "payload": order_uuid, "invoice_id": "inv_123"}
-    }).encode()
+    body = json.dumps(
+        {"payload": {"status": "paid", "payload": order_uuid, "invoice_id": "inv_123"}}
+    ).encode()
 
     session_pool = _make_session_pool(order=None)
     request = _make_request(body, "sig", crypto_pay, session_pool)
 
     with patch("bot.handlers.webhook.order_service") as mock_svc:
-        mock_svc.activate_order = AsyncMock(return_value={"order_id": order_uuid, "status": OrderStatus.active})
+        mock_svc.activate_order = AsyncMock(
+            return_value={"order_id": order_uuid, "status": OrderStatus.active}
+        )
         response = await cryptopay_webhook(request)
 
     assert response.status == 200
@@ -121,9 +129,9 @@ async def test_webhook_paid_activate_fails_gracefully() -> None:
     """Paid webhook still returns 200 even if activate_order raises ValueError."""
     order_uuid = str(uuid.uuid4())
     crypto_pay = _make_crypto_pay(valid_sig=True)
-    body = json.dumps({
-        "payload": {"status": "paid", "payload": order_uuid, "invoice_id": "inv_999"}
-    }).encode()
+    body = json.dumps(
+        {"payload": {"status": "paid", "payload": order_uuid, "invoice_id": "inv_999"}}
+    ).encode()
 
     session_pool = _make_session_pool(order=None)
     request = _make_request(body, "sig", crypto_pay, session_pool)
@@ -137,6 +145,7 @@ async def test_webhook_paid_activate_fails_gracefully() -> None:
 
 # ── Expired → cancelled ───────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_webhook_expired_transitions_to_cancelled() -> None:
     """Expired invoice on pending_funding order transitions to cancelled."""
@@ -148,9 +157,9 @@ async def test_webhook_expired_transitions_to_cancelled() -> None:
     order.amount = 50
 
     crypto_pay = _make_crypto_pay(valid_sig=True)
-    body = json.dumps({
-        "payload": {"status": "expired", "payload": str(order.id), "invoice_id": "inv_456"}
-    }).encode()
+    body = json.dumps(
+        {"payload": {"status": "expired", "payload": str(order.id), "invoice_id": "inv_456"}}
+    ).encode()
 
     session_pool = _make_session_pool(order=order)
     request = _make_request(body, "sig", crypto_pay, session_pool)
@@ -163,6 +172,7 @@ async def test_webhook_expired_transitions_to_cancelled() -> None:
 
 # ── Already-processed (idempotency) ──────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_webhook_expired_but_already_active_noop() -> None:
     """Expired webhook on active order is a no-op (returns 200)."""
@@ -174,9 +184,9 @@ async def test_webhook_expired_but_already_active_noop() -> None:
     order.amount = 0.01
 
     crypto_pay = _make_crypto_pay(valid_sig=True)
-    body = json.dumps({
-        "payload": {"status": "expired", "payload": str(order.id), "invoice_id": "inv_789"}
-    }).encode()
+    body = json.dumps(
+        {"payload": {"status": "expired", "payload": str(order.id), "invoice_id": "inv_789"}}
+    ).encode()
 
     session_pool = _make_session_pool(order=order)
     request = _make_request(body, "sig", crypto_pay, session_pool)

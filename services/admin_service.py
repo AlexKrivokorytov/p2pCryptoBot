@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Any
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import func, select
@@ -60,9 +58,7 @@ async def get_platform_stats(session: AsyncSession) -> PlatformStats:
     total = sum(counts.values())
 
     # Completed volume
-    volume_q = select(func.sum(Order.fiat_amount)).where(
-        Order.status == OrderStatus.completed
-    )
+    volume_q = select(func.sum(Order.fiat_amount)).where(Order.status == OrderStatus.completed)
     volume_raw = (await session.execute(volume_q)).scalar()
     total_volume = float(volume_raw) if volume_raw else 0.0
 
@@ -71,9 +67,7 @@ async def get_platform_stats(session: AsyncSession) -> PlatformStats:
     unique_makers = int((await session.execute(makers_q)).scalar() or 0)
 
     # Unique takers (non-null)
-    takers_q = select(func.count(func.distinct(Order.taker_id))).where(
-        Order.taker_id.is_not(None)
-    )
+    takers_q = select(func.count(func.distinct(Order.taker_id))).where(Order.taker_id.is_not(None))
     unique_takers = int((await session.execute(takers_q)).scalar() or 0)
 
     log.info("platform_stats_computed", total_orders=total, step="get_platform_stats")
@@ -89,13 +83,11 @@ async def get_platform_stats(session: AsyncSession) -> PlatformStats:
         total_volume_completed=total_volume,
         unique_makers=unique_makers,
         unique_takers=unique_takers,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
     )
 
 
-async def get_dispute_queue(
-    session: AsyncSession, *, limit: int = 20
-) -> list[Order]:
+async def get_dispute_queue(session: AsyncSession, *, limit: int = 20) -> list[Order]:
     """Fetch the queue of orders currently in dispute state.
 
     Orders are sorted by creation date (oldest first — most urgent).
@@ -139,12 +131,7 @@ async def get_orders_by_status(
     Returns:
         List of matching :class:`~db.models.order.Order` instances.
     """
-    q = (
-        select(Order)
-        .where(Order.status == status)
-        .order_by(Order.created_at.desc())
-        .limit(limit)
-    )
+    q = select(Order).where(Order.status == status).order_by(Order.created_at.desc()).limit(limit)
     result = await session.execute(q)
     return list(result.scalars().all())
 
@@ -194,10 +181,7 @@ def format_dispute_order(order: Order, index: int) -> str:
     short_id = str(order.id)[:8]
     reason = (order.dispute_reason or "No reason provided")[:80]
     maker = getattr(order.maker, "username", None) or str(order.maker_id)
-    taker = (
-        getattr(order.taker, "username", None) or str(order.taker_id)
-        if order.taker_id else "—"
-    )
+    taker = getattr(order.taker, "username", None) or str(order.taker_id) if order.taker_id else "—"
     return (
         f"<b>#{index}</b>  <code>{short_id}…</code>\n"
         f"  Asset: <b>{order.asset}</b>  Amount: <code>{float(order.amount):.6g}</code>\n"
