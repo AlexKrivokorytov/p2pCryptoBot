@@ -56,10 +56,8 @@ def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.
         # If lines are empty (e.g. __init__.py), it might still have a line-rate
         if lines_valid == 0:
             rate_str = class_node.get("line-rate", "0")
-            # If rate is 1.0 but no lines, we treat it as 0/0 (skip) or 1/1?
-            # Usually __init__.py is empty. We'll skip if no lines.
             if rate_str == "1":
-                continue # Skip empty files to avoid clutter
+                continue  # Skip empty files to avoid clutter
             continue
 
         found_group = "Others"
@@ -95,65 +93,166 @@ def generate_html(stats: dict[str, GroupStat], total_percent: float,
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
           rel="stylesheet">
     <style>
-        body {{ font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 40px; }}
-        .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 1px solid #334155; padding-bottom: 20px; }}
-        .header h1 {{ margin: 0; font-size: 2.5rem; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
-        .total-badge {{ background: #1e293b; padding: 15px 30px; border-radius: 16px; border: 1px solid #334155; text-align: center; }}
+        body {{
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 40px;
+        }}
+        .header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 20px;
+        }}
+        .header h1 {{
+            margin: 0;
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+        .total-badge {{
+            background: #1e293b;
+            padding: 15px 30px;
+            border-radius: 16px;
+            border: 1px solid #334155;
+            text-align: center;
+        }}
         .total-percent {{ font-size: 2rem; font-weight: 700; color: #10b981; }}
-        .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; }}
-        .card {{ background: #1e293b; border-radius: 24px; padding: 30px; border: 1px solid #334155; transition: transform 0.2s; }}
+        .grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }}
+        .card {{
+            background: #1e293b;
+            border-radius: 24px;
+            padding: 30px;
+            border: 1px solid #334155;
+            transition: transform 0.2s;
+        }}
         .card:hover {{ transform: translateY(-5px); border-color: #38bdf8; }}
-        .card-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
+        .card-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }}
         .card-title {{ font-size: 1.25rem; font-weight: 600; color: #94a3b8; }}
-        .chart-container {{ position: relative; height: 200px; width: 200px; margin: 0 auto 20px; }}
-        .problems {{ margin-top: 20px; font-size: 0.9rem; color: #94a3b8; border-top: 1px solid #334155; padding-top: 15px; }}
+        .chart-container {{
+            position: relative;
+            height: 200px;
+            width: 200px;
+            margin: 0 auto 20px;
+        }}
+        .problems {{
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            border-top: 1px solid #334155;
+            padding-top: 15px;
+        }}
         .file-list {{ max-height: 150px; overflow-y: auto; margin-top: 10px; }}
-        .file-item {{ display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #1e293b; }}
+        .file-item {{
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #1e293b;
+        }}
         .low-cov {{ color: #f43f5e; }}
-        .footer {{ margin-top: 60px; text-align: center; color: #64748b; font-size: 0.8rem; }}
+        .footer {{
+            margin-top: 60px;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.8rem;
+        }}
     </style>
 </head>
 <body>
     <div class="header">
-        <div><h1>P2P Bot Coverage Dashboard</h1><p style="color: #64748b; margin-top: 8px;">Generated on {now_str}</p></div>
-        <div class="total-badge"><div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Global Coverage</div><div class="total-percent">{total_percent}%</div></div>
+        <div>
+            <h1>P2P Bot Coverage Dashboard</h1>
+            <p style="color: #64748b; margin-top: 8px;">Generated on {now_str}</p>
+        </div>
+        <div class="total-badge">
+            <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase;">
+                Global Coverage
+            </div>
+            <div class="total-percent">{total_percent}%</div>
+        </div>
     </div>
     <div class="grid">"""
 
     for name, data in stats.items():
-        if data["lines"] == 0: continue
+        if data["lines"] == 0:
+            continue
         p = round((data["covered"] / data["lines"] * 100), 1)
         c = "#10b981" if p >= 95 else "#f59e0b" if p >= 80 else "#f43f5e"
-        problem_files = sorted([f for f in data["files"] if f["coverage"] < 100], key=lambda x: x["coverage"])
+        problem_files = sorted(
+            [f for f in data["files"] if f["coverage"] < 100],
+            key=lambda x: x["coverage"]
+        )
         chart_id = f"chart-{name.replace(' ', '-')}"
         html += f"""
         <div class="card">
-            <div class="card-header"><span class="card-title">{name}</span><span style="font-weight: 700; color: {c}">{p}%</span></div>
+            <div class="card-header">
+                <span class="card-title">{name}</span>
+                <span style="font-weight: 700; color: {c}">{p}%</span>
+            </div>
             <div class="chart-container"><canvas id="{chart_id}"></canvas></div>
-            <div class="problems"><strong>Issues & Warnings:</strong><div class="file-list">"""
+            <div class="problems">
+                <strong>Issues & Warnings:</strong>
+                <div class="file-list">"""
         if not problem_files:
             html += '<div style="color: #10b981; margin-top: 5px;">✅ 100% Covered.</div>'
         else:
             for f in problem_files:
                 cls = "low-cov" if f["coverage"] < 85 else ""
                 fname = f["name"].split("/")[-1]
-                html += f'<div class="file-item"><span class="{cls}">{fname}</span><span class="{cls}">{f["coverage"]}% (-{f["missed"]} lines)</span></div>'
+                line_info = f'{f["coverage"]}% (-{f["missed"]} lines)'
+                html += f"""
+                <div class="file-item">
+                    <span class="{cls}">{fname}</span>
+                    <span class="{cls}">{line_info}</span>
+                </div>"""
         html += "</div></div></div>"
 
-    html += """</div><div class="footer">Premium Testing Infrastructure © 2026 AlexKrivokorytov</div><script>"""
+    html += """
+    </div>
+    <div class="footer">Premium Testing Infrastructure © 2026 AlexKrivokorytov</div>
+    <script>"""
     for name, data in stats.items():
-        if data["lines"] == 0: continue
+        if data["lines"] == 0:
+            continue
         p = round((data["covered"] / data["lines"] * 100), 1)
         c = "#10b981" if p >= 95 else "#f59e0b" if p >= 80 else "#f43f5e"
         chart_id = f"chart-{name.replace(' ', '-')}"
         html += f"""
         new Chart(document.getElementById('{chart_id}'), {{
             type: 'doughnut',
-            data: {{ datasets: [{{ data: [{data['covered']}, {data['lines'] - data['covered']}], backgroundColor: ['{c}', '#334155'], borderWidth: 0 }}] }},
-            options: {{ cutout: '80%', plugins: {{ tooltip: {{ enabled: false }}, legend: {{ display: false }} }}, animation: {{ duration: 2000 }} }}
+            data: {{
+                datasets: [{{
+                    data: [{data['covered']}, {data['lines'] - data['covered']}],
+                    backgroundColor: ['{c}', '#334155'],
+                    borderWidth: 0
+                }}]
+            }},
+            options: {{
+                cutout: '80%',
+                plugins: {{
+                    tooltip: {{ enabled: false }},
+                    legend: {{ display: false }}
+                }},
+                animation: {{ duration: 2000 }}
+            }}
         }});"""
     html += "</script></body></html>"
-    with open(output_path, "w", encoding="utf-8") as out: out.write(html)
+    with open(output_path, "w", encoding="utf-8") as out:
+        out.write(html)
     return os.path.realpath(output_path)
 
 
@@ -166,11 +265,18 @@ def generate_markdown(stats: dict[str, GroupStat], total_percent: float) -> str:
 
     mermaid_blocks = ""
     for name, data in stats.items():
-        if data["lines"] == 0: continue
+        if data["lines"] == 0:
+            continue
         p = round((data["covered"] / data["lines"] * 100), 1)
         status = "✅" if p >= 95 else "⚠️" if p >= 80 else "❌"
         md += f"| {name} | **{p}%** | {status} |\n"
-        mermaid_blocks += f"#### {name}\n```mermaid\npie title Coverage\n    \"Covered\" : {data['covered']}\n    \"Missed\" : {data['lines'] - data['covered']}\n```\n\n"
+
+        mermaid_blocks += f"#### {name}\n"
+        mermaid_blocks += "```mermaid\n"
+        mermaid_blocks += "pie title Coverage\n"
+        mermaid_blocks += f'    "Covered" : {data["covered"]}\n'
+        mermaid_blocks += f'    "Missed" : {data["lines"] - data["covered"]}\n'
+        mermaid_blocks += "```\n\n"
 
     md += "\n---\n\n### 🔍 Issues & Warnings\n\n"
     for name, data in stats.items():
@@ -178,7 +284,8 @@ def generate_markdown(stats: dict[str, GroupStat], total_percent: float) -> str:
         if problem_files:
             md += f"#### 📁 {name}\n"
             for f in problem_files:
-                md += f"- `{f['name']}`: **{f['coverage']}%** (missing {f['missed']} lines)\n"
+                info = f"**{f['coverage']}%** (missing {f['missed']} lines)"
+                md += f"- `{f['name']}`: {info}\n"
             md += "\n"
     md += "\n### 📈 Visual Breakdown\n\n" + mermaid_blocks
     return md
