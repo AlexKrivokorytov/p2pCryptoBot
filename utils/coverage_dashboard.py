@@ -3,7 +3,7 @@ import sys
 import webbrowser
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import TypedDict
 
 
 class FileStat(TypedDict):
@@ -18,10 +18,10 @@ class GroupStat(TypedDict):
     """Module group statistics."""
     lines: int
     covered: int
-    files: List[FileStat]
+    files: list[FileStat]
 
 
-def get_stats(xml_path: str = "coverage.xml") -> Optional[Tuple[Dict[str, GroupStat], ET.Element]]:
+def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.Element] | None:
     """Parse coverage.xml and group data by project modules."""
     if not os.path.exists(xml_path):
         return None
@@ -29,7 +29,7 @@ def get_stats(xml_path: str = "coverage.xml") -> Optional[Tuple[Dict[str, GroupS
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
-    groups: Dict[str, List[str]] = {
+    groups: dict[str, list[str]] = {
         "Bot Layer": ["bot/"],
         "Services": ["services/"],
         "Data Layer": ["db/"],
@@ -37,7 +37,7 @@ def get_stats(xml_path: str = "coverage.xml") -> Optional[Tuple[Dict[str, GroupS
         "Helpers": ["utils/", "tasks/"],
     }
 
-    stats: Dict[str, GroupStat] = {
+    stats: dict[str, GroupStat] = {
         name: {"lines": 0, "covered": 0, "files": []} for name in groups
     }
     stats["Others"] = {"lines": 0, "covered": 0, "files": []}
@@ -73,7 +73,7 @@ def get_stats(xml_path: str = "coverage.xml") -> Optional[Tuple[Dict[str, GroupS
     return stats, root
 
 
-def generate_html(stats: Dict[str, GroupStat], total_percent: float,
+def generate_html(stats: dict[str, GroupStat], total_percent: float,
                   output_path: str = "coverage_dashboard.html") -> str:
     """Generate a premium HTML dashboard with donut charts."""
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -243,7 +243,7 @@ def generate_html(stats: Dict[str, GroupStat], total_percent: float,
     return os.path.realpath(output_path)
 
 
-def generate_markdown(stats: Dict[str, GroupStat], total_percent: float) -> str:
+def generate_markdown(stats: dict[str, GroupStat], total_percent: float) -> str:
     """Generate a Markdown report with Mermaid pie charts."""
     md = "## 📊 P2P Bot Coverage Dashboard\n\n"
     md += f"> **Global Coverage: {total_percent}%**\n\n"
