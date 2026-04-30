@@ -8,7 +8,7 @@ and ``activate_order()`` handles the ``pending_funding → active`` transition.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import select
@@ -79,7 +79,7 @@ async def release_escrow(
         )
         # Mark order as completed
         order.status = OrderStatus.completed
-        order.updated_at = datetime.utcnow()
+        order.updated_at = datetime.now(UTC)
         session.add(order)
 
         # Increment stats

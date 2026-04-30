@@ -153,6 +153,7 @@ async def test_cb_dispute_resolve_not_admin(mock_resolve: AsyncMock, session: As
     callback.from_user = MagicMock()
     callback.from_user.id = 123
     callback.message = AsyncMock(spec=Message)
+    callback.answer = AsyncMock()
     callback.data = "dispute:resolve:12345678:taker_wins"
     state = AsyncMock(spec=FSMContext)
     crypto_pay = AsyncMock()
@@ -173,6 +174,9 @@ async def test_cb_dispute_resolve_success(mock_resolve: AsyncMock, session: Asyn
     callback.from_user = MagicMock()
     callback.from_user.id = 999
     callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
+    callback.data = "dispute:resolve:5a1fc458:taker_wins"
     state = AsyncMock(spec=FSMContext)
     crypto_pay = AsyncMock()
 
@@ -196,6 +200,8 @@ async def test_cb_dispute_resolve_error(mock_resolve: AsyncMock, session: AsyncS
     callback.from_user = MagicMock()
     callback.from_user.id = 999
     callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
     callback.data = "dispute:resolve:5a1fc458:taker_wins"
     state = AsyncMock(spec=FSMContext)
     crypto_pay = AsyncMock()

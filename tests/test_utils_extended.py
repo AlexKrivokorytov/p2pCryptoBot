@@ -100,14 +100,14 @@ def test_decrypt_tampered_ciphertext_raises() -> None:
 
 def test_is_order_expired_naive_datetime() -> None:
     """is_order_expired handles naive (tz-unaware) created_at correctly."""
-    from datetime import datetime, timedelta
+    from datetime import UTC, datetime, timedelta
     from unittest.mock import MagicMock
 
     from utils.datetime_helpers import is_order_expired
 
     order = MagicMock()
     # Naive datetime (no tzinfo) — covers line 28
-    order.created_at = datetime.utcnow() - timedelta(seconds=2000)
+    order.created_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=2000)
 
     result = is_order_expired(order, timeout_sec=1800)
     assert result is True
@@ -115,14 +115,14 @@ def test_is_order_expired_naive_datetime() -> None:
 
 def test_seconds_until_expiry_naive_datetime() -> None:
     """seconds_until_expiry handles naive created_at (covers line 45)."""
-    from datetime import datetime
+    from datetime import UTC, datetime
     from unittest.mock import MagicMock
 
     from utils.datetime_helpers import seconds_until_expiry
 
     order = MagicMock()
     # Naive datetime set in the future
-    order.created_at = datetime.utcnow()
+    order.created_at = datetime.now(UTC).replace(tzinfo=None)
 
     result = seconds_until_expiry(order, timeout_sec=1800)
     assert isinstance(result, int)
@@ -131,13 +131,13 @@ def test_seconds_until_expiry_naive_datetime() -> None:
 
 def test_seconds_until_expiry_already_expired() -> None:
     """seconds_until_expiry returns 0 when order is already expired."""
-    from datetime import datetime, timedelta
+    from datetime import UTC, datetime, timedelta
     from unittest.mock import MagicMock
 
     from utils.datetime_helpers import seconds_until_expiry
 
     order = MagicMock()
-    order.created_at = datetime.utcnow() - timedelta(seconds=5000)
+    order.created_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=5000)
 
     result = seconds_until_expiry(order, timeout_sec=1800)
     assert result == 0

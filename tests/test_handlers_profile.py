@@ -42,8 +42,10 @@ async def test_cmd_profile(mock_get_profile: AsyncMock, session: AsyncSession) -
     user = User(telegram_id=999, is_verified=True, total_trades=10, successful_trades=8)
     mock_get_profile.return_value = user
 
-    message = AsyncMock()
+    message = AsyncMock(spec=Message)
+    message.from_user = MagicMock()
     message.from_user.id = 999
+    message.answer = AsyncMock()
 
     await profile_handlers.cmd_profile(message, session)
 
@@ -66,6 +68,8 @@ async def test_cb_profile(mock_get_profile: AsyncMock, session: AsyncSession) ->
     callback.from_user = MagicMock()
     callback.from_user.id = 999
     callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
 
     await profile_handlers.cb_profile(callback, session)
 

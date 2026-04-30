@@ -126,6 +126,7 @@ async def test_cmd_wallet_no_wallets(mock_get_wallets: AsyncMock, session: Async
     message = AsyncMock(spec=Message)
     message.from_user = MagicMock()
     message.from_user.id = 111
+    message.answer = AsyncMock()
 
     await wallet_handlers.cmd_wallet(message, session)
 
@@ -152,6 +153,7 @@ async def test_cmd_wallet_with_wallets(mock_get_wallets: AsyncMock, session: Asy
     message = AsyncMock(spec=Message)
     message.from_user = MagicMock()
     message.from_user.id = 111
+    message.answer = AsyncMock()
 
     await wallet_handlers.cmd_wallet(message, session)
 
@@ -179,6 +181,8 @@ async def test_cb_generate_wallet_success(mock_generate: AsyncMock, session: Asy
     callback.from_user = MagicMock()
     callback.from_user.id = 111
     callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
     callback.data = "wallet:generate:evm"
 
     state = AsyncMock()
@@ -197,6 +201,8 @@ async def test_cb_generate_wallet_invalid_chain(session: AsyncSession) -> None:
     callback.from_user = MagicMock()
     callback.from_user.id = 111
     callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
     callback.data = "wallet:generate:solana"
 
     state = AsyncMock()
