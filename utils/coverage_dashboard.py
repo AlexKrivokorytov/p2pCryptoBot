@@ -19,6 +19,7 @@ class GroupStat(TypedDict):
     lines: int
     covered: int
     files: list[FileStat]
+    color: str
 
 
 def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.Element] | None:
@@ -29,40 +30,72 @@ def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
-    groups: dict[str, list[str]] = {
-        "Bot Layer": ["bot/"],
-        "Services": ["services/"],
-        "Data Layer": ["db/"],
-        "Providers": ["providers/"],
-        "Helpers": ["utils/", "tasks/"],
+    # Define functional blocks with specific calm colors
+    groups_config: dict[str, dict[str, any]] = {
+        "Telegram Handlers": {
+            "prefixes": ["bot/handlers/"],
+            "color": "#457B9D"  # Muted Blue
+        },
+        "UI & Keyboards": {
+            "prefixes": ["bot/keyboards.py"],
+            "color": "#A8DADC"  # Soft Cyan
+        },
+        "Business Logic": {
+            "prefixes": ["services/"],
+            "color": "#2A9D8F"  # Muted Teal
+        },
+        "Blockchain & APIs": {
+            "prefixes": ["providers/"],
+            "color": "#E9C46A"  # Soft Gold
+        },
+        "Database Models": {
+            "prefixes": ["db/"],
+            "color": "#F4A261"  # Soft Orange
+        },
+        "Background Tasks": {
+            "prefixes": ["tasks/"],
+            "color": "#E76F51"  # Muted Coral
+        },
+        "Utilities": {
+            "prefixes": ["utils/"],
+            "color": "#8D99AE"  # Muted Lavender/Gray
+        },
+        "Core & Config": {
+            "prefixes": ["bot/config.py", "bot/main.py", "bot/states.py", "bot/middleware.py"],
+            "color": "#264653"  # Dark Muted Slate
+        }
     }
 
     stats: dict[str, GroupStat] = {
-        name: {"lines": 0, "covered": 0, "files": []} for name in groups
+        name: {
+            "lines": 0,
+            "covered": 0,
+            "files": [],
+            "color": cfg["color"]
+        } for name, cfg in groups_config.items()
     }
-    stats["Others"] = {"lines": 0, "covered": 0, "files": []}
+    stats["Others"] = {
+        "lines": 0,
+        "covered": 0,
+        "files": [],
+        "color": "#64748b"
+    }
 
-    # Iterate over all class elements
     for class_node in root.findall(".//class"):
         filename = class_node.get("filename")
         if not filename:
             continue
 
-        # Count lines manually as class attributes might be missing
         line_nodes = class_node.findall("./lines/line")
         lines_valid = len(line_nodes)
         lines_covered = len([ln for ln in line_nodes if ln.get("hits") != "0"])
 
-        # If lines are empty (e.g. __init__.py), it might still have a line-rate
         if lines_valid == 0:
-            rate_str = class_node.get("line-rate", "0")
-            if rate_str == "1":
-                continue  # Skip empty files to avoid clutter
             continue
 
         found_group = "Others"
-        for name, prefixes in groups.items():
-            if any(filename.startswith(p) for p in prefixes):
+        for name, cfg in groups_config.items():
+            if any(filename.startswith(p) for p in cfg["prefixes"]):
                 found_group = name
                 break
 
@@ -191,12 +224,12 @@ def generate_html(stats: dict[str, GroupStat], total_percent: float,
         if data["lines"] == 0:
             continue
         p = round((data["covered"] / data["lines"] * 100), 1)
-        c = "#10b981" if p >= 95 else "#f59e0b" if p >= 80 else "#f43f5e"
+        c = data["color"]
         problem_files = sorted(
             [f for f in data["files"] if f["coverage"] < 100],
             key=lambda x: x["coverage"]
         )
-        chart_id = f"chart-{name.replace(' ', '-')}"
+        chart_id = f"chart-{name.replace(' ', '-').replace('&', 'and')}"
         html += f"""
         <div class="card">
             <div class="card-header">
@@ -228,9 +261,8 @@ def generate_html(stats: dict[str, GroupStat], total_percent: float,
     for name, data in stats.items():
         if data["lines"] == 0:
             continue
-        p = round((data["covered"] / data["lines"] * 100), 1)
-        c = "#10b981" if p >= 95 else "#f59e0b" if p >= 80 else "#f43f5e"
-        chart_id = f"chart-{name.replace(' ', '-')}"
+        c = data["color"]
+        chart_id = f"chart-{name.replace(' ', '-').replace('&', 'and')}"
         html += f"""
         new Chart(document.getElementById('{chart_id}'), {{
             type: 'doughnut',
