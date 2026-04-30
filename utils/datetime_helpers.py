@@ -9,7 +9,7 @@ from db.models.order import Order
 
 def utcnow() -> datetime:
     """Return current UTC time as a timezone-aware datetime."""
-    return datetime.now(datetime.UTC)
+    return datetime.now(UTC)
 
 
 def is_order_expired(order: Order, timeout_sec: int) -> bool:

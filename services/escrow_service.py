@@ -72,7 +72,7 @@ async def release_escrow(
             recipient_id = order.maker_id
 
         await crypto_pay.transfer(
-            user_id=recipient_id,  # type: ignore[arg-type]
+            user_id=recipient_id,
             asset=order.asset,
             amount=float(order.amount) - float(order.total_fee),
             spend_id=str(order.spend_id),

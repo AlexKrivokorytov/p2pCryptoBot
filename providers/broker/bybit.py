@@ -69,7 +69,7 @@ class BybitBroker(BrokerBase):
             amount=amount,
             order_id=order.get("id"),
         )
-        return dict(order)  # type: ignore[arg-type]
+        return dict(order)
 
     async def close(self) -> None:
         """Close the CCXT async session."""

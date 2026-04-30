@@ -321,7 +321,7 @@ def admin_dashboard_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def admin_disputes_keyboard(orders: list) -> InlineKeyboardMarkup:
+def admin_disputes_keyboard(orders: list[Order]) -> InlineKeyboardMarkup:
     """Dispute queue keyboard — one button per disputed order."""
     builder = InlineKeyboardBuilder()
     for i, order in enumerate(orders, start=1):

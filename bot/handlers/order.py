@@ -216,7 +216,7 @@ async def cb_ad_confirmed(
     """Create the ad in DB and generate Crypto Pay invoice for Maker."""
     data = await state.get_data()
     await state.clear()
-    maker_id = callback.from_user.id  # type: ignore[union-attr]
+    maker_id = callback.from_user.id
 
     try:
         result = await order_service.create_order(
@@ -331,7 +331,7 @@ async def cb_order_view(
         return
 
     type_label = "📤 Selling" if order.order_type == "sell_crypto" else "📥 Buying"
-    maker_name = order.maker.username or order.maker.first_name or "Anonymous"  # type: ignore[union-attr]
+    maker_name = order.maker.username or order.maker.first_name or "Anonymous"
 
     # Price per unit (maker's rate)
     maker_rate = float(order.fiat_amount) / float(order.amount) if float(order.amount) else 0

@@ -48,7 +48,7 @@ def _is_admin(user_id: int) -> bool:
 @router.message(Command("admin"))
 async def cmd_admin(message: Message) -> None:
     """Open the admin dashboard for authorised moderators."""
-    if not _is_admin(message.from_user.id):  # type: ignore[union-attr]
+    if not message.from_user or not _is_admin(message.from_user.id):
         await message.answer("⛔ Admins only.")
         return
 
@@ -65,7 +65,7 @@ async def cmd_admin(message: Message) -> None:
 @router.message(Command("stats"))
 async def cmd_stats(message: Message, session: AsyncSession) -> None:
     """Show platform stats (admin only)."""
-    if not _is_admin(message.from_user.id):  # type: ignore[union-attr]
+    if not message.from_user or not _is_admin(message.from_user.id):
         await message.answer("⛔ Admins only.")
         return
 
@@ -80,17 +80,23 @@ async def cmd_stats(message: Message, session: AsyncSession) -> None:
 @router.callback_query(F.data.in_({"admin:stats", "admin:stats:refresh"}))
 async def cb_admin_stats(callback: CallbackQuery, session: AsyncSession) -> None:
     """Inline: show / refresh platform stats."""
-    if not _is_admin(callback.from_user.id):  # type: ignore[union-attr]
+    if (
+        not callback.from_user
+        or not isinstance(callback.message, Message)
+        or not _is_admin(callback.from_user.id)
+    ):
         await callback.answer("⛔ Admins only.", show_alert=True)
         return
 
     stats = await admin_service.get_platform_stats(session)
-    await callback.message.edit_text(  # type: ignore[union-attr]
+    await callback.message.edit_text(
         admin_service.format_stats_message(stats),
         reply_markup=admin_dashboard_keyboard(),
         parse_mode="HTML",
     )
-    await callback.answer("✅ Stats refreshed" if "refresh" in callback.data else "")  # type: ignore[operator]
+    await callback.answer(
+        "✅ Stats refreshed" if callback.data and "refresh" in callback.data else ""
+    )
 
 
 # ── /disputes ──────────────────────────────────────────────────────────────────
@@ -99,7 +105,7 @@ async def cb_admin_stats(callback: CallbackQuery, session: AsyncSession) -> None
 @router.message(Command("disputes"))
 async def cmd_disputes(message: Message, session: AsyncSession) -> None:
     """Show the dispute queue (admin only)."""
-    if not _is_admin(message.from_user.id):  # type: ignore[union-attr]
+    if not message.from_user or not _is_admin(message.from_user.id):
         await message.answer("⛔ Admins only.")
         return
 
@@ -122,7 +128,11 @@ async def cmd_disputes(message: Message, session: AsyncSession) -> None:
 @router.callback_query(F.data == "admin:disputes")
 async def cb_admin_disputes(callback: CallbackQuery, session: AsyncSession) -> None:
     """Inline: show the dispute queue."""
-    if not _is_admin(callback.from_user.id):  # type: ignore[union-attr]
+    if (
+        not callback.from_user
+        or not isinstance(callback.message, Message)
+        or not _is_admin(callback.from_user.id)
+    ):
         await callback.answer("⛔ Admins only.", show_alert=True)
         return
 
@@ -135,7 +145,7 @@ async def cb_admin_disputes(callback: CallbackQuery, session: AsyncSession) -> N
     )
     lines = [admin_service.format_dispute_order(o, i) for i, o in enumerate(orders, start=1)]
     text = header + "\n".join(lines)
-    await callback.message.edit_text(  # type: ignore[union-attr]
+    await callback.message.edit_text(
         text,
         reply_markup=admin_disputes_keyboard(orders),
         parse_mode="HTML",
@@ -149,7 +159,11 @@ async def cb_admin_disputes(callback: CallbackQuery, session: AsyncSession) -> N
 @router.callback_query(F.data.startswith("admin:dispute:view:"))
 async def cb_dispute_view(callback: CallbackQuery, session: AsyncSession) -> None:
     """Show full detail of a single disputed order with resolve actions."""
-    if not _is_admin(callback.from_user.id):  # type: ignore[union-attr]
+    if (
+        not callback.from_user
+        or not isinstance(callback.message, Message)
+        or not _is_admin(callback.from_user.id)
+    ):
         await callback.answer("⛔ Admins only.", show_alert=True)
         return
 
@@ -177,7 +191,7 @@ async def cb_dispute_view(callback: CallbackQuery, session: AsyncSession) -> Non
         "Choose resolution:"
     )
 
-    await callback.message.edit_text(  # type: ignore[union-attr]
+    await callback.message.edit_text(
         text,
         reply_markup=admin_dispute_action_keyboard(order_id_str),
         parse_mode="HTML",
@@ -200,7 +214,9 @@ async def cb_dispute_resolve(
     # format: dispute:resolve:<order_id>:<decision>
     order_id = parts[2]
     decision = parts[3]
-    moderator_id = callback.from_user.id  # type: ignore[union-attr]
+    if not callback.from_user or not isinstance(callback.message, Message):
+        return
+    moderator_id = callback.from_user.id
 
     if not _is_admin(moderator_id):
         await callback.answer("⛔ Admins only.", show_alert=True)
@@ -215,7 +231,7 @@ async def cb_dispute_resolve(
             decision=decision,
             moderator_id=moderator_id,
         )
-        await callback.message.edit_text(  # type: ignore[union-attr]
+        await callback.message.edit_text(
             f"✅ <b>Dispute resolved</b>\n\n"
             f"Order: <code>{order_id[:8]}…</code>\n"
             f"Decision: <b>{decision}</b>\n"
@@ -232,7 +248,7 @@ async def cb_dispute_resolve(
             step="cb_dispute_resolve",
         )
     except Exception as exc:
-        await callback.message.edit_text(  # type: ignore[union-attr]
+        await callback.message.edit_text(
             format_error(str(exc)),
             reply_markup=admin_dashboard_keyboard(),
             parse_mode="HTML",
@@ -246,7 +262,7 @@ async def cb_dispute_resolve(
 @router.message(Command("arbitrate"))
 async def cmd_arbitrate(message: Message, state: FSMContext) -> None:
     """Admin: start arbitration FSM for a disputed order by ID."""
-    if not _is_admin(message.from_user.id):  # type: ignore[union-attr]
+    if not message.from_user or not _is_admin(message.from_user.id):
         await message.answer("⛔ Admins only.")
         return
     await state.set_state(ArbitrationFSM.enter_order_id)

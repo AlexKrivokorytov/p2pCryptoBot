@@ -33,7 +33,7 @@ _price_cache: dict[str, tuple[Decimal, float]] = {}
 
 # Assets supported by the rate provider
 # Keys are SupportedAsset values; values are Binance pair suffixes
-_ASSET_TO_BINANCE_SYMBOL: dict[str, str] = {
+_ASSET_TO_BINANCE_SYMBOL: dict[str, str | None] = {
     "BTC": "BTCUSDT",
     "ETH": "ETHUSDT",
     "TON": "TONUSDT",

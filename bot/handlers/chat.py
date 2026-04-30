@@ -89,7 +89,7 @@ async def msg_chat_forward(
         else:
             await bot.send_message(
                 chat_id=recipient_id,
-                text=prefix + text,
+                text=prefix + (text or ""),
                 parse_mode="HTML",
             )
     except Exception as e:

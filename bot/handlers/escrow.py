@@ -31,7 +31,7 @@ async def cb_escrow_confirm(
 ) -> None:
     """Maker confirms fiat received — release escrow to Taker."""
     order_id = callback.data.split(":")[2]  # type: ignore[union-attr]
-    user_id = callback.from_user.id  # type: ignore[union-attr]
+    user_id = callback.from_user.id
 
     try:
         result = await escrow_service.release_escrow(

@@ -37,9 +37,7 @@ class User(Base):
     daily_volume_usdt: Mapped[float] = mapped_column(
         Numeric(precision=18, scale=2), default=0.0, nullable=False
     )
-    daily_volume_reset_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    daily_volume_reset_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Encrypted exchange API keys (AES-256-GCM, stored as hex)
     binance_api_key_enc: Mapped[str] = mapped_column(String(512), nullable=True)

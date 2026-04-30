@@ -93,7 +93,7 @@ def _generate_evm_account() -> dict[str, str]:
     Returns:
         Dict with ``address``, ``private_key``, and ``mnemonic`` (BIP-39).
     """
-    from eth_account import Account  # type: ignore[import-untyped]
+    from eth_account import Account
 
     # Enable HD wallet (BIP-39 mnemonic) support
     Account.enable_unaudited_hdwallet_features()
@@ -169,7 +169,7 @@ class EvmWalletProvider(WalletProvider):
             }
         ]
         try:
-            from web3 import AsyncWeb3  # type: ignore[import-untyped]
+            from web3 import AsyncWeb3
 
             w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(self.rpc_url))
             asset_upper = asset.upper()
@@ -249,7 +249,7 @@ def _generate_ton_account() -> dict[str, str]:
     Returns:
         Dict with ``address`` (bounceable base64), ``private_key`` (hex), ``mnemonic``.
     """
-    from pytoniq_core.crypto.keys import (  # type: ignore[import-untyped]
+    from pytoniq_core.crypto.keys import (
         mnemonic_new,
         mnemonic_to_private_key,
     )
@@ -262,7 +262,7 @@ def _generate_ton_account() -> dict[str, str]:
     public_key, private_key = mnemonic_to_private_key(mnemonic_words)
 
     # Derive WalletV4R2 address on mainnet (workchain 0)
-    from pytoniq_core import WalletV4R2  # type: ignore[import-untyped]
+    from pytoniq_core.contract.wallets import WalletV4R2
 
     wallet = WalletV4R2.create(public_key=public_key)
     address = wallet.address.to_str(is_user_friendly=True, is_bounceable=False)

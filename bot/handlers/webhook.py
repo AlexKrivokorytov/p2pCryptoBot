@@ -11,7 +11,7 @@ import json
 import structlog
 from aiohttp import web
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from db.models.order import Order, OrderStatus
 from providers.crypto_pay import CryptoPayClient
@@ -36,7 +36,7 @@ async def cryptopay_webhook(request: web.Request) -> web.Response:
         400 Bad Request on malformed payload.
     """
     crypto_pay: CryptoPayClient = request.app["crypto_pay"]
-    session_pool: async_sessionmaker = request.app["session_pool"]
+    session_pool: async_sessionmaker[AsyncSession] = request.app["session_pool"]
 
     # ── Signature verification — MUST happen before any payload parsing ──────────
     signature = request.headers.get("crypto-pay-api-signature", "")

@@ -34,7 +34,7 @@ async def cb_take_order(
     to prevent race conditions when two users try to accept simultaneously.
     """
     order_id = callback.data.split(":")[2]  # type: ignore[union-attr]
-    taker_id = callback.from_user.id  # type: ignore[union-attr]
+    taker_id = callback.from_user.id
 
     try:
         result = await order_service.take_order(session, order_id=order_id, taker_id=taker_id)

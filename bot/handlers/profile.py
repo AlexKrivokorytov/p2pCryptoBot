@@ -38,7 +38,9 @@ def _build_profile_text(user: object | None) -> str:
 @router.message(Command("profile"))
 async def cmd_profile(message: Message, session: AsyncSession) -> None:
     """Show the user profile via /profile command."""
-    user = await get_user_profile(session, message.from_user.id)  # type: ignore[union-attr]
+    if not message.from_user:
+        return
+    user = await get_user_profile(session, message.from_user.id)
     text = _build_profile_text(user)
     await message.answer(text, reply_markup=back_to_menu_keyboard(), parse_mode="HTML")
 
@@ -46,9 +48,9 @@ async def cmd_profile(message: Message, session: AsyncSession) -> None:
 @router.callback_query(F.data == "menu:profile")
 async def cb_profile(callback: CallbackQuery, session: AsyncSession) -> None:
     """Show the user profile via inline button."""
-    user = await get_user_profile(session, callback.from_user.id)  # type: ignore[union-attr]
+    if not callback.from_user or not isinstance(callback.message, Message):
+        return
+    user = await get_user_profile(session, callback.from_user.id)
     text = _build_profile_text(user)
-    await callback.message.edit_text(  # type: ignore[union-attr]
-        text, reply_markup=back_to_menu_keyboard(), parse_mode="HTML"
-    )
+    await callback.message.edit_text(text, reply_markup=back_to_menu_keyboard(), parse_mode="HTML")
     await callback.answer()

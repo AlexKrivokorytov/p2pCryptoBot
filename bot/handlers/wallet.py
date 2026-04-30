@@ -85,7 +85,7 @@ async def cmd_wallet(message: Message, session: AsyncSession) -> None:
 @router.callback_query(F.data == "menu:wallet")
 async def cb_wallet(callback: CallbackQuery, session: AsyncSession) -> None:
     """Show the user's wallets via inline button."""
-    user_id = callback.from_user.id  # type: ignore[union-attr]
+    user_id = callback.from_user.id
     text = await _build_wallet_text(session, user_id)
     await callback.message.edit_text(  # type: ignore[union-attr]
         text, reply_markup=wallet_actions_keyboard(), parse_mode="HTML"
@@ -96,7 +96,7 @@ async def cb_wallet(callback: CallbackQuery, session: AsyncSession) -> None:
 @router.callback_query(F.data == "wallet:balance")
 async def cb_wallet_balance(callback: CallbackQuery, session: AsyncSession) -> None:
     """Fetch and display on-chain balances for all user wallets."""
-    user_id = callback.from_user.id  # type: ignore[union-attr]
+    user_id = callback.from_user.id
 
     await callback.message.edit_text(  # type: ignore[union-attr]
         "⏳ <b>Fetching balances…</b>\nThis may take a few seconds.",
@@ -135,7 +135,7 @@ async def cb_generate_wallet(
 ) -> None:
     """Generate a new wallet on the chosen chain."""
     chain = callback.data.split(":")[2]  # type: ignore[union-attr]
-    user_id = callback.from_user.id  # type: ignore[union-attr]
+    user_id = callback.from_user.id
     label = WALLET_CHAIN_LABELS.get(chain, chain.upper())
 
     await callback.message.edit_text(  # type: ignore[union-attr]

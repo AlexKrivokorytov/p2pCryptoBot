@@ -5,7 +5,7 @@ from __future__ import annotations
 import structlog
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards import back_to_menu_keyboard
@@ -47,7 +47,7 @@ async def msg_dispute_reason(message: Message, state: FSMContext) -> None:
     )
 
 
-def _dispute_confirm_inline():  # type: ignore[no-untyped-def]
+def _dispute_confirm_inline() -> InlineKeyboardMarkup:
     from aiogram.types import InlineKeyboardButton
     from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -68,7 +68,7 @@ async def cb_dispute_confirmed(
     """Submit the dispute to DB."""
     data = await state.get_data()
     await state.clear()
-    user_id = callback.from_user.id  # type: ignore[union-attr]
+    user_id = callback.from_user.id
     order_id: str = data["order_id"]
     reason: str = data["reason"]
 
