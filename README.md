@@ -1,13 +1,14 @@
 # 💎 p2pCryptoBot — Premium P2P Escrow System
 
-![Project Banner](file:///C:/Users/krivo/.gemini/antigravity/brain/9aac2a7d-8190-4e0a-9959-e6257bd39702/p2p_bot_banner_1777562686052.png)
+![Project Banner](https://raw.githubusercontent.com/AlexKrivokorytov/p2pCryptoBot/main/assets/banner.png)
 
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
-[![Aiogram 3.x](https://img.shields.io/badge/framework-aiogram_3.x-orange.svg)](https://docs.aiogram.dev/)
-[![SQLAlchemy 2.0](https://img.shields.io/badge/db-SQLAlchemy_2.0-red.svg)](https://www.sqlalchemy.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/AlexKrivokorytov/p2pCryptoBot/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexKrivokorytov/p2pCryptoBot/actions/workflows/ci.yml)
-![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen)
+<p align="left">
+  <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/framework-aiogram_3.x-orange.svg" alt="Aiogram 3.x">
+  <img src="https://img.shields.io/badge/db-SQLAlchemy_2.0-red.svg" alt="SQLAlchemy 2.0">
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  <img src="https://img.shields.io/badge/coverage-96%25-brightgreen" alt="Coverage">
+</p>
 
 **p2pCryptoBot** is a high-robust, production-ready **P2P Crypto Trading Bot** for Telegram. It acts as a secure Escrow service between Buyers and Sellers, ensuring trade safety through integration with **Crypto Pay API** and direct blockchain interactions (EVM/TON).
 
@@ -88,7 +89,7 @@ python -m bot.main
 ---
 
 ## 🧪 Testing & Quality
-We maintain high standards with >85% code coverage.
+We maintain high standards with >95% code coverage.
 
 ```bash
 pytest          # Run tests

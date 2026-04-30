@@ -80,13 +80,10 @@ jobs:
                  --cov-fail-under=80 \
                  -v | tee pytest_output.txt
 
-      - name: Generate Coverage Summary
+      - name: Generate Visual Dashboard Summary
         if: always()
         run: |
-          echo "### 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          coverage report --show-missing >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          python utils/coverage_dashboard.py --markdown >> $GITHUB_STEP_SUMMARY
 
       - name: Annotate Failures
         if: failure()
