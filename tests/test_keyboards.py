@@ -27,7 +27,16 @@ def test_payment_method_keyboard():
 
 
 def test_order_book_keyboard():
-    order = Order(id=1, status=OrderStatus.active.value, order_type=OrderType.sell_crypto.value, amount=10, asset="USDT", fiat_amount=100, fiat_currency="USD", payment_method="Cash")
+    order = Order(
+        id=1,
+        status=OrderStatus.active.value,
+        order_type=OrderType.sell_crypto.value,
+        amount=10,
+        asset="USDT",
+        fiat_amount=100,
+        fiat_currency="USD",
+        payment_method="Cash"
+    )
     kb = keyboards.order_book_keyboard([order], 1, 1)
     assert kb.inline_keyboard
 
@@ -91,7 +100,7 @@ def test_admin_disputes_keyboard():
     order = Order(id=1, asset="USDT")
     kb = keyboards.admin_disputes_keyboard([order])
     assert kb.inline_keyboard
-    
+
     kb_empty = keyboards.admin_disputes_keyboard([])
     assert kb_empty.inline_keyboard
 

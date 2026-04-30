@@ -7,14 +7,12 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from aiogram.types import CallbackQuery, Message
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import _LazySettings, _parse_admin_ids, _require
+from db.models.wallet import UserWallet
 from providers.crypto_pay import CryptoPayClient
 from providers.wallet_provider import EvmWalletProvider, TonWalletProvider
 from services import wallet_service
-from db.models.wallet import UserWallet
-from bot.config import _require, _parse_admin_ids, get_settings, _LazySettings
 
 
 def test_config_require_error():
@@ -134,7 +132,7 @@ async def test_evm_provider_get_balance_erc20():
         w3.eth.contract.return_value = contract
         contract.functions.balanceOf.return_value.call = AsyncMock(return_value=10**18)
         contract.functions.decimals.return_value.call = AsyncMock(return_value=18)
-        
+
         res = await provider.get_balance("0xaddr", "USDT")
         assert res == Decimal("1")
 
@@ -142,7 +140,10 @@ async def test_evm_provider_get_balance_erc20():
 @pytest.mark.asyncio
 async def test_ton_provider_generate_account():
     """Ton generate_account handles missing library gracefully."""
-    with patch("providers.wallet_provider._generate_ton_account", side_effect=ImportError("No pytoniq")):
+    with patch(
+        "providers.wallet_provider._generate_ton_account",
+        side_effect=ImportError("No pytoniq")
+    ):
         provider = TonWalletProvider(endpoint="http://localhost")
         res = await provider.generate_wallet(123)
         assert res["address"].startswith("UQStub")
@@ -157,6 +158,6 @@ async def test_ton_provider_get_balance_native():
         mock_resp.status = 200
         mock_resp.json = AsyncMock(return_value={"ok": True, "result": "2000000000"})
         mock_get.return_value.__aenter__.return_value = mock_resp
-        
+
         res = await provider.get_balance("UQaddr", "TON")
         assert res == Decimal("2")

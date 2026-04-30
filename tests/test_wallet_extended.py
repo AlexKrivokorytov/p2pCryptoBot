@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers import wallet as wallet_handlers
-from db.models.wallet import UserWallet, WalletChain
+from db.models.wallet import UserWallet
 from services.balance_service import WalletBalance
 
 
@@ -40,12 +40,11 @@ async def test_build_balance_text_with_error(session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_cb_wallet_add_handler():
-    from aiogram.types import CallbackQuery, Message
     callback = AsyncMock(spec=CallbackQuery)
     callback.message = AsyncMock(spec=Message)
     callback.message.edit_text = AsyncMock()
     callback.answer = AsyncMock()
-    
+
     await wallet_handlers.cb_wallet_add(callback)
     callback.message.edit_text.assert_called_once()
     assert "Add Wallet" in callback.message.edit_text.call_args[0][0]

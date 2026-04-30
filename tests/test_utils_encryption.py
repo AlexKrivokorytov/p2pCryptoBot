@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
+from unittest.mock import patch
+
 from utils import encryption
 
 
@@ -13,7 +16,7 @@ def test_encrypt_decrypt():
         original = "hello world"
         encrypted = encryption.encrypt(original)
         assert encrypted != original
-        
+
         decrypted = encryption.decrypt(encrypted)
         assert decrypted == original
 
@@ -23,10 +26,5 @@ def test_decrypt_invalid_data():
         # Should return empty string or raise?
         # Implementation says: return decrypt(wallet.encrypted_private_key)
         # But encryption.decrypt itself might raise if data is junk.
-        try:
+        with contextlib.suppress(Exception):
             encryption.decrypt("not-base64-junk")
-        except:
-            pass
-
-
-from unittest.mock import patch

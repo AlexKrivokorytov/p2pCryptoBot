@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch, ANY
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from aiogram.types import Message, CallbackQuery, User
-from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message, User
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers import admin as admin_handlers
-from bot.handlers import wallet as wallet_handlers
 from bot.handlers import order as order_handlers
+from bot.handlers import wallet as wallet_handlers
 from db.models.order import Order
 from db.models.wallet import UserWallet
 from services.admin_service import PlatformStats
@@ -22,7 +22,11 @@ from services.admin_service import PlatformStats
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.admin_service.get_platform_stats", new_callable=AsyncMock)
 @patch("bot.handlers.admin._is_admin", return_value=True)
-async def test_admin_stats_refresh(mock_is_admin: MagicMock, mock_stats: AsyncMock, session: AsyncSession):
+async def test_admin_stats_refresh(
+    mock_is_admin: MagicMock,
+    mock_stats: AsyncMock,
+    session: AsyncSession
+):
     callback = AsyncMock(spec=CallbackQuery)
     callback.from_user = MagicMock(spec=User)
     callback.from_user.id = 999
@@ -30,7 +34,7 @@ async def test_admin_stats_refresh(mock_is_admin: MagicMock, mock_stats: AsyncMo
     callback.message.edit_text = AsyncMock()
     callback.answer = AsyncMock()
     callback.data = "admin:stats:refresh"
-    
+
     mock_stats.return_value = PlatformStats(
         total_orders=10, active_orders=2, escrow_held_orders=1,
         completed_orders=5, cancelled_orders=1, dispute_orders=1,
@@ -45,15 +49,19 @@ async def test_admin_stats_refresh(mock_is_admin: MagicMock, mock_stats: AsyncMo
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.admin_service.get_dispute_queue", new_callable=AsyncMock)
 @patch("bot.handlers.admin._is_admin", return_value=True)
-async def test_admin_disputes_list(mock_is_admin: MagicMock, mock_disputes: AsyncMock, session: AsyncSession):
+async def test_admin_disputes_list(
+    mock_is_admin: MagicMock,
+    mock_disputes: AsyncMock,
+    session: AsyncSession
+):
     message = AsyncMock(spec=Message)
     message.from_user = MagicMock(spec=User)
     message.from_user.id = 999
     message.answer = AsyncMock()
-    
+
     order = Order(
-        id=uuid.uuid4(), 
-        asset="TON", 
+        id=uuid.uuid4(),
+        asset="TON",
         amount=Decimal("1.5"),
         maker_id=1,
         taker_id=2
@@ -72,13 +80,13 @@ async def test_cb_wallet_generate_invalid_chain():
     callback.message = AsyncMock(spec=Message)
     callback.message.edit_text = AsyncMock()
     callback.answer = AsyncMock()
-    
+
     # Mock session for async with session.begin()
     session = AsyncMock(spec=AsyncSession)
     session.begin.return_value.__aenter__.return_value = AsyncMock()
-    
+
     await wallet_handlers.cb_generate_wallet(callback, session, AsyncMock())
-    
+
     # Verify the actual error message format
     call_args = callback.message.edit_text.call_args[0][0]
     assert "Unsupported chain: 'invalid'" in call_args
@@ -93,7 +101,7 @@ async def test_cb_wallet_balance_refresh(mock_get: AsyncMock, session: AsyncSess
     callback.message = AsyncMock(spec=Message)
     callback.message.edit_text = AsyncMock()
     callback.answer = AsyncMock()
-    
+
     mock_get.return_value = [UserWallet(chain="evm", address="0x1")]
     with patch("bot.handlers.wallet._build_balance_text", new_callable=AsyncMock) as mock_text:
         mock_text.return_value = "Balance: 100"
@@ -109,13 +117,13 @@ async def test_cb_market_page_extra(mock_get: AsyncMock, session: AsyncSession):
     callback.message = AsyncMock(spec=Message)
     callback.message.edit_text = AsyncMock()
     callback.answer = AsyncMock()
-    
+
     mock_get.return_value = {
         "orders": [Order(
-            id=uuid.uuid4(), 
-            asset="TON", 
-            amount=Decimal("10"), 
-            fiat_amount=Decimal("100"), 
+            id=uuid.uuid4(),
+            asset="TON",
+            amount=Decimal("10"),
+            fiat_amount=Decimal("100"),
             fiat_currency="RUB"
         )],
         "page": 2,
