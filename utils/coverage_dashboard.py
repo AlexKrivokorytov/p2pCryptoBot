@@ -38,11 +38,11 @@ def get_stats(xml_path="coverage.xml"):
 
             stats[found_group]["lines"] += lines_valid
             stats[found_group]["covered"] += lines_covered
-            
+
             coverage = 100.0
             if lines_valid > 0:
                 coverage = round((lines_covered / lines_valid * 100), 1)
-                
+
             stats[found_group]["files"].append({
                 "name": filename,
                 "coverage": coverage,
