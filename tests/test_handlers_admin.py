@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aiogram.types import CallbackQuery, Message
 from bot.handlers import admin as admin_handlers
 from bot.states import ArbitrationFSM
 

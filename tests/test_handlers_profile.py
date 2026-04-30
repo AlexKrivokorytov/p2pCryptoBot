@@ -5,9 +5,9 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from aiogram.types import CallbackQuery, Message
 from bot.handlers import profile as profile_handlers
 from db.models.user import User
 from services import user_service
