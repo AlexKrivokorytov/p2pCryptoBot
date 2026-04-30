@@ -3,7 +3,7 @@ import sys
 import webbrowser
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from typing import TypedDict
+from typing import Any, TypedDict
 
 
 class FileStat(TypedDict):
@@ -31,7 +31,7 @@ def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.
     root = tree.getroot()
 
     # Define functional blocks with specific calm colors
-    groups_config: dict[str, dict[str, any]] = {
+    groups_config: dict[str, dict[str, Any]] = {
         "Telegram Handlers": {
             "prefixes": ["bot/handlers/"],
             "color": "#457B9D"  # Muted Blue
@@ -61,7 +61,10 @@ def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.
             "color": "#8D99AE"  # Muted Lavender/Gray
         },
         "Core & Config": {
-            "prefixes": ["bot/config.py", "bot/main.py", "bot/states.py", "bot/middleware.py"],
+            "prefixes": [
+                "bot/config.py", "bot/main.py",
+                "bot/states.py", "bot/middleware.py"
+            ],
             "color": "#264653"  # Dark Muted Slate
         }
     }
@@ -71,7 +74,7 @@ def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.
             "lines": 0,
             "covered": 0,
             "files": [],
-            "color": cfg["color"]
+            "color": str(cfg["color"])
         } for name, cfg in groups_config.items()
     }
     stats["Others"] = {
@@ -95,7 +98,8 @@ def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.
 
         found_group = "Others"
         for name, cfg in groups_config.items():
-            if any(filename.startswith(p) for p in cfg["prefixes"]):
+            prefixes = cfg.get("prefixes", [])
+            if isinstance(prefixes, list) and any(filename.startswith(str(p)) for p in prefixes):
                 found_group = name
                 break
 
@@ -229,7 +233,8 @@ def generate_html(stats: dict[str, GroupStat], total_percent: float,
             [f for f in data["files"] if f["coverage"] < 100],
             key=lambda x: x["coverage"]
         )
-        chart_id = f"chart-{name.replace(' ', '-').replace('&', 'and')}"
+        safe_name = name.replace(' ', '-').replace('&', 'and')
+        chart_id = f"chart-{safe_name}"
         html += f"""
         <div class="card">
             <div class="card-header">
@@ -262,7 +267,8 @@ def generate_html(stats: dict[str, GroupStat], total_percent: float,
         if data["lines"] == 0:
             continue
         c = data["color"]
-        chart_id = f"chart-{name.replace(' ', '-').replace('&', 'and')}"
+        safe_name = name.replace(' ', '-').replace('&', 'and')
+        chart_id = f"chart-{safe_name}"
         html += f"""
         new Chart(document.getElementById('{chart_id}'), {{
             type: 'doughnut',
