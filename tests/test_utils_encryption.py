@@ -22,9 +22,8 @@ def test_encrypt_decrypt():
 
 
 def test_decrypt_invalid_data():
-    with patch.dict(os.environ, {"AES_KEY": "0" * 64}):
+    with patch.dict(os.environ, {"AES_KEY": "0" * 64}), contextlib.suppress(Exception):
         # Should return empty string or raise?
         # Implementation says: return decrypt(wallet.encrypted_private_key)
         # But encryption.decrypt itself might raise if data is junk.
-        with contextlib.suppress(Exception):
-            encryption.decrypt("not-base64-junk")
+        encryption.decrypt("not-base64-junk")
