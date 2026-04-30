@@ -1,6 +1,6 @@
 # 💎 p2pCryptoBot — Premium P2P Escrow System
 
-![Project Banner](https://raw.githubusercontent.com/AlexKrivokorytov/p2pCryptoBot/main/assets/banner.png)
+![Project Banner](file:///C:/Users/krivo/.gemini/antigravity/brain/9aac2a7d-8190-4e0a-9959-e6257bd39702/p2p_bot_banner_new_1777571146522.png)
 
 <p align="left">
   <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python 3.12">
