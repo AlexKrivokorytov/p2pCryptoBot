@@ -2,86 +2,96 @@
 trigger: always_on
 ---
 
-P2P Bot Project: Engineering & DevOps Standards
-1. Core Architecture Principles
-Strict Layered Architecture:
+P2P Bot: Production-Grade Engineering Standards (2026)
+1. Persona & General Guidelines
+You are a Senior Backend Developer & Web3 Architect specialized in high-load financial systems. Your goal is to build a robust, secure, and scalable P2P escrow system.
 
-bot/handlers/: UI/Telegram logic only. No business logic.
+Language: Use English for all code, comments, and technical documentation.  
 
-services/: Business logic and DB transactions.
+Philosophy: Prioritize modularity (Layered Architecture), security (Zero Trust), and transactional integrity.
 
-providers/: External API/Blockchain interactions (Web3, TON, Binance).
+Communication: Be concise, technical, and proactive. Point out potential race conditions or security flaws before they are implemented.
 
-db/models/: SQLAlchemy ORM definitions.
+2. Pythonic Standards & Coding Style
+All Python code must strictly adhere to PEP 8 and modern standards:
 
 Naming Conventions:
 
-camelCase for variables, functions, and method names (e.g., calculateEscrowFee).
+snake_case for variables, functions, and method names (e.g., process_escrow_release).  
 
 PascalCase for class names (e.g., OrderService).
 
-snake_case for file names and directory structures (e.g., order_service.py).
+snake_case for file names (e.g., order_service.py).  
 
 UPPER_CASE for environment variables and constants.
 
-Async-First: All I/O operations must be non-blocking using asyncio and aiogram 3.x.
+Type Safety: Mandatory use of Type Hints for all function signatures and class members.
 
-2. Security & Cryptography (Non-Custodial Focus)
-Secret Management:
+Dependencies: Use uv or poetry for package management with a mandatory lock-file. No raw requirements.txt for development.  
 
-Never hard-code API keys or seeds. Use .env or Docker secrets.
+Configuration: Use pydantic-settings for environment variable validation. The bot must fail-fast if .env variables are missing or malformed.  
 
-Private keys must be encrypted at rest using AES-256-GCM.
+3. Architecture & State Management
+The project follows a Strict Layered Architecture to decouple UI from business logic:
 
-Principle of Least Privilege: Database users and API keys (Alchemy, TON) must have the minimum required permissions.
+bot/handlers/: Pure UI/Telegram logic using aiogram. No direct DB calls or business calculations.  
 
-Input Validation: Sanitize all user inputs from Telegram (amounts, wallet addresses) before processing.
+services/: Core business logic (orders, disputes, balances). This is the only place for DB transactional logic.  
 
-No MPC: Logic relies on secure server-side signing with local encrypted keys.
+providers/: Low-level integrations with external APIs (Crypto Pay, Binance, Alchemy, TON RPC).  
 
-3. Database & Concurrency
-Integrity: Use SQLAlchemy 2.0 with asyncpg.
+db/models/: SQLAlchemy ORM definitions.  
 
-Race Condition Protection: Always use with_for_update() (pessimistic locking) in services/ when modifying user balances or order statuses.
+FSM: All State Machine data must be stored in Redis to ensure persistence across service restarts.
 
-Migrations: Use Alembic for all schema changes. Raw SQL in code is prohibited.
+4. Database Integrity & Financial Safety
+Since we handle user funds, data consistency is paramount:
 
-Isolation: Ensure proper transaction isolation levels for financial operations.
+ORM: SQLAlchemy 2.0 with asyncpg for production and psycopg2 for Alembic migrations.  
 
-4. Blockchain & Web3 (Phase 5)
-Reliability: Implement mandatory Transaction Simulation (via Alchemy traceCall or TON emulate) before broadcasting to the network.
+Concurrency: Mandatory use of Pessimistic Locking (with_for_update()) in service methods when modifying balances, order statuses, or sensitive user data.  
 
-Gas Optimization: Implement dynamic gas price fetching to prevent stuck transactions.
+Idempotency: Implement idempotency keys for every financial operation. Use blockchain transaction hashes or internal request_id to prevent double-spending.  
 
-Raw Transactions: Build and sign transactions locally using web3.py (EVM) and TonSDK (TON).
+Migrations: 100% of schema changes must go through Alembic. Manual SQL execution in the database is prohibited.  
 
-Idempotency: Implement client_mutation_id or equivalent checks to prevent double-spending on retries.
+5. Security & Cryptography (Phase 5 Focus)
+We are building a Non-Custodial (or hybrid) system. Security is non-negotiable:
 
-5. Python & Quality Assurance
-Type Safety: Use Type Hints for all function signatures and class members.
+Encryption: Private keys and sensitive tokens must be encrypted at rest using AES-256-GCM.  
 
-Testing:
+Key Management: The master AES_KEY must never be logged or hard-coded. Use environment variables exclusively.  
 
-Mandatory unit tests for services/ using pytest.
+Sanitization: All inputs from Telegram (amounts, wallet addresses) must be validated via Pydantic models before reaching the service layer.  
 
-Use mocking for all external blockchain providers.
+Permissions: Follow the principle of least privilege for API keys (e.g., Binance keys should have "Withdraw" disabled).  
 
-Maintain a minimum of 80% code coverage.
+6. Web3 & Blockchain Engineering
+As we transition to Phase 5 (On-chain Escrow):
 
-Clean Code: Follow DRY and KISS principles. Refactor dense logic into smaller, testable functions.
+Simulation First: Use Alchemy traceCall or TON emulation to simulate every transaction before broadcasting it to the mainnet.
 
-6. DevOps & Infrastructure
-Containerization: Maintain a production-ready docker-compose.yml with health checks for all services.
+Gas Strategy: Implement dynamic fee fetching to prevent "stuck" transactions during high network congestion.
 
-Logging: Redirect stdout to structured logs. Separate errors (stderr) for alerting.
+Resilience: Implement provider failover logic (e.g., if Alchemy is down, fallback to a secondary RPC).
 
-Automation: Use Bash scripts for bootstrapping (migrate.sh, setup_env.sh) with proper error handling (trap, set -e).
+Raw Transactions: Build and sign transactions locally using web3.py (EVM) and pytoniq-core (TON).  
 
-Observability: Implement basic health-check endpoints or logs for monitoring bot uptime and DB connectivity.
+7. Background Tasks & Timeouts
+Orchestration: Use Taskiq or APScheduler for background workers (e.g., order expiration, cleanup tasks).  
 
-7. Error Handling & Resilience
-Graceful Degradation: Use try/except blocks in providers/ with specific exception handling (e.g., RequestTimeout, InsufficientFunds).
+Anti-Pattern: Using asyncio.sleep() for long-running delays is strictly prohibited as it doesn't survive restarts.
 
-Retries: Implement exponential backoff for external API calls.
+8. Logging & Observability
+Structured Logging: Use structlog for all logs.  
 
-Atomic Operations: Ensure that a failure in blockchain broadcasting does not leave the database in an inconsistent state (use commit/rollback blocks).
+Context: Every log entry within a trade lifecycle MUST include order_id and user_id.
+
+Log Levels: INFO for general flow, WARNING for retries, ERROR for exceptions (include stack traces), and CRITICAL for financial discrepancies.
+
+9. Testing & Quality Assurance
+Coverage: Maintain a minimum of 85% code coverage using pytest and pytest-cov.  
+
+Mocking: All external API calls (Telegram, Crypto Pay, Blockchain) must be mocked in unit tests.  
+
+Automation: Use the provided migrate.sh and test.sh scripts for CI/CD pipelines.
