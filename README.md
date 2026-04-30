@@ -7,25 +7,25 @@
 [![SQLAlchemy 2.0](https://img.shields.io/badge/db-SQLAlchemy_2.0-red.svg)](https://www.sqlalchemy.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**p2pCryptoBot** — это высоконадежная, промышленная система для P2P-торговли криптовалютой в Telegram. Бот выступает гарантом (Escrow) между продавцом и покупателем, обеспечивая безопасность сделок через интеграцию с **Crypto Pay API** и прямым взаимодействием с блокчейнами (EVM/TON).
+**p2pCryptoBot** is a high-robust, production-ready **P2P Crypto Trading Bot** for Telegram. It acts as a secure Escrow service between Buyers and Sellers, ensuring trade safety through integration with **Crypto Pay API** and direct blockchain interactions (EVM/TON).
 
 ---
 
-## ✨ Основные возможности
+## ✨ Key Features
 
-*   **🔒 Безопасный Escrow**: Автоматизированное удержание средств на время сделки.
-*   **💳 Мультивалютность**: Поддержка BTC, ETH, TON, USDT и других валют через Crypto Pay.
-*   **🧬 Web3 Кошельки**: Генерация реальных кошельковых адресов (EVM/TON) для пользователей с шифрованием приватных ключей (AES-256-GCM).
-*   **📊 Рыночные данные**: Живые котировки с Binance Spot API для точного ценообразования объявлений.
-*   **🤝 Встроенный чат**: Анонимное общение между сторонами сделки внутри бота.
-*   **⚖️ Система споров**: Панель модератора для разрешения конфликтов и AI-ассистент для анализа истории чата.
-*   **🛠️ Admin Dashboard**: Глубокая аналитика, статистика объема торгов и управление очередью споров.
+*   **🔒 Secure Escrow**: Automated fund holding during the trade lifecycle.
+*   **💳 Multi-Currency**: Support for BTC, ETH, TON, USDT, and more via Crypto Pay.
+*   **🧬 Web3 Wallets**: Real on-chain wallet generation (EVM/TON) with private keys encrypted at rest (AES-256-GCM).
+*   **📊 Market Data**: Live rates from Binance Spot API for precise ad pricing.
+*   **🤝 Integrated Chat**: Anonymous messaging between Maker and Taker within the bot.
+*   **⚖️ Dispute System**: Moderator dashboard for conflict resolution with AI-assisted chat analysis.
+*   **🛠️ Admin Dashboard**: Deep analytics, volume statistics, and dispute queue management.
 
 ---
 
-## 🏗️ Архитектура системы
+## 🏗️ System Architecture
 
-Проект следует строгой многослойной архитектуре для обеспечения тестируемости и масштабируемости.
+The project follows a strict layered architecture to ensure testability and scalability.
 
 ```mermaid
 graph TD
@@ -40,88 +40,88 @@ graph TD
 
 ---
 
-## 🚀 Быстрый старт
+## 🚀 Quick Start
 
-### 🐳 Через Docker (Рекомендуется)
-Самый быстрый способ развернуть полностью готовую среду (Бот + БД + Миграции):
+### 🐳 Via Docker (Recommended)
+The fastest way to deploy the entire environment (Bot + DB + Migrations):
 
-1.  Скопируйте конфиг: `cp .env.example .env`
-2.  Заполните `BOT_TOKEN` и `CRYPTOPAY_TOKEN`.
-3.  Запустите:
+1.  Copy the config: `cp .env.example .env`
+2.  Fill in `BOT_TOKEN` and `CRYPTOPAY_TOKEN`.
+3.  Run:
     ```bash
     docker-compose up -d --build
     ```
 
-### 🐍 Локальная разработка
-Если вы хотите запускать код напрямую:
+### 🐍 Local Development
+If you want to run the code directly:
 
 ```bash
-# Установка окружения
+# Setup environment
 python -m venv venv
-source venv/bin/activate # или venv\Scripts\activate на Windows
+source venv/bin/activate # or venv\Scripts\activate on Windows
 
-# Установка зависимостей в режиме разработки
+# Install dependencies in dev mode
 pip install -e ".[dev]"
 
-# Миграции БД
+# DB Migrations
 alembic upgrade head
 
-# Запуск
+# Run
 python -m bot.main
 ```
 
 ---
 
-## ⚙️ Конфигурация (.env)
+## ⚙️ Configuration (.env)
 
-| Переменная | Описание |
+| Variable | Description |
 | :--- | :--- |
-| `BOT_TOKEN` | Токен от @BotFather |
-| `CRYPTOPAY_TOKEN` | API токен от @CryptoBot (Crypto Pay) |
-| `POSTGRES_URI` | Строка подключения к БД |
-| `AES_KEY` | 64-символьный hex для шифрования ключей |
-| `ADMIN_IDS` | ID администраторов через запятую |
-| `GEMINI_API_KEY` | Ключ для работы AI-медиатора |
+| `BOT_TOKEN` | Your token from @BotFather |
+| `CRYPTOPAY_TOKEN` | API token from @CryptoBot (Crypto Pay) |
+| `POSTGRES_URI` | Database connection string |
+| `AES_KEY` | 64-character hex key for wallet encryption |
+| `ADMIN_IDS` | Comma-separated Telegram IDs of admins |
+| `GEMINI_API_KEY` | Key for AI Mediator (Gemini) |
 
 ---
 
-## 🧪 Тестирование и Качество
-Мы поддерживаем высокий стандарт качества кода (покрытие >85%).
+## 🧪 Testing & Quality
+We maintain high standards with >85% code coverage.
 
 ```bash
-pytest          # Запуск тестов
-mypy .          # Проверка типов
-ruff check .    # Линтинг и форматирование
+pytest          # Run tests
+mypy .          # Type checking
+ruff check .    # Linting & formatting
 ```
 
 ---
 
-## 📁 Структура проекта
+## 📁 Project Structure
 
-*   `bot/`: UI слой (обработчики Telegram, клавиатуры, состояния).
-*   `services/`: Бизнес-логика (сделки, эскроу, споры).
-*   `db/`: Модели данных и миграции Alembic.
-*   `providers/`: Работа с внешними API (Crypto Pay, биржи).
-*   `tasks/`: Фоновые задачи (очистка истекших сделок).
-*   `utils/`: Вспомогательные функции (форматирование, шифрование).
-
----
-
-## 🗺️ Дорожная карта (Roadmap)
-
-- [x] **Фазы 1-4**: Базовый движок P2P, чаты, профили, интеграция Crypto Pay.
-- [x] **Admin Panel**: Управление спорами и статистика.
-- [ ] **AI Mediator**: Интеграция с Google Gemini для автоматического анализа споров.
-- [ ] **Phase 5 (On-Chain)**: Переход на полностью децентрализованный Escrow через смарт-контракты.
-- [ ] **Notifications**: Расширенная система уведомлений (Webhooks).
+*   `bot/`: UI Layer (Telegram handlers, keyboards, FSM).
+*   `services/`: Business Logic (trades, escrow, disputes).
+*   `db/`: Data models and Alembic migrations.
+*   `providers/`: External API integrations (Crypto Pay, Exchanges).
+*   `tasks/`: Background tasks (order cleanup, notifications).
+*   `utils/`: Helper functions (encryption, formatting).
 
 ---
 
-## ⚠️ Важные замечания по безопасности
+## 🗺️ Roadmap
 
-1.  **API ключи бирж:** При добавлении ключей в боте убедитесь, что у них **отключены** права на вывод средств (Withdraw).
-2.  **Вебхуки:** В продакшене обязательно настройте `CRYPTOPAY_CALLBACK_SECRET` для проверки подлинности уведомлений от Crypto Pay.
-3.  **AES_KEY:** Никогда не меняйте этот ключ после того, как пользователи начали сохранять свои API ключи, иначе они не смогут быть расшифрованы.
+- [x] **Phases 1-4**: Core P2P engine, chats, profiles, Crypto Pay integration.
+- [x] **Admin Panel**: Dispute management and statistics.
+- [ ] **AI Mediator**: Google Gemini integration for automated dispute analysis.
+- [ ] **Phase 5 (On-Chain)**: Transition to fully decentralized Escrow via smart contracts.
+- [ ] **Notifications**: Expanded webhook-based notification system.
 
 ---
-*Разработано с ❤️ для безопасной торговли.*
+
+## ⚠️ Security Notes
+
+1.  **Exchange API Keys**: When adding keys, ensure **Withdraw** permissions are **disabled**.
+2.  **Webhooks**: In production, configure `CRYPTOPAY_CALLBACK_SECRET` to verify Crypto Pay notifications.
+3.  **AES_KEY**: Never change this key after users start saving API keys, as they won't be decryptable.
+
+---
+*Developed with ❤️ for secure trading.*
