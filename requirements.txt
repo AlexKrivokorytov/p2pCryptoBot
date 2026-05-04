@@ -46,5 +46,7 @@ google-generativeai==0.7.2
 
 # Security & XML
 defusedxml==0.7.1
-certifi==2024.7.4
+# certifi: aiocryptopay 0.4.8 pins <2024.0.0. Latest compatible is 2023.11.17
+certifi==2023.11.17
+# protobuf: CVE-2024-51547 needs >=5.29.6
 protobuf==5.29.6
