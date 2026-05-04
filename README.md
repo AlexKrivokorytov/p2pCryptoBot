@@ -43,48 +43,69 @@ graph TD
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (5 minutes)
 
-### 🐳 Via Docker (Recommended)
-The fastest way to deploy the entire environment (Bot + DB + Migrations):
+### Prerequisites
+- Docker + Docker Compose
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
+- A Crypto Pay token from [@CryptoBot](https://t.me/CryptoBot)
 
-1.  Copy the config: `cp .env.example .env`
-2.  Fill in `BOT_TOKEN` and `CRYPTOPAY_TOKEN`.
-3.  Run:
-    ```bash
-    docker-compose up -d --build
-    ```
-
-### 🐍 Local Development
-If you want to run the code directly:
+### One-Command Deploy
 
 ```bash
-# Setup environment
-python -m venv venv
-source venv/bin/activate # or venv\Scripts\activate on Windows
-
-# Install dependencies in dev mode
-pip install -e ".[dev]"
-
-# DB Migrations
-alembic upgrade head
-
-# Run
-python -m bot.main
+git clone <your-repo-url> p2pbot
+cd p2pbot
+sh setup.sh
 ```
+
+The setup wizard will:
+1. Ask for your bot and payment tokens
+2. Generate all cryptographic secrets automatically
+3. Start the bot in Docker
+4. Print a success summary
+
+### Customization
+
+Edit `branding.yaml` to customize your bot name, fees, and messages — no Python required:
+```yaml
+bot:
+  name: "My Custom Exchange"
+  welcome_message: "👋 Welcome to {bot_name}, {first_name}!"
+  support_handle: "@mysupport"
+```
+
+Then restart: `docker compose restart bot`
 
 ---
 
 ## ⚙️ Configuration (.env)
 
-| Variable | Description |
-| :--- | :--- |
-| `BOT_TOKEN` | Your token from @BotFather |
-| `CRYPTOPAY_TOKEN` | API token from @CryptoBot (Crypto Pay) |
-| `POSTGRES_URI` | Database connection string |
-| `AES_KEY` | 64-character hex key for wallet encryption |
-| `ADMIN_IDS` | Comma-separated Telegram IDs of admins |
-| `GEMINI_API_KEY` | Key for AI Mediator (Gemini) |
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `BOT_TOKEN` | Telegram bot token from @BotFather | Required |
+| `CRYPTOPAY_TOKEN` | API token from @CryptoBot | Required |
+| `CRYPTOPAY_CALLBACK_SECRET` | Used to verify webhook signatures | Auto-generated |
+| `POSTGRES_URI` | Database connection string | Auto-generated |
+| `AES_KEY` | 64-char hex key for encryption | Auto-generated |
+| `ADMIN_IDS` | Comma-separated admin Telegram IDs | Required |
+| `GEMINI_API_KEY` | Google Gemini API key for AI Mediator | Optional |
+| `ORDER_TIMEOUT_SEC` | Time before unfunded order expires | `1800` |
+| `ORDER_MIN_AMOUNT_USDT` | Minimum trade amount in USDT | `1.0` |
+| `ORDER_MAX_AMOUNT_USDT` | Maximum trade amount in USDT | `50000.0` |
+
+---
+
+## 🛡️ Security & Quality
+
+| Check | What it validates |
+|---|---|
+| **208+ Tests** | Business logic, handlers, services, edge cases |
+| **Bandit SAST** | Python security vulnerabilities (Phase 4) |
+| **NIST AES-256-GCM** | Cryptographic correctness (Phase 5) |
+| **pip-audit** | Dependency CVE scanning (Phase 4) |
+| **HMAC-SHA256** | Webhook signature, timing-attack safe |
+| **Pessimistic Locking** | No race conditions on concurrent order takes |
+| **Idempotency Keys** | Safe to retry after crash |
 
 ---
 
@@ -112,11 +133,12 @@ ruff check .    # Linting & formatting
 
 ## 🗺️ Roadmap
 
-- [x] **Phases 1-4**: Core P2P engine, chats, profiles, Crypto Pay integration.
-- [x] **Admin Panel**: Dispute management and statistics.
-- [ ] **AI Mediator**: Google Gemini integration for automated dispute analysis.
-- [ ] **Phase 5 (On-Chain)**: Transition to fully decentralized Escrow via smart contracts.
-- [ ] **Notifications**: Expanded webhook-based notification system.
+- [x] **Phase 1**: Branding Abstraction (Zero hardcoded strings)
+- [x] **Phase 2**: AI Mediator & Enhanced Notifications
+- [x] **Phase 3**: Setup Automation & Quick Start Docs
+- [ ] **Phase 4**: Security Scanning & CI Pipeline
+- [ ] **Phase 5**: Cryptographic Hardening & Contract Tests
+- [ ] **Phase 6**: Delivery Package & Final QA
 
 ---
 

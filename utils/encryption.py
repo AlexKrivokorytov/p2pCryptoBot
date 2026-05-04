@@ -10,10 +10,9 @@ Usage::
 
 from __future__ import annotations
 
-import os
 import secrets
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # nosec B413
 
 _NONCE_BYTES = 12  # 96-bit nonce — standard for GCM
 
@@ -27,7 +26,9 @@ def _get_key() -> bytes:
     Raises:
         ValueError: If ``AES_KEY`` is missing or not a valid 64-char hex string.
     """
-    raw = os.environ.get("AES_KEY", "")
+    from bot.config import get_settings
+
+    raw = get_settings().AES_KEY
     if len(raw) != 64:
         raise ValueError(
             "AES_KEY must be a 64-character hex string (32 bytes). "

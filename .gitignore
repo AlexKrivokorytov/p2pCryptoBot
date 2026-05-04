@@ -65,3 +65,4 @@ scratch/
 temp/
 .agents/
 WHITELABEL_PLAN.md
+.setup_done
