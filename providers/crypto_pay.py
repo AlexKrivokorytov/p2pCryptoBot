@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 from typing import Any
 
 import structlog
@@ -31,11 +32,8 @@ class CryptoPayClient:
     """
 
     def __init__(self) -> None:
-        from bot.config import get_settings
-
-        settings = get_settings()
-        token = settings.CRYPTOPAY_TOKEN
-        self._callback_secret = settings.CRYPTOPAY_CALLBACK_SECRET
+        token = os.environ["CRYPTOPAY_TOKEN"]
+        self._callback_secret = os.environ["CRYPTOPAY_CALLBACK_SECRET"]
         # Use MAIN network; switch to TESTNET for development
         self._api = AioCryptoPay(token=token, network=Networks.MAIN_NET)
 
@@ -171,7 +169,7 @@ class CryptoPayClient:
             ``True`` if the signature is valid, ``False`` otherwise.
         """
         secret_key = hashlib.sha256(self._callback_secret.encode()).digest()
-        expected = hmac.new(secret_key, body, hashlib.sha256).hexdigest()  # nosec B303
+        expected = hmac.new(secret_key, body, hashlib.sha256).hexdigest()
         valid = hmac.compare_digest(expected, signature.lower())
         if not valid:
             log.warning(

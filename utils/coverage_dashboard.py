@@ -1,7 +1,7 @@
 import os
 import sys
 import webbrowser
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from datetime import datetime
 from typing import Any, TypedDict
 

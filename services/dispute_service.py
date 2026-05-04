@@ -166,8 +166,8 @@ async def ai_mediator_suggest(
 
     import google.generativeai as genai  # local import — optional dependency
 
-    genai.configure(api_key=gemini_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    genai.configure(api_key=gemini_key)  # type: ignore[attr-defined] # lib lacks stubs
+    model = genai.GenerativeModel("gemini-1.5-flash")  # type: ignore[attr-defined] # lib lacks stubs
 
     history_text = ""
     if chat_history:

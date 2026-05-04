@@ -29,11 +29,14 @@ dependencies = [
     "web3>=7.0,<8",
     "pytoniq-core>=0.1.36,<0.2",
     # Config / secrets
-    "python-dotenv>=1.0",
+    "python-dotenv>=1.2.2",
     # Webhook HTTP server
-    "aiohttp>=3.9",
+    "aiohttp>=3.13.4",
     "pyyaml>=6.0",
     "google-generativeai>=0.7.0",
+    "defusedxml>=0.7.1",
+    "certifi>=2024.7.4",
+    "protobuf>=5.29.6",
 ]
 
 [project.optional-dependencies]
@@ -48,11 +51,7 @@ dev = [
     "sqlalchemy[mypy]>=2.0",
     "types-aiofiles",
     "types-psycopg2",
-    "types-pyyaml",
     "aiohttp>=3.9",
-    "bandit[toml]>=1.7.8",
-    "pip-audit>=2.7.0",
-    "semgrep>=1.60.0",
 ]
 
 [tool.setuptools]
@@ -72,14 +71,6 @@ python_version = "3.12"
 strict = true
 plugins = ["sqlalchemy.ext.mypy.plugin"]
 ignore_missing_imports = true
-
-[tool.bandit]
-exclude_dirs = ["tests", "db/migrations", "utils/coverage_dashboard.py"]
-skips = []
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

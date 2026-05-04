@@ -78,7 +78,7 @@ These are hard constraints. Breaking any of them breaks the product.
 - **Minimum coverage:** 85% at all times. Never merge code that drops coverage below this.
 - **Current baseline:** 208 tests passing. Every phase must add tests, never remove them.
 - **All external API calls must be mocked** in unit tests (Telegram, Crypto Pay, Binance, Blockchain RPCs).
-- **DB tests use the real test DB** (`postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test`) with fixtures that truncate tables after each test.
+- **DB tests use the real test DB** (`postgresql+asyncpg://p2pbot:password@localhost:5432/p2pbot`) with fixtures that truncate tables after each test.
 - **New services must have service-level tests** — not just handler tests.
 - **New financial flows must have concurrency tests** — verify pessimistic locking works under `asyncio.gather`.
 

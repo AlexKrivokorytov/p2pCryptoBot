@@ -234,7 +234,7 @@ class EvmWalletProvider(WalletProvider):
             step="EvmWalletProvider.transfer",
         )
         # TODO Phase 4: build raw tx, sign with eth_account, send via eth_sendRawTransaction
-        return "0x" + secrets.token_hex(32)  # nosec B311
+        return "0x" + secrets.token_hex(32)
 
 
 # ── TON Provider ───────────────────────────────────────────────────────────────
@@ -306,8 +306,8 @@ class TonWalletProvider(WalletProvider):
             # Graceful fallback so the bot doesn't crash if library is unavailable
             wallet = {
                 "address": f"UQStubAddressForUser{user_id}",
-                "private_key": secrets.token_hex(64),  # nosec B311
-                "mnemonic": " ".join(secrets.token_hex(4) for _ in range(24)),  # nosec B311
+                "private_key": secrets.token_hex(64),
+                "mnemonic": " ".join(secrets.token_hex(4) for _ in range(24)),
             }
 
         log.info(
@@ -405,4 +405,4 @@ class TonWalletProvider(WalletProvider):
             step="TonWalletProvider.transfer",
         )
         # TODO Phase 4: build TON transfer BoC, sign, publish via Toncenter sendBoc
-        return secrets.token_hex(32)  # nosec B311
+        return secrets.token_hex(32)

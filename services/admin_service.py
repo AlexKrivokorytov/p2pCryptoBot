@@ -147,22 +147,22 @@ def format_stats_message(stats: PlatformStats) -> str:
     """
     ts = stats.generated_at.strftime("%Y-%m-%d %H:%M UTC")
     return (
-        "📊 <b>Platform Dashboard</b>\n"
+        "<b>Platform Dashboard</b>\n"
         f"<i>Updated: {ts}</i>\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "📦 <b>Orders</b>\n"
+        "--------------------\n"
+        "<b>Orders</b>\n"
         f"  Total:        <code>{stats.total_orders}</code>\n"
-        f"  🟢 Active:    <code>{stats.active_orders}</code>\n"
-        f"  🔒 In escrow: <code>{stats.escrow_held_orders}</code>\n"
-        f"  ✅ Completed: <code>{stats.completed_orders}</code>\n"
-        f"  ❌ Cancelled: <code>{stats.cancelled_orders}</code>\n"
-        f"  ⏳ Funding:   <code>{stats.pending_funding_orders}</code>\n"
-        f"  ⚖️ Disputes:  <code>{stats.dispute_orders}</code>\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "💰 <b>Volume (completed)</b>\n"
+        f"  Active:    <code>{stats.active_orders}</code>\n"
+        f"  In escrow: <code>{stats.escrow_held_orders}</code>\n"
+        f"  Completed: <code>{stats.completed_orders}</code>\n"
+        f"  Cancelled: <code>{stats.cancelled_orders}</code>\n"
+        f"  Funding:   <code>{stats.pending_funding_orders}</code>\n"
+        f"  Disputes:  <code>{stats.dispute_orders}</code>\n\n"
+        "--------------------\n"
+        "<b>Volume (completed)</b>\n"
         f"  Fiat total:   <code>{stats.total_volume_completed:,.2f}</code>\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "👥 <b>Users</b>\n"
+        "--------------------\n"
+        "<b>Users</b>\n"
         f"  Makers:  <code>{stats.unique_makers}</code>\n"
         f"  Takers:  <code>{stats.unique_takers}</code>\n"
     )
@@ -181,9 +181,9 @@ def format_dispute_order(order: Order, index: int) -> str:
     short_id = str(order.id)[:8]
     reason = (order.dispute_reason or "No reason provided")[:80]
     maker = getattr(order.maker, "username", None) or str(order.maker_id)
-    taker = getattr(order.taker, "username", None) or str(order.taker_id) if order.taker_id else "—"
+    taker = getattr(order.taker, "username", None) or str(order.taker_id) if order.taker_id else "-"
     return (
-        f"<b>#{index}</b>  <code>{short_id}…</code>\n"
+        f"<b>#{index}</b>  <code>{short_id}...</code>\n"
         f"  Asset: <b>{order.asset}</b>  Amount: <code>{float(order.amount):.6g}</code>\n"
         f"  Maker: @{maker}  Taker: @{taker}\n"
         f"  Reason: <i>{reason}</i>\n"

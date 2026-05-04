@@ -100,7 +100,7 @@ def test_format_dispute_order_no_taker() -> None:
 
     text = format_dispute_order(order, index=2)
 
-    assert "—" in text  # no taker
+    assert "-" in text  # no taker
     assert "No reason provided" in text
 
 

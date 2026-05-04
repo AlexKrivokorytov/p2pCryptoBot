@@ -84,7 +84,7 @@ async def main() -> None:
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", settings.WEBHOOK_PORT)
+    site = web.TCPSite(runner, "0.0.0.0", settings.WEBHOOK_PORT)  # nosec B104: required for Docker
     await site.start()
     log.info(
         "webhook_server_started",

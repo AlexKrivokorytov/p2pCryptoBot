@@ -146,7 +146,7 @@ def load_branding() -> dict[str, Any]:
             "branding.yaml not found in project root. "
             "Copy branding.yaml.example to branding.yaml and customize it."
         )
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         _branding_cache = yaml.safe_load(f)
     return _branding_cache
 
