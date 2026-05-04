@@ -170,6 +170,7 @@ async def test_cb_wallet_balance_no_wallets(
     mock_portfolio.return_value = []
 
     from aiogram.types import CallbackQuery, Message
+
     callback = AsyncMock(spec=CallbackQuery)
     callback.from_user = MagicMock()
     callback.from_user.id = 111
@@ -203,6 +204,7 @@ async def test_cb_wallet_balance_with_balance(
     ]
 
     from aiogram.types import CallbackQuery, Message
+
     callback = AsyncMock(spec=CallbackQuery)
     callback.from_user = MagicMock()
     callback.from_user.id = 111

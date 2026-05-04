@@ -35,7 +35,7 @@ def test_order_book_keyboard():
         asset="USDT",
         fiat_amount=100,
         fiat_currency="USD",
-        payment_method="Cash"
+        payment_method="Cash",
     )
     kb = keyboards.order_book_keyboard([order], 1, 1)
     assert kb.inline_keyboard

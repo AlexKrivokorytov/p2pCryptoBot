@@ -23,9 +23,7 @@ from services.admin_service import PlatformStats
 @patch("bot.handlers.admin.admin_service.get_platform_stats", new_callable=AsyncMock)
 @patch("bot.handlers.admin._is_admin", return_value=True)
 async def test_admin_stats_refresh(
-    mock_is_admin: MagicMock,
-    mock_stats: AsyncMock,
-    session: AsyncSession
+    mock_is_admin: MagicMock, mock_stats: AsyncMock, session: AsyncSession
 ):
     callback = AsyncMock(spec=CallbackQuery)
     callback.from_user = MagicMock(spec=User)
@@ -36,10 +34,17 @@ async def test_admin_stats_refresh(
     callback.data = "admin:stats:refresh"
 
     mock_stats.return_value = PlatformStats(
-        total_orders=10, active_orders=2, escrow_held_orders=1,
-        completed_orders=5, cancelled_orders=1, dispute_orders=1,
-        pending_funding_orders=0, total_volume_completed=1000.0,
-        unique_makers=3, unique_takers=2, generated_at=datetime.now(UTC)
+        total_orders=10,
+        active_orders=2,
+        escrow_held_orders=1,
+        completed_orders=5,
+        cancelled_orders=1,
+        dispute_orders=1,
+        pending_funding_orders=0,
+        total_volume_completed=1000.0,
+        unique_makers=3,
+        unique_takers=2,
+        generated_at=datetime.now(UTC),
     )
     await admin_handlers.cb_admin_stats(callback, session)
     callback.message.edit_text.assert_called()
@@ -50,22 +55,14 @@ async def test_admin_stats_refresh(
 @patch("bot.handlers.admin.admin_service.get_dispute_queue", new_callable=AsyncMock)
 @patch("bot.handlers.admin._is_admin", return_value=True)
 async def test_admin_disputes_list(
-    mock_is_admin: MagicMock,
-    mock_disputes: AsyncMock,
-    session: AsyncSession
+    mock_is_admin: MagicMock, mock_disputes: AsyncMock, session: AsyncSession
 ):
     message = AsyncMock(spec=Message)
     message.from_user = MagicMock(spec=User)
     message.from_user.id = 999
     message.answer = AsyncMock()
 
-    order = Order(
-        id=uuid.uuid4(),
-        asset="TON",
-        amount=Decimal("1.5"),
-        maker_id=1,
-        taker_id=2
-    )
+    order = Order(id=uuid.uuid4(), asset="TON", amount=Decimal("1.5"), maker_id=1, taker_id=2)
     mock_disputes.return_value = [order]
     await admin_handlers.cmd_disputes(message, session)
     message.answer.assert_called()
@@ -119,16 +116,18 @@ async def test_cb_market_page_extra(mock_get: AsyncMock, session: AsyncSession):
     callback.answer = AsyncMock()
 
     mock_get.return_value = {
-        "orders": [Order(
-            id=uuid.uuid4(),
-            asset="TON",
-            amount=Decimal("10"),
-            fiat_amount=Decimal("100"),
-            fiat_currency="RUB"
-        )],
+        "orders": [
+            Order(
+                id=uuid.uuid4(),
+                asset="TON",
+                amount=Decimal("10"),
+                fiat_amount=Decimal("100"),
+                fiat_currency="RUB",
+            )
+        ],
         "page": 2,
         "total_pages": 5,
-        "total_count": 50
+        "total_count": 50,
     }
     await order_handlers.cb_market_page(callback, session)
     callback.message.edit_text.assert_called()

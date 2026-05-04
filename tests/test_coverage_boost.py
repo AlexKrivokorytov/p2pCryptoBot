@@ -141,8 +141,7 @@ async def test_evm_provider_get_balance_erc20():
 async def test_ton_provider_generate_account():
     """Ton generate_account handles missing library gracefully."""
     with patch(
-        "providers.wallet_provider._generate_ton_account",
-        side_effect=ImportError("No pytoniq")
+        "providers.wallet_provider._generate_ton_account", side_effect=ImportError("No pytoniq")
     ):
         provider = TonWalletProvider(endpoint="http://localhost")
         res = await provider.generate_wallet(123)

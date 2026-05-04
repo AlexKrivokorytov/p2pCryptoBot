@@ -54,7 +54,7 @@ async def test_cb_dispute_view(mock_is_admin, session):
         fiat_amount=Decimal("100"),
         fiat_currency="RUB",
         maker_id=1,
-        taker_id=2
+        taker_id=2,
     )
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = order
@@ -182,7 +182,7 @@ async def test_cb_order_view_market_rate(mock_rate, session):
         fiat_amount=Decimal("500"),
         fiat_currency="USD",
         order_type="sell_crypto",
-        payment_method="Sberbank"
+        payment_method="Sberbank",
     )
     order.maker = MagicMock(spec=User, username="maker1")
 
@@ -251,4 +251,5 @@ async def test_cb_order_view_not_found(session):
 def test_main_import():
     """Just import main to cover some top-level code."""
     import bot.main
+
     assert bot.main is not None

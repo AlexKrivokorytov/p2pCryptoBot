@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import structlog
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards import back_to_menu_keyboard
 from bot.states import DisputeFSM
-from services import dispute_service
+from db.models.order import Order
+from services import dispute_service, notification_service
 from utils.formatters import format_dispute_raised, format_error
 
 log = structlog.get_logger(__name__)
@@ -64,6 +66,7 @@ async def cb_dispute_confirmed(
     callback: CallbackQuery,
     state: FSMContext,
     session: AsyncSession,
+    bot: Bot,
 ) -> None:
     """Submit the dispute to DB."""
     data = await state.get_data()
@@ -81,6 +84,16 @@ async def cb_dispute_confirmed(
             reply_markup=back_to_menu_keyboard(),
             parse_mode="HTML",
         )
+
+        # Notify both parties
+        import uuid
+
+        order_res = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
+        order = order_res.scalar_one_or_none()
+        if order:
+            await notification_service.notify_dispute_opened(
+                bot, order.maker_id, order.taker_id, order_id, reason
+            )
         log.info(
             "dispute_submitted",
             user_id=user_id,

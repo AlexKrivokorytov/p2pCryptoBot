@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
 from typing import Any
@@ -134,22 +135,20 @@ async def ai_mediator_suggest(
     order_id: str,
     chat_history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    """Ask the Gemini AI mediator to suggest dispute resolution terms.
+    """Ask the Gemini AI mediator to suggest dispute resolution.
 
-    Reads the order details (and optionally the conversation history between
-    maker and taker) and returns a suggested decision with reasoning.
+    Reads the trade chat history and returns a suggested decision with reasoning.
+    The suggestion is advisory only — a human moderator makes the final decision.
 
     Args:
-        order_id: UUID string of the order.
-        chat_history: Optional list of ``{"role": "maker"|"taker", "text": "..."}``
-                      messages from the order chat.
+        order_id: UUID string of the disputed order.
+        chat_history: List of {"role": "maker"|"taker", "text": "..."} messages.
 
     Returns:
-        Dict with ``suggestion``, ``reasoning``, and ``confidence`` (0–1).
-
-    Note:
-        Requires ``GEMINI_API_KEY`` environment variable to be set.
-        Stub implementation — integrate ``google-generativeai`` SDK to activate.
+        Dict with keys:
+        - suggestion: "taker_wins" | "maker_wins" | "neutral" | None
+        - reasoning: Human-readable explanation string
+        - confidence: Float 0.0–1.0
     """
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
     if not gemini_key:
@@ -165,20 +164,74 @@ async def ai_mediator_suggest(
             "confidence": 0.0,
         }
 
-    # TODO: integrate google-generativeai SDK
-    # import google.generativeai as genai
-    # genai.configure(api_key=gemini_key)
-    # model = genai.GenerativeModel("gemini-pro")
-    # prompt = build_mediation_prompt(order_id, chat_history)
-    # response = await model.generate_content_async(prompt)
-    log.info(
-        "ai_mediator_stub_called",
-        order_id=order_id,
-        chat_messages=len(chat_history) if chat_history else 0,
-        step="ai_mediator_suggest",
+    import google.generativeai as genai  # local import — optional dependency
+
+    genai.configure(api_key=gemini_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+
+    history_text = ""
+    if chat_history:
+        lines = [f"[{m['role'].upper()}]: {m['text']}" for m in chat_history]
+        history_text = "\n".join(lines)
+
+    prompt = (
+        f"You are a neutral P2P trade dispute mediator. "
+        f"Analyze this trade dispute and suggest a resolution.\n\n"
+        f"Order ID: {order_id}\n\n"
+        f"Trade Chat History:\n{history_text or 'No messages exchanged.'}\n\n"
+        "Based on the chat history, respond ONLY with valid JSON in this exact format:\n"
+        '{"suggestion": "taker_wins" or "maker_wins" or "neutral", '
+        '"reasoning": "one paragraph explanation", '
+        '"confidence": 0.0 to 1.0}\n\n'
+        "Rules:\n"
+        "- taker_wins: buyer should receive the crypto\n"
+        "- maker_wins: seller should be refunded\n"
+        "- neutral: insufficient evidence, human review required\n"
+        "- confidence below 0.6 means you are not sure — prefer neutral\n"
+        "Respond with JSON only. No preamble, no markdown."
     )
-    return {
-        "suggestion": "neutral",
-        "reasoning": "AI mediation stub — real Gemini integration pending.",
-        "confidence": 0.0,
-    }
+
+    try:
+        response = await asyncio.to_thread(model.generate_content, prompt)
+        raw = response.text.strip()
+
+        # Strip markdown fences if model adds them
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+
+        import json
+
+        parsed = json.loads(raw.strip())
+
+        suggestion = parsed.get("suggestion", "neutral")
+        if suggestion not in {"taker_wins", "maker_wins", "neutral"}:
+            suggestion = "neutral"
+
+        result = {
+            "suggestion": suggestion,
+            "reasoning": str(parsed.get("reasoning", "No reasoning provided.")),
+            "confidence": float(parsed.get("confidence", 0.0)),
+        }
+        log.info(
+            "ai_mediator_responded",
+            order_id=order_id,
+            suggestion=suggestion,
+            confidence=result["confidence"],
+            step="ai_mediator_suggest",
+        )
+        return result
+
+    except Exception as exc:
+        log.error(
+            "ai_mediator_failed",
+            order_id=order_id,
+            error=str(exc),
+            step="ai_mediator_suggest",
+        )
+        return {
+            "suggestion": "neutral",
+            "reasoning": f"AI mediator encountered an error: {exc}",
+            "confidence": 0.0,
+        }

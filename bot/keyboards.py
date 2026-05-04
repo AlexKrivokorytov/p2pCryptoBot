@@ -7,6 +7,7 @@ import uuid
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from bot.config import get_branding
 from db.models.order import Order, SupportedAsset
 
 # ── Main menu ──────────────────────────────────────────────────────────────────
@@ -14,17 +15,29 @@ from db.models.order import Order, SupportedAsset
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     """Return the main menu keyboard."""
+    b = get_branding()
+    ui = b.get("ui", {})
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="📝 Create Ad", callback_data="ad:create"),
-        InlineKeyboardButton(text="🛒 P2P Market", callback_data="market:browse"),
+        InlineKeyboardButton(
+            text=f"{ui.get('create_ad_emoji', '📝')} Create Ad", callback_data="ad:create"
+        ),
+        InlineKeyboardButton(
+            text=f"{ui.get('market_emoji', '🛒')} P2P Market", callback_data="market:browse"
+        ),
     )
     builder.row(
-        InlineKeyboardButton(text="📋 My Trades", callback_data="trades:my"),
-        InlineKeyboardButton(text="👤 Profile", callback_data="menu:profile"),
+        InlineKeyboardButton(
+            text=f"{ui.get('trades_emoji', '📋')} My Trades", callback_data="trades:my"
+        ),
+        InlineKeyboardButton(
+            text=f"{ui.get('profile_emoji', '👤')} Profile", callback_data="menu:profile"
+        ),
     )
     builder.row(
-        InlineKeyboardButton(text="💼 Wallets", callback_data="menu:wallet"),
+        InlineKeyboardButton(
+            text=f"{ui.get('wallet_emoji', '💼')} Wallets", callback_data="menu:wallet"
+        ),
         InlineKeyboardButton(text="⚙️ Settings", callback_data="settings"),
     )
     builder.row(
@@ -66,21 +79,14 @@ def asset_keyboard(prefix: str = "asset") -> InlineKeyboardMarkup:
 
 # ── Payment method selection ───────────────────────────────────────────────────
 
-COMMON_PAYMENT_METHODS: list[str] = [
-    "Sberbank",
-    "Tinkoff",
-    "Revolut",
-    "SWIFT",
-    "Cash",
-    "Other",
-]
-
 
 def payment_method_keyboard() -> InlineKeyboardMarkup:
     """Return keyboard for choosing a fiat payment method."""
+    b = get_branding()
+    methods = b.get("payment_methods", [])
     builder = InlineKeyboardBuilder()
-    for method in COMMON_PAYMENT_METHODS:
-        builder.button(text=method, callback_data=f"paymethod:{method}")
+    for method in methods:
+        builder.button(text=str(method), callback_data=f"paymethod:{method}")
     builder.adjust(3)
     builder.row(InlineKeyboardButton(text="❌ Cancel", callback_data="ad:cancel"))
     return builder.as_markup()
@@ -136,7 +142,11 @@ def order_book_keyboard(
     builder = InlineKeyboardBuilder()
 
     for order in orders:
-        type_emoji = "📤" if order.order_type == "sell_crypto" else "📥"
+        b = get_branding()
+        ui = b.get("ui", {})
+        sell_emoji = ui.get("sell_emoji", "📤")
+        buy_emoji = ui.get("buy_emoji", "📥")
+        type_emoji = sell_emoji if order.order_type == "sell_crypto" else buy_emoji
         label = (
             f"{type_emoji} {float(order.amount):.4g} {order.asset} "
             f"→ {float(order.fiat_amount):.2f} {order.fiat_currency} "
@@ -190,13 +200,21 @@ def active_trade_maker_keyboard(order_id: str | uuid.UUID) -> InlineKeyboardMark
     if isinstance(order_id, uuid.UUID):
         order_id = str(order_id)
 
+    b = get_branding()
+    ui = b.get("ui", {})
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="💬 Chat with Taker", callback_data=f"chat:enter:{order_id}"),
-        InlineKeyboardButton(text="⚖️ Dispute", callback_data=f"dispute:raise:{order_id}"),
+        InlineKeyboardButton(
+            text=f"{ui.get('dispute_emoji', '⚖️')} Dispute",
+            callback_data=f"dispute:raise:{order_id}",
+        ),
     )
     builder.row(
-        InlineKeyboardButton(text="✅ Release Escrow", callback_data=f"escrow:confirm:{order_id}")
+        InlineKeyboardButton(
+            text=f"{ui.get('escrow_emoji', '🔒')} Release Escrow",
+            callback_data=f"escrow:confirm:{order_id}",
+        )
     )
     return builder.as_markup()
 
@@ -206,13 +224,18 @@ def active_trade_taker_keyboard(order_id: str | uuid.UUID) -> InlineKeyboardMark
     if isinstance(order_id, uuid.UUID):
         order_id = str(order_id)
 
+    b = get_branding()
+    ui = b.get("ui", {})
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="💸 I've sent fiat", callback_data=f"trade:fiat_sent:{order_id}")
     )
     builder.row(
         InlineKeyboardButton(text="💬 Chat with Maker", callback_data=f"chat:enter:{order_id}"),
-        InlineKeyboardButton(text="⚖️ Dispute", callback_data=f"dispute:raise:{order_id}"),
+        InlineKeyboardButton(
+            text=f"{ui.get('dispute_emoji', '⚖️')} Dispute",
+            callback_data=f"dispute:raise:{order_id}",
+        ),
     )
     return builder.as_markup()
 

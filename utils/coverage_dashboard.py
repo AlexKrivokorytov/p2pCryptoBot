@@ -8,6 +8,7 @@ from typing import Any, TypedDict
 
 class FileStat(TypedDict):
     """File coverage statistics."""
+
     name: str
     coverage: float
     lines: int
@@ -16,6 +17,7 @@ class FileStat(TypedDict):
 
 class GroupStat(TypedDict):
     """Module group statistics."""
+
     lines: int
     covered: int
     files: list[FileStat]
@@ -35,57 +37,24 @@ def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.
 
     # Granular functional blocks
     groups_config: dict[str, dict[str, Any]] = {
-        "Telegram Handlers": {
-            "prefixes": ["bot/handlers/"],
-            "color": "#457B9D"
-        },
-        "UI & Keyboards": {
-            "prefixes": ["bot/keyboards.py"],
-            "color": "#A8DADC"
-        },
-        "Business Logic": {
-            "prefixes": ["services/"],
-            "color": "#2A9D8F"
-        },
-        "Blockchain & APIs": {
-            "prefixes": ["providers/"],
-            "color": "#E9C46A"
-        },
-        "Database Layer": {
-            "prefixes": ["db/"],
-            "color": "#F4A261"
-        },
-        "Background Tasks": {
-            "prefixes": ["tasks/"],
-            "color": "#E76F51"
-        },
-        "Utilities": {
-            "prefixes": ["utils/"],
-            "color": "#8D99AE"
-        },
+        "Telegram Handlers": {"prefixes": ["bot/handlers/"], "color": "#457B9D"},
+        "UI & Keyboards": {"prefixes": ["bot/keyboards.py"], "color": "#A8DADC"},
+        "Business Logic": {"prefixes": ["services/"], "color": "#2A9D8F"},
+        "Blockchain & APIs": {"prefixes": ["providers/"], "color": "#E9C46A"},
+        "Database Layer": {"prefixes": ["db/"], "color": "#F4A261"},
+        "Background Tasks": {"prefixes": ["tasks/"], "color": "#E76F51"},
+        "Utilities": {"prefixes": ["utils/"], "color": "#8D99AE"},
         "System Core": {
-            "prefixes": [
-                "bot/config.py", "bot/main.py",
-                "bot/states.py", "bot/middleware.py"
-            ],
-            "color": "#264653"
-        }
+            "prefixes": ["bot/config.py", "bot/main.py", "bot/states.py", "bot/middleware.py"],
+            "color": "#264653",
+        },
     }
 
     stats: dict[str, GroupStat] = {
-        name: {
-            "lines": 0,
-            "covered": 0,
-            "files": [],
-            "color": str(cfg["color"])
-        } for name, cfg in groups_config.items()
+        name: {"lines": 0, "covered": 0, "files": [], "color": str(cfg["color"])}
+        for name, cfg in groups_config.items()
     }
-    stats["Others"] = {
-        "lines": 0,
-        "covered": 0,
-        "files": [],
-        "color": "#64748b"
-    }
+    stats["Others"] = {"lines": 0, "covered": 0, "files": [], "color": "#64748b"}
 
     for class_node in root.findall(".//class"):
         filename = class_node.get("filename")
@@ -111,17 +80,20 @@ def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.
 
         coverage = round((lines_covered / lines_valid * 100), 1)
 
-        stats[found_group]["files"].append({
-            "name": filename,
-            "coverage": coverage,
-            "lines": lines_valid,
-            "missed": lines_valid - lines_covered,
-        })
+        stats[found_group]["files"].append(
+            {
+                "name": filename,
+                "coverage": coverage,
+                "lines": lines_valid,
+                "missed": lines_valid - lines_covered,
+            }
+        )
     return stats, root
 
 
-def generate_html(stats: dict[str, GroupStat], total_percent: float,
-                  output_path: str = "coverage_dashboard.html") -> str:
+def generate_html(
+    stats: dict[str, GroupStat], total_percent: float, output_path: str = "coverage_dashboard.html"
+) -> str:
     """Generate a premium HTML dashboard with donut charts."""
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     html = f"""<!DOCTYPE html>
@@ -248,10 +220,9 @@ def generate_html(stats: dict[str, GroupStat], total_percent: float,
         p = round((data["covered"] / data["lines"] * 100), 1)
         c = data["color"]
         problem_files = sorted(
-            [f for f in data["files"] if f["coverage"] < 100],
-            key=lambda x: x["coverage"]
+            [f for f in data["files"] if f["coverage"] < 100], key=lambda x: x["coverage"]
         )
-        safe_id = name.replace(' ', '-').replace('&', 'and')
+        safe_id = name.replace(" ", "-").replace("&", "and")
         html += f"""
         <div class="card">
             <div class="card-header">
@@ -285,10 +256,10 @@ def generate_html(stats: dict[str, GroupStat], total_percent: float,
     for name, data in stats.items():
         if data["lines"] == 0:
             continue
-        safe_id = name.replace(' ', '-').replace('&', 'and')
-        covered = data['covered']
-        missed = data['lines'] - data['covered']
-        color = data['color']
+        safe_id = name.replace(" ", "-").replace("&", "and")
+        covered = data["covered"]
+        missed = data["lines"] - data["covered"]
+        color = data["color"]
         html += f"""
         new Chart(document.getElementById('chart-{safe_id}'), {{
             type: 'doughnut',

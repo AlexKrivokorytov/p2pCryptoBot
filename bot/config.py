@@ -15,6 +15,10 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import yaml
 
 
 def _require(key: str) -> str:
@@ -119,6 +123,47 @@ def get_settings() -> Settings:
     if _settings_cache is None:
         _settings_cache = load_settings()
     return _settings_cache
+
+
+_branding_cache: dict[str, Any] | None = None
+
+
+def load_branding() -> dict[str, Any]:
+    """Load branding configuration from branding.yaml.
+
+    Returns:
+        Parsed branding dict with all customization values.
+
+    Raises:
+        RuntimeError: If branding.yaml is not found in the project root.
+    """
+    global _branding_cache  # noqa: PLW0603
+    if _branding_cache is not None:
+        return _branding_cache
+    path = Path("branding.yaml")
+    if not path.exists():
+        raise RuntimeError(
+            "branding.yaml not found in project root. "
+            "Copy branding.yaml.example to branding.yaml and customize it."
+        )
+    with open(path) as f:
+        _branding_cache = yaml.safe_load(f)
+    return _branding_cache
+
+
+def get_branding() -> dict[str, Any]:
+    """Return the branding configuration singleton.
+
+    Returns:
+        Parsed branding dict. Cached after first call.
+    """
+    return load_branding()
+
+
+def _reset_branding_cache() -> None:
+    """Reset branding cache — for use in tests only."""
+    global _branding_cache  # noqa: PLW0603
+    _branding_cache = None
 
 
 # Convenience alias — use ``settings`` for direct attribute access.

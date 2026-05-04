@@ -1,0 +1,64 @@
+# branding.yaml.example — Template for white-label branding.
+# Copy this to branding.yaml and customize it.
+
+bot:
+  # The name of your exchange shown in messages and menus.
+  name: "P2P Exchange"
+  # Welcome message for /start. Supports {bot_name} and {first_name} placeholders.
+  welcome_message: "👋 Welcome to {bot_name}, {first_name}!"
+  # Telegram handle for your support team.
+  support_handle: "@support"
+  # Detailed help text shown in the Help menu. Supports HTML tags.
+  help_text: |
+    ℹ️ <b>How P2P works:</b>
+
+    1️⃣ Create an order — choose asset, amount, and fiat currency.
+    2️⃣ Pay the invoice via Crypto Pay — funds locked in escrow.
+    3️⃣ Transfer fiat to the seller outside the bot.
+    4️⃣ Seller confirms receipt → crypto released to you.
+    5️⃣ Dispute? Open a case and a moderator will review.
+
+    Questions? Contact {support_handle}
+
+ui:
+  # Emojis used in the main menu buttons.
+  create_ad_emoji: "📝"
+  market_emoji: "🛒"
+  trades_emoji: "📋"
+  profile_emoji: "👤"
+  wallet_emoji: "💼"
+  dispute_emoji: "⚖️"
+  escrow_emoji: "🔒"
+
+fees:
+  # Fee charged to the user creating the advertisement (percentage).
+  maker_percent: 0.0
+  # Fee charged to the user taking an existing advertisement (percentage).
+  taker_percent: 0.0
+  # Fixed fee added to every trade regardless of amount.
+  fixed_fee: 0.0
+
+# List of assets allowed for trading.
+assets_enabled:
+  - USDT
+  - TON
+  - BTC
+  - ETH
+  - USDC
+
+# List of payment methods available for users to choose from.
+payment_methods:
+  - "Sberbank"
+  - "Tinkoff"
+  - "Revolut"
+  - "SWIFT"
+  - "Cash"
+  - "Other"
+
+limits:
+  # Minimum order amount in USDT equivalent.
+  order_min_amount_usdt: 1.0
+  # Maximum order amount in USDT equivalent.
+  order_max_amount_usdt: 50000.0
+  # Seconds allowed for payment before order expires.
+  order_timeout_sec: 1800

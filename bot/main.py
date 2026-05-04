@@ -93,7 +93,7 @@ async def main() -> None:
     )
 
     # ── Background cleanup task ──────────────────────────────────────────────────
-    cleanup_task = asyncio.create_task(start_cleanup_task(session_pool))
+    cleanup_task = asyncio.create_task(start_cleanup_task(session_pool, bot))
 
     log.info("bot_starting", mode="polling")
     try:

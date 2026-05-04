@@ -38,3 +38,9 @@ python-dotenv==1.1.0
 # Webhook HTTP server
 # NOTE: ccxt 4.4.70 requires aiohttp<=3.10.11
 aiohttp==3.10.11
+
+# Branding / Configuration
+pyyaml==6.0.2
+
+# AI Mediator
+google-generativeai==0.7.2

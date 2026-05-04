@@ -10,6 +10,7 @@ import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import get_branding
 from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
 from providers.crypto_pay import CryptoPayClient
 
@@ -37,6 +38,25 @@ def _validate_amount(amount: float, label: str = "amount") -> None:
         raise ValueError(f"{label} must be positive, got {amount}")
 
 
+def _get_platform_fees(order_type: str) -> tuple[float, float]:
+    """Return (fee_percent, fee_fixed) from branding configuration.
+
+    Args:
+        order_type: 'sell_crypto' for maker fee, 'buy_crypto' for taker fee.
+
+    Returns:
+        Tuple of (fee_percent, fee_fixed). Both default to 0.0 if not configured.
+    """
+    b = get_branding()
+    fees = b.get("fees", {})
+    if order_type == "sell_crypto":
+        percent = float(fees.get("maker_percent", 0.0))
+    else:
+        percent = float(fees.get("taker_percent", 0.0))
+    fixed = float(fees.get("fixed_fee", 0.0))
+    return percent, fixed
+
+
 async def create_order(
     session: AsyncSession,
     crypto_pay: CryptoPayClient,
@@ -48,8 +68,8 @@ async def create_order(
     fiat_currency: str,
     fiat_amount: float,
     payment_method: str = "Any",
-    fee_percent: float = 0.0,
-    fee_fixed: float = 0.0,
+    fee_percent: float | None = None,
+    fee_fixed: float | None = None,
 ) -> dict[str, Any]:
     """Create a new P2P ad (order) and a corresponding Crypto Pay invoice.
 
@@ -88,6 +108,12 @@ async def create_order(
     except ValueError as err:
         allowed = [t.value for t in OrderType]
         raise ValueError(f"Invalid order_type {order_type!r}. Allowed: {allowed}") from err
+
+    # Use branding fees if not explicitly passed
+    if fee_percent is None or fee_fixed is None:
+        brand_percent, brand_fixed = _get_platform_fees(order_type)
+        fee_percent = fee_percent if fee_percent is not None else brand_percent
+        fee_fixed = fee_fixed if fee_fixed is not None else brand_fixed
 
     total_fee = (amount * fee_percent / 100) + fee_fixed
     spend_id = str(uuid.uuid4())

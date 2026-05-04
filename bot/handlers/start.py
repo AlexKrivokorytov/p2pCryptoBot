@@ -9,6 +9,7 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import get_branding
 from bot.keyboards import main_menu_keyboard
 from db.models.user import User
 
@@ -40,9 +41,13 @@ async def cmd_start(message: Message, session: AsyncSession) -> None:
         step="cmd_start",
         status="ok",
     )
+    b = get_branding()
+    bot_name = b["bot"]["name"]
+    welcome = b["bot"]["welcome_message"].format(
+        bot_name=bot_name, first_name=tg_user.first_name or "trader"
+    )
     await message.answer(
-        f"👋 Welcome to <b>P2P Exchange</b>, {tg_user.first_name or 'trader'}!\n\n"
-        "Trade crypto peer-to-peer with escrow protection.",
+        welcome,
         reply_markup=main_menu_keyboard(),
         parse_mode="HTML",
     )
@@ -62,14 +67,10 @@ async def cb_main_menu(callback: CallbackQuery) -> None:
 @router.callback_query(lambda c: c.data == "help")
 async def cb_help(callback: CallbackQuery) -> None:
     """Show help text."""
+    b = get_branding()
+    help_text = b["bot"]["help_text"].format(support_handle=b["bot"]["support_handle"])
     await callback.message.answer(  # type: ignore[union-attr]
-        "ℹ️ <b>How P2P works:</b>\n\n"
-        "1️⃣ Create an order — choose asset, amount, and fiat currency.\n"
-        "2️⃣ Pay the invoice via Crypto Pay — funds locked in escrow.\n"
-        "3️⃣ Transfer fiat to the seller outside the bot.\n"
-        "4️⃣ Seller confirms receipt → crypto released to you.\n"
-        "5️⃣ Dispute? Open a case and a moderator will review.\n\n"
-        "Questions? Contact @support",
+        help_text,
         parse_mode="HTML",
     )
     await callback.answer()

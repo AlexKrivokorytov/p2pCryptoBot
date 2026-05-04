@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import os
+import sys
+from unittest.mock import MagicMock
 
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from db.models.base import Base
+
+# ── Mock google.generativeai to avoid metaclass issues on import ────────────────
+sys.modules["google.generativeai"] = MagicMock()
 
 # ── Set test env vars before any imports touch os.environ ─────────────────────
 os.environ.setdefault(

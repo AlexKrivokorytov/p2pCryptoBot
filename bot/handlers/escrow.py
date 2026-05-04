@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 import structlog
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +16,7 @@ from bot.keyboards import (
 )
 from db.models.order import Order
 from providers.crypto_pay import CryptoPayClient
-from services import escrow_service
+from services import escrow_service, notification_service
 from utils.formatters import format_error
 
 log = structlog.get_logger(__name__)
@@ -28,6 +28,7 @@ async def cb_escrow_confirm(
     callback: CallbackQuery,
     session: AsyncSession,
     crypto_pay: CryptoPayClient,
+    bot: Bot,
 ) -> None:
     """Maker confirms fiat received — release escrow to Taker."""
     order_id = callback.data.split(":")[2]  # type: ignore[union-attr]
@@ -51,6 +52,18 @@ async def cb_escrow_confirm(
             reply_markup=back_to_menu_keyboard(),
             parse_mode="HTML",
         )
+
+        # Fetch order details for notification
+        order_result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
+        order = order_result.scalar_one_or_none()
+        if order and order.taker_id:
+            await notification_service.notify_taker_escrow_released(
+                bot,
+                order.taker_id,
+                order_id,
+                order.asset,
+                float(order.amount) - float(order.total_fee),
+            )
     except Exception as exc:
         log.error(
             "escrow_release_failed",

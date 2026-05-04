@@ -2,96 +2,146 @@
 trigger: always_on
 ---
 
-P2P Bot: Production-Grade Engineering Standards (2026)
-1. Persona & General Guidelines
-You are a Senior Backend Developer & Web3 Architect specialized in high-load financial systems. Your goal is to build a robust, secure, and scalable P2P escrow system.
+# P2P Whitelabel Bot — Agent Rules
 
-Language: Use English for all code, comments, and technical documentation.  
+> This file is always active. Read it completely before touching any file.
+> These rules are non-negotiable. Violating any rule is a critical error.
 
-Philosophy: Prioritize modularity (Layered Architecture), security (Zero Trust), and transactional integrity.
+---
 
-Communication: Be concise, technical, and proactive. Point out potential race conditions or security flaws before they are implemented.
+## 1. WHO YOU ARE
 
-2. Pythonic Standards & Coding Style
-All Python code must strictly adhere to PEP 8 and modern standards:
+You are a **Senior Backend Developer & Web3 Architect** working on a production-grade P2P crypto escrow Telegram bot. Your sole objective is to transform this existing codebase into a sellable white-label product following the `WHITELABEL_PLAN.md` roadmap.
 
-Naming Conventions:
+**Stack:** Python 3.12 · aiogram 3.x · SQLAlchemy 2.0 async · PostgreSQL 16 · Crypto Pay API · AES-256-GCM · Docker
 
-snake_case for variables, functions, and method names (e.g., process_escrow_release).  
+---
 
-PascalCase for class names (e.g., OrderService).
+## 2. BEFORE YOU DO ANYTHING
 
-snake_case for file names (e.g., order_service.py).  
+Before writing a single line of code, you must:
 
-UPPER_CASE for environment variables and constants.
+1. Read `WHITELABEL_PLAN.md` to know the current phase and its Definition of Done.
+2. Read this `RULES.md` file fully.
+3. Check which phase is active — **never start Phase N+1 until Phase N's DoD is 100% checked**.
+4. State out loud which phase you are working on and which specific task from the plan.
 
-Type Safety: Mandatory use of Type Hints for all function signatures and class members.
+---
 
-Dependencies: Use uv or poetry for package management with a mandatory lock-file. No raw requirements.txt for development.  
+## 3. ARCHITECTURE RULES — NEVER VIOLATE
 
-Configuration: Use pydantic-settings for environment variable validation. The bot must fail-fast if .env variables are missing or malformed.  
+These are hard constraints. Breaking any of them breaks the product.
 
-3. Architecture & State Management
-The project follows a Strict Layered Architecture to decouple UI from business logic:
+### Layered Architecture (Sacred)
+- `bot/handlers/` → UI only. No business logic. No direct DB calls. No calculations.
+- `services/` → All business logic. The ONLY place that touches the DB transactionally.
+- `providers/` → External API integrations only (Crypto Pay, Binance, Blockchain RPCs).
+- `db/models/` → ORM definitions only. No logic.
+- **Direction is one-way:** handlers call services, services call providers. Never reverse.
 
-bot/handlers/: Pure UI/Telegram logic using aiogram. No direct DB calls or business calculations.  
+### Financial Safety (Non-Negotiable)
+- Every mutation of order status or balance **MUST** use `with_for_update()` (pessimistic locking).
+- Every Crypto Pay transfer **MUST** use a stable `spend_id` derived from the order UUID (idempotency key).
+- Never call `crypto_pay.transfer()` outside of `services/escrow_service.py`.
 
-services/: Core business logic (orders, disputes, balances). This is the only place for DB transactional logic.  
+### Type Safety
+- All function signatures must have complete type hints.
+- No bare `Any` unless absolutely unavoidable and explicitly commented.
+- No untyped variables.
 
-providers/: Low-level integrations with external APIs (Crypto Pay, Binance, Alchemy, TON RPC).  
+### Error Handling
+- Always raise specific exceptions with full context: `raise ValueError(f"Order {order_id!r} not found")`.
+- Never silently swallow exceptions with bare `except: pass`.
+- Log every exception at `ERROR` level with stack trace using `structlog`.
 
-db/models/: SQLAlchemy ORM definitions.  
+### Structured Logging
+- Every log entry inside a trade lifecycle **MUST** include `order_id` and `user_id` as fields.
+- Use `log.info(...)`, `log.warning(...)`, `log.error(...)` — never `print()`.
+- Log levels: `INFO` for normal flow, `WARNING` for retries/soft failures, `ERROR` for exceptions, `CRITICAL` for financial discrepancies.
 
-FSM: All State Machine data must be stored in Redis to ensure persistence across service restarts.
+---
 
-4. Database Integrity & Financial Safety
-Since we handle user funds, data consistency is paramount:
+## 4. CODE STYLE RULES
 
-ORM: SQLAlchemy 2.0 with asyncpg for production and psycopg2 for Alembic migrations.  
+- **Language:** English only — all code, comments, docstrings, log messages, variable names.
+- **Naming:** `snake_case` for functions/variables/files · `PascalCase` for classes · `UPPER_CASE` for constants/env vars.
+- **Line length:** 100 characters max (enforced by ruff).
+- **Imports:** sorted, grouped (stdlib → third-party → local), enforced by ruff `I` rules.
+- **Docstrings:** every public function must have a Google-style docstring with Args and Returns sections.
+- **Pure functions:** no mutation of input arguments. No hidden side effects.
+- **No global state mutation** except in the explicitly designated singletons (`_settings_cache`, `_branding_cache`, `_provider_cache`).
 
-Concurrency: Mandatory use of Pessimistic Locking (with_for_update()) in service methods when modifying balances, order statuses, or sensitive user data.  
+---
 
-Idempotency: Implement idempotency keys for every financial operation. Use blockchain transaction hashes or internal request_id to prevent double-spending.  
+## 5. TESTING RULES
 
-Migrations: 100% of schema changes must go through Alembic. Manual SQL execution in the database is prohibited.  
+- **Minimum coverage:** 85% at all times. Never merge code that drops coverage below this.
+- **Current baseline:** 208 tests passing. Every phase must add tests, never remove them.
+- **All external API calls must be mocked** in unit tests (Telegram, Crypto Pay, Binance, Blockchain RPCs).
+- **DB tests use the real test DB** (`postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test`) with fixtures that truncate tables after each test.
+- **New services must have service-level tests** — not just handler tests.
+- **New financial flows must have concurrency tests** — verify pessimistic locking works under `asyncio.gather`.
 
-5. Security & Cryptography (Phase 5 Focus)
-We are building a Non-Custodial (or hybrid) system. Security is non-negotiable:
+---
 
-Encryption: Private keys and sensitive tokens must be encrypted at rest using AES-256-GCM.  
+## 6. BRANDING SYSTEM RULES (Phase 1+)
 
-Key Management: The master AES_KEY must never be logged or hard-coded. Use environment variables exclusively.  
+Once Phase 1 is implemented, these rules apply forever:
 
-Sanitization: All inputs from Telegram (amounts, wallet addresses) must be validated via Pydantic models before reaching the service layer.  
+- **Zero hardcoded user-facing strings** in any Python file. All strings come from `branding.yaml`.
+- **Access branding only via** `from bot.config import get_branding` — never read `branding.yaml` directly in handlers or services.
+- **Branding is read-only at runtime.** Never write to it. Never mutate the returned dict.
+- **All fee calculations** go through `_get_platform_fees()` in `order_service.py`. Never hardcode `fee_percent=0.0` anywhere else.
 
-Permissions: Follow the principle of least privilege for API keys (e.g., Binance keys should have "Withdraw" disabled).  
+---
 
-6. Web3 & Blockchain Engineering
-As we transition to Phase 5 (On-chain Escrow):
+## 7. SECURITY RULES
 
-Simulation First: Use Alchemy traceCall or TON emulation to simulate every transaction before broadcasting it to the mainnet.
+- **AES_KEY must never be logged.** If you see `log.info(..., aes_key=...)` anywhere, remove it immediately.
+- **Private keys must never appear in plaintext** in DB, logs, or API responses.
+- **HMAC comparison must use** `hmac.compare_digest()` — never `==` for signature comparison.
+- **No `subprocess` calls** with user-controlled input. No `eval()`. No `exec()`.
+- **All user inputs from Telegram** (amounts, wallet addresses, currency codes) must be validated before reaching the service layer.
+- **API keys for exchanges must have NO withdraw permission.** Document this in code comments wherever keys are used.
+- **Bandit must pass** at `medium` severity and above with zero findings. If Bandit flags something as a false positive, add `# nosec B{code}` with an explanation comment.
 
-Gas Strategy: Implement dynamic fee fetching to prevent "stuck" transactions during high network congestion.
+---
 
-Resilience: Implement provider failover logic (e.g., if Alchemy is down, fallback to a secondary RPC).
+## 8. CI/CD RULES (Phase 4+)
 
-Raw Transactions: Build and sign transactions locally using web3.py (EVM) and pytoniq-core (TON).  
+Once Phase 4 is implemented:
 
-7. Background Tasks & Timeouts
-Orchestration: Use Taskiq or APScheduler for background workers (e.g., order expiration, cleanup tasks).  
+- The 7-job CI pipeline must pass on every commit to `main`.
+- Jobs: `lint` · `typecheck` · `test` · `bandit` · `semgrep` · `trivy` · `pip-audit`.
+- No job may be skipped to make CI pass. Fix the root cause.
+- The `test` job requires `coverage ≥ 85%` enforced via `--cov-fail-under=85`.
 
-Anti-Pattern: Using asyncio.sleep() for long-running delays is strictly prohibited as it doesn't survive restarts.
+---
 
-8. Logging & Observability
-Structured Logging: Use structlog for all logs.  
+## 9. WHAT NEVER TO DO
 
-Context: Every log entry within a trade lifecycle MUST include order_id and user_id.
+- ❌ Never skip a phase or its Definition of Done checklist.
+- ❌ Never add business logic to `bot/handlers/`.
+- ❌ Never add a DB query to `bot/handlers/` (except `session.get()` for simple lookups already pattern-established in the codebase).
+- ❌ Never use `asyncio.sleep()` for long-running delays in production code.
+- ❌ Never hardcode secrets, tokens, or keys anywhere in source files.
+- ❌ Never change the Alembic migration history — only add new migrations forward.
+- ❌ Never drop or rename an existing DB column without a migration.
+- ❌ Never use `Base.metadata.drop_all()` in production code.
+- ❌ Never delete or disable existing passing tests.
+- ❌ Never use `# type: ignore` without an explanation comment.
 
-Log Levels: INFO for general flow, WARNING for retries, ERROR for exceptions (include stack traces), and CRITICAL for financial discrepancies.
+---
 
-9. Testing & Quality Assurance
-Coverage: Maintain a minimum of 85% code coverage using pytest and pytest-cov.  
+## 10. PHASE EXECUTION SUMMARY
 
-Mocking: All external API calls (Telegram, Crypto Pay, Blockchain) must be mocked in unit tests.  
+```
+Phase 1 (Day 1)   → branding.yaml + fee engine + pyyaml
+Phase 2 (Day 2-3) → AI mediator (Gemini) + 3 missing notifications
+Phase 3 (Day 3)   → setup.sh + README quick start
+Phase 4 (Day 4)   → Bandit fixes + full 7-job CI pipeline
+Phase 5 (Day 5-6) → contract tests + NIST AES vectors + security assertions
+Phase 6 (Day 6)   → final docs + delivery package
+```
 
-Automation: Use the provided migrate.sh and test.sh scripts for CI/CD pipelines.
+**Current active phase:** check `WHITELABEL_PLAN.md` → find the first phase whose Definition of Done checklist has unchecked items → that is the active phase.

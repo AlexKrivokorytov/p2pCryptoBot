@@ -3,6 +3,8 @@
 *.env
 .env.local
 .env.*.local
+branding.yaml
+!branding.yaml.example
 .env.example # Skip if you want to keep example as a template, but usually .env.example is tracked.
              # Actually, keep .env.example tracked. So I'll remove it from ignore.
 
@@ -61,3 +63,5 @@ pytest_errors.txt
 test_results/
 scratch/
 temp/
+.agents/
+WHITELABEL_PLAN.md
