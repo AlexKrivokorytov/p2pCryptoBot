@@ -54,6 +54,7 @@ dev = [
     "sqlalchemy[mypy]>=2.0",
     "types-aiofiles",
     "types-psycopg2",
+    "types-PyYAML",
     "aiohttp>=3.9",
 ]
 
