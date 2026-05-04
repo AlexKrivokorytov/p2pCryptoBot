@@ -4,23 +4,20 @@ from __future__ import annotations
 
 import os
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
 
 from db.models.base import Base
-
-from unittest.mock import MagicMock, patch
 
 # ---------------- Mock google.generativeai to avoid metaclass issues on import ----------------
 sys.modules["google.generativeai"] = MagicMock()
 
-# Mock branding to avoid file reads during tests
-# We use autouse fixture instead of direct sys.modules manipulation to ensure it works across all tests
+# Mock branding to avoid file reads during tests.
+# We use an autouse fixture to ensure it works across all tests.
 @pytest.fixture(autouse=True, scope="session")
 def mock_branding():
     with patch("bot.config.get_branding", return_value={}), \

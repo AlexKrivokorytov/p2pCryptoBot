@@ -1,9 +1,10 @@
 import os
 import sys
 import webbrowser
-import defusedxml.ElementTree as ET
 from datetime import datetime
 from typing import Any, TypedDict
+
+import defusedxml.ElementTree as ElementTree
 
 
 class FileStat(TypedDict):
@@ -24,15 +25,17 @@ class GroupStat(TypedDict):
     color: str
 
 
-def get_stats(xml_path: str = "coverage.xml") -> tuple[dict[str, GroupStat], ET.Element] | None:
+def get_stats(
+    xml_path: str = "coverage.xml",
+) -> tuple[dict[str, GroupStat], ElementTree.Element] | None:
     """Parse coverage.xml and group data by project modules."""
     if not os.path.exists(xml_path):
         return None
 
     try:
-        tree = ET.parse(xml_path)
+        tree = ElementTree.parse(xml_path)
         root = tree.getroot()
-    except (ET.ParseError, FileNotFoundError):
+    except (ElementTree.ParseError, FileNotFoundError):
         return None
 
     # Granular functional blocks
