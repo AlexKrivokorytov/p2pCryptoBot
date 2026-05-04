@@ -18,10 +18,10 @@ psycopg2-binary==2.9.10
 aiocryptopay==0.4.8
 
 # Exchange adapters
-ccxt==4.4.70
+ccxt==4.5.51
 
 # Structured logging
-structlog==25.3.0
+structlog==25.5.0
 
 # Encryption
 cryptography==47.0.0
@@ -42,7 +42,7 @@ aiohttp==3.13.4
 pyyaml==6.0.2
 
 # AI Mediator
-google-generativeai==0.7.2
+google-generativeai==0.8.6
 
 # Security & XML
 defusedxml==0.7.1

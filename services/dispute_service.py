@@ -166,8 +166,9 @@ async def ai_mediator_suggest(
 
     import google.generativeai as genai  # noqa: F401
 
-    genai.configure(api_key=gemini_key)
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    getattr(genai, "configure")(api_key=gemini_key)  # noqa: B009
+    model_class = getattr(genai, "GenerativeModel")  # noqa: B009
+    model = model_class("gemini-2.0-flash")
 
     history_text = ""
     if chat_history:
