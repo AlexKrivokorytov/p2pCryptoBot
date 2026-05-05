@@ -4,6 +4,7 @@ import webbrowser
 from datetime import datetime
 from typing import Any, TypedDict
 
+import xml.etree.ElementTree as ET
 import defusedxml.ElementTree as ElementTree
 
 
@@ -27,7 +28,7 @@ class GroupStat(TypedDict):
 
 def get_stats(
     xml_path: str = "coverage.xml",
-) -> tuple[dict[str, GroupStat], ElementTree.Element] | None:
+) -> tuple[dict[str, GroupStat], ET.Element] | None:
     """Parse coverage.xml and group data by project modules."""
     if not os.path.exists(xml_path):
         return None

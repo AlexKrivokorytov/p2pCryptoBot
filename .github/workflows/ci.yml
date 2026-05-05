@@ -157,6 +157,8 @@ jobs:
         run: pip install "safety>=3.0" "pip-audit>=2.7.0,<2.10.0"
 
       - name: Safety scan
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
         run: |
           safety scan \
             --file requirements.txt \

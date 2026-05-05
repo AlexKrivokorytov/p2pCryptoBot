@@ -15,7 +15,7 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get inst
 # Install Python deps into a prefix dir — cache-friendly layer
 # requirements.txt changes rarely; source code changes often
 COPY requirements.txt .
-RUN pip install --upgrade pip --quiet \
+RUN pip install --upgrade pip setuptools wheel --quiet \
     && pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -35,6 +35,9 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get inst
 
 # Copy installed packages from builder stage
 COPY --from=builder /install /usr/local
+
+# Upgrade core packages again in runtime to ensure no vulnerable defaults remain
+RUN pip install --upgrade pip setuptools wheel --quiet --no-cache-dir
 
 # Copy application source (always fresh — after deps for cache efficiency)
 COPY . .
