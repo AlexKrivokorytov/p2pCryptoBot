@@ -1,3 +1,4 @@
+-i https://pkgs.safetycli.com/repository/quasar/project/p2pbot/pypi/simple/
 # ─────────────────────────────────────────────────────────────────────────────
 # requirements.txt — pinned runtime dependencies for reproducible Docker builds
 # Generated from pyproject.toml; update with: pip-compile pyproject.toml

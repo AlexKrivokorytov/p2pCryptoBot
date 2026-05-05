@@ -65,3 +65,7 @@ scratch/
 temp/
 .agents/
 WHITELABEL_PLAN.md
+
+# ── Security & Reports ────────────────────────────────────────────────────────
+*_report.json
+*.sarif
