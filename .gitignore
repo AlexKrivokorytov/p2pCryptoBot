@@ -64,8 +64,12 @@ test_results/
 scratch/
 temp/
 .agents/
-WHITELABEL_PLAN.md
 
 # ── Security & Reports ────────────────────────────────────────────────────────
 *_report.json
 *.sarif
+bandit_report.json
+pip_audit_report.json
+safety_report.json
+trivy-results.sarif
+
