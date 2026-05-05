@@ -1,10 +1,10 @@
 import os
 import sys
 import webbrowser
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Any, TypedDict
 
-import xml.etree.ElementTree as ET
 import defusedxml.ElementTree as ElementTree
 
 
