@@ -57,9 +57,7 @@ def mock_branding(request):
 
 
 # ---------------- Set test env vars before any imports touch os.environ ----------------
-os.environ.setdefault(
-    "POSTGRES_URI", "postgresql+asyncpg://p2pbot:password@localhost:5433/p2pbot"
-)
+os.environ.setdefault("POSTGRES_URI", "postgresql+asyncpg://p2pbot:password@localhost:5433/p2pbot")
 os.environ["AES_KEY"] = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 os.environ.setdefault("CRYPTOPAY_TOKEN", "test")
 os.environ.setdefault("CRYPTOPAY_CALLBACK_SECRET", "testsecret")
