@@ -67,16 +67,24 @@ os.environ.setdefault("ADMIN_IDS", "123456")
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 def setup_database_schema():
-    """Create all tables once at the start of the test session using a sync engine."""
-    from sqlalchemy import create_engine
-    from sqlalchemy.pool import NullPool
+    try:
+        sync_uri = os.environ["POSTGRES_URI"].replace(
+            "postgresql+asyncpg://", "postgresql+psycopg://"
+        )
+        sync_engine = create_engine(sync_uri, poolclass=NullPool)
+        Base.metadata.create_all(sync_engine)
+        yield
+        try:
+            Base.metadata.drop_all(sync_engine)
+        except Exception:
+            pass  # Ignore drop errors during cleanup
+        sync_engine.dispose()
+    except Exception as e:
+        import structlog
 
-    sync_uri = os.environ["POSTGRES_URI"].replace("postgresql+asyncpg://", "postgresql+psycopg://")
-    sync_engine = create_engine(sync_uri, poolclass=NullPool)
-    Base.metadata.create_all(sync_engine)
-    yield
-    Base.metadata.drop_all(sync_engine)
-    sync_engine.dispose()
+        log = structlog.get_logger(__name__)
+        log.warning("test_db_connection_failed", error=str(e), hint="Check if DB is running")
+        yield  # Allow tests that don't need DB to continue
 
 
 @pytest_asyncio.fixture
