@@ -261,10 +261,10 @@ def _generate_ton_account() -> dict[str, str]:
     # Derive Ed25519 keypair
     public_key, private_key = mnemonic_to_private_key(mnemonic_words)
 
+    from pytoniq.contract.wallets.wallet import WALLET_V4_R2_CODE
     from pytoniq_core.boc.address import Address
     from pytoniq_core.tlb.account import StateInit
     from pytoniq_core.tlb.custom.wallet import WalletV4Data
-    from pytoniq.contract.wallets.wallet import WALLET_V4_R2_CODE
 
     # subwallet id for mainnet V4R2 is 698983191
     wallet_id = 698983191 + 0  # 0 is workchain
