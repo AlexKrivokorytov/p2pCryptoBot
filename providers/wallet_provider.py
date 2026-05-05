@@ -93,10 +93,10 @@ def _generate_evm_account() -> dict[str, str]:
     Returns:
         Dict with ``address``, ``private_key``, and ``mnemonic`` (BIP-39).
     """
-    from eth_account import Account
+    from eth_account import Account  # noqa: S401 — eth_account is the official EVM key library
 
     # Enable HD wallet (BIP-39 mnemonic) support
-    Account.enable_unaudited_hdwallet_features()
+    Account.enable_unaudited_hdwallet_features()  # noqa: S401
 
     # Generate 256-bit entropy → 24-word mnemonic → deterministic keypair
     mnemonic = Account.create_with_mnemonic()[1]

@@ -14,8 +14,8 @@ asyncpg==0.31.0
 alembic==1.15.2
 psycopg2-binary==2.9.10
 
-# Crypto Pay SDK
-aiocryptopay==0.4.8
+# Crypto Pay: no SDK — we use direct aiohttp calls (see providers/crypto_pay.py)
+# Removed aiocryptopay to eliminate certifi<2024 version constraint (CVE-2024-39689)
 
 # Exchange adapters
 ccxt==4.5.51
@@ -24,19 +24,19 @@ ccxt==4.5.51
 structlog==25.5.0
 
 # Encryption
-cryptography==47.0.0
+cryptography==48.0.0
 
 # Web3 wallet key generation + EVM JSON-RPC client
 # web3 includes eth-account as a dependency (compatible version resolved automatically)
 web3==7.12.0
 # pytoniq-core: TON mnemonic + key derivation (pure Python, no C deps)
-pytoniq-core==0.1.36
+pytoniq-core==0.1.46
 
 # Config / secrets
 python-dotenv==1.2.2
 
 # Webhook HTTP server
-aiohttp==3.13.4
+aiohttp==3.13.5
 
 # Branding / Configuration
 pyyaml==6.0.2
@@ -46,7 +46,8 @@ google-generativeai==0.8.6
 
 # Security & XML
 defusedxml==0.7.1
-# certifi: aiocryptopay 0.4.8 pins <2024.0.0. Latest compatible is 2023.11.17
-certifi==2023.11.17
-# protobuf: CVE-2024-51547 needs >=5.29.6
+# certifi: aiocryptopay removed — certifi now unrestricted. CVE-2024-39689 patched.
+certifi==2026.4.22
+# protobuf: 5.29.6 is max version compatible with google-generativeai (requires <6.0.0dev)
+# CVE-2024-51547 patched. Cannot use 7.x — google-api-core pins protobuf<7.0.0.
 protobuf==5.29.6

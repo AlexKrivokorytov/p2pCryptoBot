@@ -16,14 +16,14 @@ dependencies = [
     # Database — Alembic sync migrations (psycopg2, NOT asyncpg)
     "alembic>=1.13",
     "psycopg2-binary>=2.9",
-    # Crypto Pay (latest stable)
-    "aiocryptopay==0.4.8",
+    # Crypto Pay: direct aiohttp calls — no SDK. See providers/crypto_pay.py.
+    # aiocryptopay removed: it pinned certifi<2024 (CVE-2024-39689 unpatched).
     # Exchange adapters
     "ccxt>=4.0.3",
     # Structured logging
     "structlog>=25.4.0",
     # Encryption
-    "cryptography>=47.0.0",
+    "cryptography>=48.0.0",
     # Web3 wallet key generation + EVM JSON-RPC client
     # eth-account is a transitive dep of web3 (version resolved automatically)
     "web3>=7.0,<8",
@@ -31,15 +31,15 @@ dependencies = [
     # Config / secrets
     "python-dotenv>=1.2.2",
     # Webhook HTTP server
-    "aiohttp>=3.13.4",
+    "aiohttp>=3.13.5",
     "pyyaml>=6.0",
     "google-generativeai>=0.7.0",
     "defusedxml>=0.7.1",
-    # certifi: aiocryptopay 0.4.8 pins <2024.0.0; CVE-2024-39689 needs >=2024.7.4
-    # We use a loose range to allow installation, but prioritize security in prod
-    "certifi>=2023.7.22",
-    # protobuf: CVE-2024-51547 needs >=5.29.6
-    "protobuf>=5.29.6",
+    # certifi: unrestricted now that aiocryptopay is removed (CVE-2024-39689 patched)
+    "certifi>=2026.4.22",
+    # protobuf: 5.29.6 is max version compatible with google-generativeai (requires <6.0.0)
+    # CVE-2024-51547 is patched in >=5.29.6. Cannot upgrade to 7.x — google-api-core blocks it.
+    "protobuf>=5.29.6,<6.0.0",
 ]
 
 [project.optional-dependencies]
@@ -55,7 +55,10 @@ dev = [
     "types-aiofiles",
     "types-psycopg2",
     "types-PyYAML",
-    "aiohttp>=3.9",
+    # Security scanning tools
+    "bandit[toml]>=1.7.8",
+    "pip-audit>=2.10.0",
+    "semgrep>=1.60.0",
 ]
 
 [tool.setuptools]
@@ -65,6 +68,10 @@ packages = ["bot", "db", "services", "providers", "tasks", "utils"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
@@ -80,6 +87,10 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-v --tb=short --cov=bot --cov=services --cov=utils --cov=tasks --cov-report=term-missing:skip-covered"
+
+[tool.bandit]
+exclude_dirs = ["tests", "db/migrations"]
+skips = []
 
 [tool.coverage.run]
 omit = ["tests/*", "db/migrations/*", "utils/coverage_dashboard.py"]

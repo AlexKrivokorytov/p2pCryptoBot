@@ -1,37 +1,43 @@
-name: CI
+name: CI — Full Quality Gate
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PYTHON_VERSION: "3.12"
 
 jobs:
+
+  # ── Job 1: Lint & Format ────────────────────────────────────────────────────
   lint:
-    name: Lint & Type-check
+    name: Lint & Format (ruff) + Type Check (mypy)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dev dependencies
         run: pip install -e ".[dev]"
 
-      - name: Ruff check
+      - name: Ruff lint check
         run: ruff check .
 
-      - name: Mypy strict
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: mypy strict
         run: mypy --strict bot/ services/ providers/ utils/ tasks/ db/
 
+  # ── Job 2: Tests (coverage ≥ 85%) ──────────────────────────────────────────
   test:
-    name: Tests (coverage ≥ 80%)
+    name: Tests (coverage >= 85%)
     runs-on: ubuntu-latest
     needs: lint
 
@@ -42,8 +48,7 @@ jobs:
           POSTGRES_USER: p2pbot
           POSTGRES_PASSWORD: testpassword
           POSTGRES_DB: p2pbot_test
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -55,38 +60,210 @@ jobs:
       BOT_TOKEN: 0:test_token
       CRYPTOPAY_TOKEN: test_cryptopay_token
       CRYPTOPAY_CALLBACK_SECRET: test_secret
-      AES_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      AES_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
       ADMIN_IDS: "123456"
+      PYTHONIOENCODING: "utf-8"
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
+      - name: Copy branding config for tests
+        run: cp branding.yaml.example branding.yaml
+
       - name: Run Alembic migrations
         run: alembic upgrade head
 
-      - name: Run pytest with coverage
+      - name: Run full test suite
         run: |
-          pytest --cov=bot --cov=services --cov=providers --cov=utils --cov=tasks \
-                 --cov-report=term-missing \
-                 --cov-report=xml:coverage.xml \
-                 --cov-fail-under=80 \
-                 -v | tee pytest_output.txt
+          pytest \
+            --cov=bot --cov=services --cov=providers --cov=utils --cov=tasks \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            --cov-fail-under=85 \
+            -v | tee pytest_output.txt
 
-      - name: Generate Visual Dashboard Summary
+      - name: Coverage dashboard
         if: always()
-        run: |
-          python utils/coverage_dashboard.py --markdown >> $GITHUB_STEP_SUMMARY
+        run: python utils/coverage_dashboard.py --markdown >> $GITHUB_STEP_SUMMARY
 
-      - name: Annotate Failures
-        if: failure()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            htmlcov/
+            pytest_output.txt
+
+  # ── Job 3: SAST (Bandit + Semgrep) ─────────────────────────────────────────
+  security-sast:
+    name: SAST (Bandit + Semgrep)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Bandit
+        run: pip install "bandit[toml]>=1.7.8"
+
+      - name: Bandit scan (medium+ severity)
         run: |
-          echo "### ❌ Test Failures Detected" >> $GITHUB_STEP_SUMMARY
-          echo "Please check the 'Annotations' section at the top of the page for details." >> $GITHUB_STEP_SUMMARY
+          bandit -r bot/ services/ providers/ utils/ tasks/ \
+            --severity-level medium \
+            --confidence-level medium \
+            -f json -o bandit_report.json \
+            -x tests/ \
+            || (cat bandit_report.json && exit 1)
+
+      - name: Semgrep scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >
+            p/python
+            p/secrets
+            p/cryptography
+            p/sqlalchemy
+          generateSarif: true
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sast-reports
+          path: bandit_report.json
+
+  # ── Job 4: Dependency Audit (Safety + pip-audit) ────────────────────────────
+  security-deps:
+    name: Dependency Audit (Safety + pip-audit)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install audit tools
+        run: pip install "safety>=3.0" "pip-audit>=2.10.0"
+
+      - name: Safety scan
+        run: |
+          safety scan \
+            --file requirements.txt \
+            --output screen \
+            || exit 1
+
+      - name: pip-audit check
+        run: |
+          pip-audit \
+            --requirement requirements.txt \
+            --format json \
+            -o pip_audit_report.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-reports
+          path: |
+            safety_report.json
+            pip_audit_report.json
+
+  # ── Job 5: Container Scan (Trivy) ───────────────────────────────────────────
+  security-container:
+    name: Container Scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t p2pbot:${{ github.sha }} --target runtime .
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: p2pbot:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          ignore-unfixed: true
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+  # ── Job 6: CodeQL Analysis ───────────────────────────────────────────────────
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - uses: github/codeql-action/autobuild@v3
+
+      - uses: github/codeql-action/analyze@v3
+
+  # ── Job 7: Crypto Validation (NIST Vectors) ──────────────────────────────────
+  crypto-validation:
+    name: Crypto Validation (NIST Vectors)
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      AES_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: NIST + security assertion tests
+        run: |
+          pytest tests/test_nist_vectors.py \
+            tests/test_security_assertions.py \
+            -v --tb=short
+
+  # ── Quality Gate (fan-in) ────────────────────────────────────────────────────
+  quality-gate:
+    name: "✅ Quality Gate"
+    runs-on: ubuntu-latest
+    needs:
+      - test
+      - security-sast
+      - security-deps
+      - security-container
+      - codeql
+      - crypto-validation
+    steps:
+      - run: echo "All quality gates passed — ready to ship 🚀"

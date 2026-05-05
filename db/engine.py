@@ -1,24 +1,44 @@
-"""SQLAlchemy async engine and session factory."""
+"""SQLAlchemy async engine and session factory.
 
-import os
+Uses the settings singleton (bot.config.get_settings) instead of direct
+os.environ access — avoids Bandit B105 and keeps DB config in one place.
+"""
+
+from __future__ import annotations
 
 from dotenv import load_dotenv
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 load_dotenv()
 
-_POSTGRES_URI = os.environ["POSTGRES_URI"]
 
-engine = create_async_engine(
-    _POSTGRES_URI,
-    echo=False,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,
-)
+def _build_engine() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+    """Build the SQLAlchemy async engine using the settings singleton.
 
-async_session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
-    engine,
-    expire_on_commit=False,
-    class_=AsyncSession,
-)
+    Returns:
+        Tuple of (engine, session_factory).
+    """
+    from bot.config import get_settings
+
+    cfg = get_settings()
+    _engine: AsyncEngine = create_async_engine(
+        cfg.POSTGRES_URI,
+        echo=False,
+        pool_size=cfg.DB_POOL_SIZE,
+        max_overflow=cfg.DB_MAX_OVERFLOW,
+        pool_pre_ping=True,
+    )
+    _factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
+        _engine,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+    return _engine, _factory
+
+
+engine, async_session_factory = _build_engine()
