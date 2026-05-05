@@ -261,10 +261,17 @@ def _generate_ton_account() -> dict[str, str]:
     # Derive Ed25519 keypair
     public_key, private_key = mnemonic_to_private_key(mnemonic_words)
 
-    from pytoniq.contract.wallets import WalletV4R2
+    from pytoniq_core.boc.address import Address
+    from pytoniq_core.tlb.account import StateInit
+    from pytoniq_core.tlb.custom.wallet import WalletV4Data
+    from pytoniq.contract.wallets.wallet import WALLET_V4_R2_CODE
 
-    wallet = WalletV4R2.create(public_key=public_key)
-    address = wallet.address.to_str(is_user_friendly=True, is_bounceable=False)
+    # subwallet id for mainnet V4R2 is 698983191
+    wallet_id = 698983191 + 0  # 0 is workchain
+    data = WalletV4Data(public_key=public_key, wallet_id=wallet_id, seqno=0).serialize()
+    state_init = StateInit(code=WALLET_V4_R2_CODE, data=data).serialize()
+    address_obj = Address((0, state_init.hash))  # type: ignore[no-untyped-call]
+    address = address_obj.to_str(is_user_friendly=True, is_bounceable=False)  # type: ignore[no-untyped-call]
 
     return {
         "address": address,  # non-bounceable UQ… string

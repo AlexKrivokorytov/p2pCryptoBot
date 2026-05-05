@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 — builder: compile C-extensions (asyncpg, psycopg2-binary, cryptography)
 # ─────────────────────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS builder
+FROM python:3.12.3-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -21,7 +21,7 @@ RUN pip install --upgrade pip --quiet \
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2 — runtime: minimal image, no build tools
 # ─────────────────────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS runtime
+FROM python:3.12.3-slim-bookworm AS runtime
 
 WORKDIR /app
 
