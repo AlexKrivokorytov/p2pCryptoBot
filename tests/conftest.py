@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from contextlib import suppress
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -67,6 +68,9 @@ os.environ.setdefault("ADMIN_IDS", "123456")
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 def setup_database_schema():
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
+
     try:
         sync_uri = os.environ["POSTGRES_URI"].replace(
             "postgresql+asyncpg://", "postgresql+psycopg://"
@@ -74,10 +78,8 @@ def setup_database_schema():
         sync_engine = create_engine(sync_uri, poolclass=NullPool)
         Base.metadata.create_all(sync_engine)
         yield
-        try:
+        with suppress(Exception):
             Base.metadata.drop_all(sync_engine)
-        except Exception:
-            pass  # Ignore drop errors during cleanup
         sync_engine.dispose()
     except Exception as e:
         import structlog
