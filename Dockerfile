@@ -6,7 +6,7 @@ FROM python:3.12-slim AS builder
 WORKDIR /build
 
 # Build dependencies only (not in final image)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     gcc \
@@ -28,7 +28,7 @@ WORKDIR /app
 # Runtime system deps:
 #   libpq5          — psycopg2/asyncpg dynamic linking
 #   postgresql-client — psql binary used by migrate.sh health check
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get install -y --no-install-recommends \
     libpq5 \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
