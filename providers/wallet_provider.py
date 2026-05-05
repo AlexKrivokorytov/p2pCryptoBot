@@ -261,8 +261,7 @@ def _generate_ton_account() -> dict[str, str]:
     # Derive Ed25519 keypair
     public_key, private_key = mnemonic_to_private_key(mnemonic_words)
 
-    # Derive WalletV4R2 address on mainnet (workchain 0)
-    from pytoniq_core.contract.wallets import WalletV4R2
+    from pytoniq.contract.wallets import WalletV4R2
 
     wallet = WalletV4R2.create(public_key=public_key)
     address = wallet.address.to_str(is_user_friendly=True, is_bounceable=False)

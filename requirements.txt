@@ -29,8 +29,8 @@ cryptography==48.0.0
 # Web3 wallet key generation + EVM JSON-RPC client
 # web3 includes eth-account as a dependency (compatible version resolved automatically)
 web3==7.12.0
-# pytoniq-core: TON mnemonic + key derivation (pure Python, no C deps)
-pytoniq-core==0.1.46
+# pytoniq: TON mnemonic + key derivation (pure Python, no C deps)
+pytoniq==0.1.43
 
 # Config / secrets
 python-dotenv==1.2.2

@@ -27,7 +27,7 @@ dependencies = [
     # Web3 wallet key generation + EVM JSON-RPC client
     # eth-account is a transitive dep of web3 (version resolved automatically)
     "web3>=7.0,<8",
-    "pytoniq-core>=0.1.36,<0.2",
+    "pytoniq>=0.1.36,<0.2",
     # Config / secrets
     "python-dotenv>=1.2.2",
     # Webhook HTTP server
