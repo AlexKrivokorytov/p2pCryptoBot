@@ -56,7 +56,7 @@ dev = [
     "types-PyYAML",
     # Security scanning tools
     "bandit[toml]>=1.7.8",
-    "pip-audit>=2.10.0",
+    "pip-audit>=2.7.0,<2.10.0",
     "semgrep>=1.60.0",
 ]
 
