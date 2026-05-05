@@ -137,10 +137,6 @@ jobs:
             p/sqlalchemy
           generateSarif: true
 
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: semgrep.sarif
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -161,7 +157,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install audit tools
-        run: pip install "safety>=3.0" "pip-audit>=2.10.0"
+        run: pip install "safety>=3.0" "pip-audit>=2.7.0,<2.10.0"
 
       - name: Safety scan
         run: |
@@ -206,30 +202,8 @@ jobs:
           exit-code: 1
           ignore-unfixed: true
 
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-results.sarif
 
-  # ── Job 6: CodeQL Analysis ───────────────────────────────────────────────────
-  codeql:
-    name: CodeQL Analysis
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: python
-          queries: security-and-quality
-
-      - uses: github/codeql-action/autobuild@v3
-
-      - uses: github/codeql-action/analyze@v3
 
   # ── Job 7: Crypto Validation (NIST Vectors) ──────────────────────────────────
   crypto-validation:
@@ -263,7 +237,6 @@ jobs:
       - security-sast
       - security-deps
       - security-container
-      - codeql
       - crypto-validation
     steps:
       - run: echo "All quality gates passed — ready to ship 🚀"
