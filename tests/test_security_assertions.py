@@ -57,9 +57,11 @@ class TestAESSecurityProperties:
             # Reset cache to force re-read
             token = enc_module.encrypt("secret-api-key")
 
-        with patch.dict(os.environ, {"AES_KEY": key_b}):
-            with pytest.raises((InvalidTag, Exception)):
-                enc_module.decrypt(token)
+        with (
+            patch.dict(os.environ, {"AES_KEY": key_b}),
+            pytest.raises((InvalidTag, Exception)),
+        ):
+            enc_module.decrypt(token)
 
     def test_plaintext_not_visible_in_encrypted_output(self) -> None:
         key = secrets.token_hex(32)

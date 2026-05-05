@@ -23,7 +23,9 @@ NIST_AES256_GCM_VECTORS = [
     {
         "name": "NIST-TC1-EmptyPlaintext",
         "description": "AES-256-GCM with empty plaintext — tests tag generation",
-        "key":        bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000"),
+        "key": bytes.fromhex(
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        ),
         "nonce":      bytes.fromhex("000000000000000000000000"),
         "plaintext":  bytes.fromhex(""),
         "aad":        bytes.fromhex(""),
@@ -33,7 +35,9 @@ NIST_AES256_GCM_VECTORS = [
     {
         "name": "NIST-TC2-16BytePlaintext",
         "description": "AES-256-GCM with 16-byte plaintext",
-        "key":        bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000"),
+        "key": bytes.fromhex(
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        ),
         "nonce":      bytes.fromhex("000000000000000000000000"),
         "plaintext":  bytes.fromhex("00000000000000000000000000000000"),
         "aad":        bytes.fromhex(""),
@@ -43,7 +47,9 @@ NIST_AES256_GCM_VECTORS = [
     {
         "name": "NIST-TC3-64BytePlaintext-NonZeroKey",
         "description": "AES-256-GCM with 64-byte plaintext and non-zero key/nonce",
-        "key":        bytes.fromhex("feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308"),
+        "key":        bytes.fromhex(
+            "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308"
+        ),
         "nonce":      bytes.fromhex("cafebabefacedbaddecaf888"),
         "plaintext":  bytes.fromhex(
             "d9313225f88406e5a55909c5aff5269a"
@@ -73,7 +79,7 @@ RFC4231_HMAC_VECTORS = [
         "name": "RFC4231-TC2",
         "key":      b"Jefe",
         "data":     b"what do ya want for nothing?",
-        "expected": "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964a86d3",
+        "expected": "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843",
     },
     {
         "name": "RFC4231-TC3",
