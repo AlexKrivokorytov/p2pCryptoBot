@@ -13,9 +13,9 @@ dependencies = [
     # Database — async runtime
     "sqlalchemy[asyncio]>=2.0",
     "asyncpg>=0.29",
-    # Database — Alembic sync migrations (psycopg2, NOT asyncpg)
+    # Database — Alembic sync migrations (psycopg 3, NOT asyncpg)
     "alembic>=1.13",
-    "psycopg2-binary>=2.9",
+    "psycopg[binary]>=3.1",
     # Crypto Pay: direct aiohttp calls — no SDK. See providers/crypto_pay.py.
     # aiocryptopay removed: it pinned certifi<2024 (CVE-2024-39689 unpatched).
     # Exchange adapters
@@ -53,7 +53,6 @@ dev = [
     "ruff>=0.4",
     "sqlalchemy[mypy]>=2.0",
     "types-aiofiles",
-    "types-psycopg2",
     "types-PyYAML",
     # Security scanning tools
     "bandit[toml]>=1.7.8",

@@ -67,7 +67,7 @@ async def test_chat_service_save_and_fetch(engine) -> None:
 async def test_get_other_participant_id(engine) -> None:
     """Test resolving the other participant's ID."""
     factory = async_sessionmaker(engine, expire_on_commit=False)
-    order_id = "5a1fc458-0000-0000-0000-000000000000"
+    order_id = "5a1fc458-0000-0000-0000-000000000001"
 
     async with factory() as session:
         await _create_test_order(session, order_id, maker_id=111, taker_id=222)
@@ -97,7 +97,7 @@ async def test_cb_chat_enter() -> None:
 async def test_msg_chat_forward(engine) -> None:
     """Test forwarding a message in chat."""
     factory = async_sessionmaker(engine, expire_on_commit=False)
-    order_id = "5a1fc458-0000-0000-0000-000000000000"
+    order_id = "5a1fc458-0000-0000-0000-000000000002"
 
     async with factory() as session:
         await _create_test_order(session, order_id, maker_id=111, taker_id=222)

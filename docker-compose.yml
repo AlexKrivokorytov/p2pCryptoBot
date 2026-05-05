@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: p2pbot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
       POSTGRES_DB: p2pbot
+    ports:
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,9 +23,9 @@ services:
       target: runtime
     env_file: .env
     environment:
-      # psycopg2 URL for Alembic sync migrations (avoids asyncpg enum bug)
+      # psycopg URL for Alembic sync migrations (avoids asyncpg enum bug)
       POSTGRES_URI: postgresql+asyncpg://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
-      ALEMBIC_DB_URL: postgresql+psycopg2://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
+      ALEMBIC_DB_URL: postgresql+psycopg://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,7 +40,7 @@ services:
     env_file: .env
     environment:
       POSTGRES_URI: postgresql+asyncpg://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
-      ALEMBIC_DB_URL: postgresql+psycopg2://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
+      ALEMBIC_DB_URL: postgresql+psycopg://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
     depends_on:
       postgres:
         condition: service_healthy

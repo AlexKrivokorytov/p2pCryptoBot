@@ -7,7 +7,7 @@ import contextlib
 import os
 import uuid
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -50,8 +50,9 @@ async def _create_expired_order(
 async def test_start_cleanup_task_cancels_cleanly(engine) -> None:
     """start_cleanup_task stops gracefully on CancelledError."""
     factory = async_sessionmaker(engine, expire_on_commit=False)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
 
-    task = asyncio.create_task(cleanup.start_cleanup_task(factory))
+    task = asyncio.create_task(cleanup.start_cleanup_task(factory, bot=AsyncMock()))
     await asyncio.sleep(0.05)
     task.cancel()
 
@@ -76,7 +77,7 @@ async def test_start_cleanup_task_handles_exception(engine) -> None:
         patch.object(cleanup, "expire_pending_orders", side_effect=failing_expire),
         patch.object(cleanup, "CLEANUP_INTERVAL_SEC", 0),
     ):
-        task = asyncio.create_task(cleanup.start_cleanup_task(factory))
+        task = asyncio.create_task(cleanup.start_cleanup_task(factory, bot=AsyncMock()))
         await asyncio.sleep(0.1)
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
@@ -110,7 +111,7 @@ async def test_start_cleanup_task_logs_when_orders_cancelled(engine) -> None:
         patch.object(cleanup, "expire_pending_orders", side_effect=tracking_expire),
         patch.object(cleanup, "CLEANUP_INTERVAL_SEC", 0),
     ):
-        task = asyncio.create_task(cleanup.start_cleanup_task(factory))
+        task = asyncio.create_task(cleanup.start_cleanup_task(factory, bot=AsyncMock()))
         await asyncio.sleep(0.2)
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):

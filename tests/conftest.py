@@ -16,13 +16,45 @@ from db.models.base import Base
 # ---------------- Mock google.generativeai to avoid metaclass issues on import ----------------
 sys.modules["google.generativeai"] = MagicMock()
 
+
 # Mock branding to avoid file reads during tests.
 # We use an autouse fixture to ensure it works across all tests.
-@pytest.fixture(autouse=True, scope="session")
-def mock_branding():
-    with patch("bot.config.get_branding", return_value={}), \
-         patch("bot.config.load_branding", return_value={}):
+@pytest.fixture(autouse=True)
+def mock_branding(request):
+    if "test_branding.py" in str(request.node.fspath):
         yield
+        return
+    mock_dict = {
+        "bot": {
+            "name": "TestP2PBot",
+            "welcome_message": "Welcome to {bot_name}, {first_name}!",
+            "support_handle": "@support",
+            "help_text": "How P2P works:\n\n1. Step 1\n2. Step 2",
+        },
+        "ui": {
+            "create_ad_emoji": "📝",
+            "market_emoji": "🛒",
+            "trades_emoji": "📋",
+            "profile_emoji": "👤",
+            "wallet_emoji": "💼",
+            "dispute_emoji": "⚖️",
+            "escrow_emoji": "🔒",
+        },
+        "fees": {"maker_percent": 0.0, "taker_percent": 0.0, "fixed_fee": 0.0},
+        "assets_enabled": ["USDT", "TON", "BTC"],
+        "payment_methods": ["Sberbank", "Tinkoff"],
+        "limits": {
+            "order_min_amount_usdt": 1.0,
+            "order_max_amount_usdt": 50000.0,
+            "order_timeout_sec": 1800,
+        },
+    }
+    with (
+        patch("bot.config.get_branding", return_value=mock_dict),
+        patch("bot.config.load_branding", return_value=mock_dict),
+    ):
+        yield
+
 
 # ---------------- Set test env vars before any imports touch os.environ ----------------
 os.environ.setdefault(
@@ -39,9 +71,10 @@ os.environ.setdefault("ADMIN_IDS", "123456")
 def setup_database_schema():
     """Create all tables once at the start of the test session using a sync engine."""
     from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
 
-    sync_uri = os.environ["POSTGRES_URI"].replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-    sync_engine = create_engine(sync_uri)
+    sync_uri = os.environ["POSTGRES_URI"].replace("postgresql+asyncpg://", "postgresql+psycopg://")
+    sync_engine = create_engine(sync_uri, poolclass=NullPool)
     Base.metadata.create_all(sync_engine)
     yield
     Base.metadata.drop_all(sync_engine)

@@ -45,7 +45,7 @@ class Settings:
 
     # ── Database ──────────────────────────────────────────────────────────────
     POSTGRES_URI: str  # asyncpg URI for the bot runtime
-    ALEMBIC_DB_URL: str  # psycopg2 URI for Alembic migrations
+    ALEMBIC_DB_URL: str  # psycopg URI for Alembic migrations
 
     # ── Crypto Pay ────────────────────────────────────────────────────────────
     CRYPTOPAY_TOKEN: str
@@ -92,7 +92,7 @@ def load_settings() -> Settings:
         POSTGRES_URI=_require("POSTGRES_URI"),
         ALEMBIC_DB_URL=_optional(
             "ALEMBIC_DB_URL",
-            _require("POSTGRES_URI").replace("+asyncpg", "+psycopg2"),
+            _require("POSTGRES_URI").replace("+asyncpg", "+psycopg"),
         ),
         CRYPTOPAY_TOKEN=_require("CRYPTOPAY_TOKEN"),
         CRYPTOPAY_CALLBACK_SECRET=_require("CRYPTOPAY_CALLBACK_SECRET"),

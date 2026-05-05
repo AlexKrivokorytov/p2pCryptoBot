@@ -52,12 +52,14 @@ async def test_cb_escrow_confirm_success(mock_release: AsyncMock, session: Async
 
     callback = AsyncMock()
     callback.from_user.id = 123
-    callback.data = "escrow:confirm:5a1fc458"
+    callback.data = "escrow:confirm:5a1fc458-0000-0000-0000-000000000000"
     crypto_pay = AsyncMock()
 
-    await escrow_handlers.cb_escrow_confirm(callback, session, crypto_pay)
+    await escrow_handlers.cb_escrow_confirm(callback, session, crypto_pay, bot=AsyncMock())
 
-    mock_release.assert_called_once_with(session, crypto_pay, order_id="5a1fc458", force=False)
+    mock_release.assert_called_once_with(
+        session, crypto_pay, order_id="5a1fc458-0000-0000-0000-000000000000", force=False
+    )
     callback.message.edit_text.assert_called_once()
     assert "Escrow released" in callback.message.edit_text.call_args[0][0]
     callback.answer.assert_called_once()
@@ -71,10 +73,10 @@ async def test_cb_escrow_confirm_error(mock_release: AsyncMock, session: AsyncSe
 
     callback = AsyncMock()
     callback.from_user.id = 123
-    callback.data = "escrow:confirm:5a1fc458"
+    callback.data = "escrow:confirm:5a1fc458-0000-0000-0000-000000000000"
     crypto_pay = AsyncMock()
 
-    await escrow_handlers.cb_escrow_confirm(callback, session, crypto_pay)
+    await escrow_handlers.cb_escrow_confirm(callback, session, crypto_pay, bot=AsyncMock())
 
     callback.message.edit_text.assert_called_once()
     assert "Order not found" in callback.message.edit_text.call_args[0][0]

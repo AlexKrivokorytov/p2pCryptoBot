@@ -41,8 +41,9 @@ async def test_cryptopay_client_transfer_success():
     """CryptoPayClient.transfer returns dict on success."""
     with patch.dict(os.environ, {"CRYPTOPAY_TOKEN": "tok", "CRYPTOPAY_CALLBACK_SECRET": "sec"}):
         client = CryptoPayClient()
-        with patch.object(client._api, "transfer", new_callable=AsyncMock) as mock_transfer:
-            mock_transfer.return_value = MagicMock(status="completed", transfer_id=123)
+        mock_result = {"transfer_id": 123, "status": "completed"}
+        with patch.object(client, "_request", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = mock_result
             res = await client.transfer(123, "USDT", 10.5, "spend_uuid")
             assert res["transfer_id"] == 123
             assert res["status"] == "completed"
@@ -53,24 +54,27 @@ async def test_cryptopay_client_get_exchange_rates():
     """CryptoPayClient.get_exchange_rates returns a list of rates."""
     with patch.dict(os.environ, {"CRYPTOPAY_TOKEN": "tok", "CRYPTOPAY_CALLBACK_SECRET": "sec"}):
         client = CryptoPayClient()
-        with patch.object(client._api, "get_exchange_rates", new_callable=AsyncMock) as mock_rates:
-            mock_rates.return_value = [
-                MagicMock(source="USDT", target="USD", rate=1.0),
-                MagicMock(source="TON", target="USD", rate=5.2),
-            ]
+        mock_result = [
+            {"source": "USDT", "target": "USD", "rate": "1.0"},
+            {"source": "TON", "target": "USD", "rate": "5.2"},
+        ]
+        with patch.object(client, "_request", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = mock_result
             rates = await client.get_exchange_rates()
             assert rates[0]["source"] == "USDT"
-            assert rates[1]["rate"] == 5.2
+            assert rates[1]["rate"] == "5.2"
 
 
 @pytest.mark.asyncio
 async def test_cryptopay_client_close():
-    """CryptoPayClient.close closes the inner api client."""
+    """CryptoPayClient.close closes the underlying aiohttp session."""
     with patch.dict(os.environ, {"CRYPTOPAY_TOKEN": "tok", "CRYPTOPAY_CALLBACK_SECRET": "sec"}):
         client = CryptoPayClient()
-        with patch.object(client._api, "close", new_callable=AsyncMock) as mock_close:
-            await client.close()
-            mock_close.assert_called_once()
+        mock_session = AsyncMock()
+        mock_session.closed = False
+        client._session = mock_session
+        await client.close()
+        mock_session.close.assert_called_once()
 
 
 @pytest.mark.asyncio

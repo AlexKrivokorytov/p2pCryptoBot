@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import timedelta
+from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import select
@@ -60,7 +61,7 @@ async def test_expire_pending_orders(engine) -> None:
         o1_id, o2_id, o3_id = o1.id, o2.id, o3.id
 
     # Run cleanup
-    count = await cleanup.expire_pending_orders(factory)
+    count = await cleanup.expire_pending_orders(factory, bot=AsyncMock())
     assert count == 1
 
     # Verify state

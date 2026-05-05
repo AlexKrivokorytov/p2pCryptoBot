@@ -43,33 +43,32 @@ graph TD
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (5 minutes)
 
-### 🐳 Via Docker (Recommended)
-The fastest way to deploy the entire environment (Bot + DB + Migrations):
+### Prerequisites
+- Docker + Docker Compose
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
+- A Crypto Pay token from [@CryptoBot](https://t.me/CryptoBot)
 
-1.  Copy the config: `cp .env.example .env`
-2.  Fill in `BOT_TOKEN` and `CRYPTOPAY_TOKEN`.
-3.  Run:
-    ```bash
-    docker-compose up -d --build
-    ```
-
-### 🐍 Local Development
-If you want to run the code directly:
+### Deploy
 
 ```bash
-# Setup environment
-python -m venv venv
-source venv/bin/activate # or venv\Scripts\activate on Windows
+git clone https://github.com/AlexKrivokorytov/p2pCryptoBot p2pbot
+cd p2pbot
+bash setup.sh          # guided wizard: collects tokens, generates secrets
+# Edit branding.yaml   # set your bot name, fees, and payment methods
+docker compose up -d --build
+```
 
-# Install dependencies in dev mode
+Done. Your bot is live. Check logs with `docker compose logs -f bot`.
+
+### Local Development
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-
-# DB Migrations
 alembic upgrade head
-
-# Run
 python -m bot.main
 ```
 
@@ -112,11 +111,14 @@ ruff check .    # Linting & formatting
 
 ## 🗺️ Roadmap
 
-- [x] **Phases 1-4**: Core P2P engine, chats, profiles, Crypto Pay integration.
-- [x] **Admin Panel**: Dispute management and statistics.
-- [ ] **AI Mediator**: Google Gemini integration for automated dispute analysis.
-- [ ] **Phase 5 (On-Chain)**: Transition to fully decentralized Escrow via smart contracts.
-- [ ] **Notifications**: Expanded webhook-based notification system.
+- [x] **P2P Engine**: Order lifecycle, escrow via Crypto Pay, pessimistic locking.
+- [x] **Chats & Profiles**: Anonymous Maker-Taker messaging, user profiles.
+- [x] **Admin Panel**: Dispute queue, platform statistics, moderator actions.
+- [x] **AI Mediator**: Gemini 2.0 Flash integration for automated dispute analysis.
+- [x] **Branding System**: Zero-Python customization via `branding.yaml`.
+- [x] **Notifications**: Full lifecycle notifications (taker found, fiat sent, escrow released, dispute, expiry).
+- [ ] **Contract Tests**: NIST AES-256-GCM vectors + Crypto Pay API contract tests (Phase 5).
+- [ ] **On-Chain Escrow**: Fully decentralized escrow via smart contracts (future).
 
 ---
 
