@@ -8,7 +8,6 @@ import pytest
 
 from bot.handlers.profile import _build_profile_text, cb_profile, cmd_profile
 
-
 # ── _build_profile_text ────────────────────────────────────────────────────────
 
 
@@ -159,7 +158,6 @@ async def test_cb_profile_no_from_user() -> None:
 @pytest.mark.asyncio
 async def test_cb_profile_message_not_message_type() -> None:
     """cb_profile should return early if message is not a Message instance."""
-    from aiogram.types import Message
 
     cb = MagicMock()
     cb.from_user = MagicMock()

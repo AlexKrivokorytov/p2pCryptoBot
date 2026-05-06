@@ -22,10 +22,11 @@ class TestGetSellerSecret:
 
     def test_generate_key_without_seller_secret_raises(self) -> None:
         """generate_license_key should raise RuntimeError if SELLER_SECRET is not set."""
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {}, clear=True), pytest.raises(
+            RuntimeError, match="SELLER_SECRET"
+        ):
             os.environ.pop("SELLER_SECRET", None)
-            with pytest.raises(RuntimeError, match="SELLER_SECRET"):
-                generate_license_key(BOT_TOKEN)
+            generate_license_key(BOT_TOKEN)
 
 
 class TestGenerateLicenseKey:
@@ -91,17 +92,15 @@ class TestCheckLicenseOrAbort:
     def test_raises_system_exit_if_license_key_missing(self) -> None:
         """If SELLER_SECRET is set but LICENSE_KEY is absent → SystemExit."""
         env = {"SELLER_SECRET": SELLER_SECRET, "LICENSE_KEY": ""}
-        with patch.dict(os.environ, env, clear=False):
+        with patch.dict(os.environ, env, clear=False), pytest.raises(SystemExit):
             os.environ.pop("LICENSE_KEY", None)
-            with pytest.raises(SystemExit):
-                check_license_or_abort(BOT_TOKEN)
+            check_license_or_abort(BOT_TOKEN)
 
     def test_raises_system_exit_if_license_key_invalid(self) -> None:
         """If LICENSE_KEY doesn't match BOT_TOKEN → SystemExit."""
         env = {"SELLER_SECRET": SELLER_SECRET, "LICENSE_KEY": "wrongkey" * 8}
-        with patch.dict(os.environ, env):
-            with pytest.raises(SystemExit):
-                check_license_or_abort(BOT_TOKEN)
+        with patch.dict(os.environ, env), pytest.raises(SystemExit):
+            check_license_or_abort(BOT_TOKEN)
 
     def test_passes_with_valid_license(self) -> None:
         """check_license_or_abort should not raise with a valid license."""

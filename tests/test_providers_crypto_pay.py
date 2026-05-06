@@ -1,8 +1,7 @@
 """Tests for providers/crypto_pay.py — _get_session and _request methods."""
 
-from __future__ import annotations
-
 import os
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -117,9 +116,10 @@ class TestRequest:
         mock_session = MagicMock()
         mock_session.get = MagicMock(return_value=mock_cm)
 
-        with patch.object(client, "_get_session", return_value=mock_session):
-            with pytest.raises(RuntimeError, match="INVALID_PARAM"):
-                await client._request("GET", "badEndpoint")
+        with patch.object(client, "_get_session", return_value=mock_session), pytest.raises(
+            RuntimeError, match="INVALID_PARAM"
+        ):
+            await client._request("GET", "badEndpoint")
 
     @pytest.mark.asyncio
     async def test_post_filters_none_params(self, client: CryptoPayClient) -> None:

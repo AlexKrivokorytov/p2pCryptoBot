@@ -5,13 +5,11 @@ from __future__ import annotations
 import json
 import pathlib
 import tempfile
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from bot.i18n import DatabaseManager, JsonDictCore, setup_i18n
-
 
 # ── JsonDictCore ───────────────────────────────────────────────────────────────
 

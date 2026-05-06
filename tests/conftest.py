@@ -21,10 +21,10 @@ sys.modules["google.generativeai"] = MagicMock()
 # ---------------- Mock aiogram_i18n if not installed (local dev without the package) ----------
 
 if importlib.util.find_spec("aiogram_i18n") is None:
-    from typing import Generic, TypeVar
+    from typing import Any, TypeVar
     T = TypeVar("T")
 
-    class MockBaseCore(Generic[T]):
+    class MockBaseCore[T]:
         def __init__(self, path: str, **kwargs: Any):
             self.path = path
         def get_locale(self, locale: str | None) -> str: return locale or "en"
@@ -42,7 +42,7 @@ if importlib.util.find_spec("aiogram_i18n") is None:
 
     _i18n_mock = MagicMock()
     _i18n_mock.I18nMiddleware = MockI18nMiddleware
-    
+
     sys.modules["aiogram_i18n"] = _i18n_mock
     sys.modules["aiogram_i18n.cores"] = MagicMock()
     sys.modules["aiogram_i18n.cores.base"] = MagicMock(BaseCore=MockBaseCore)

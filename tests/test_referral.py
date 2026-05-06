@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from decimal import Decimal
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession

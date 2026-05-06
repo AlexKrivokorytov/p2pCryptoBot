@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import math
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from aiogram.types import CallbackQuery, Message
 
 from bot.handlers.marketplace import (
     CreateAdFSM,
@@ -25,8 +25,7 @@ from bot.handlers.marketplace import (
     msg_ad_enter_limits,
     msg_ad_enter_price,
 )
-from db.models.marketplace import Ad, AdType, PriceType
-
+from db.models.marketplace import Ad, AdType
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -54,7 +53,7 @@ def _make_ad(
     return ad
 
 
-from aiogram.types import CallbackQuery, Message
+
 
 
 def _make_callback(data: str = "test", from_user_id: int = 42) -> MagicMock:
@@ -102,7 +101,7 @@ def test_build_ad_page_keyboard_single_page() -> None:
     """Single page: no prev/next buttons."""
     ads = [_make_ad()]
     kb = _build_ad_page_keyboard(ads, page=1, total_pages=1)
-    import json
+
 
     markup = kb.inline_keyboard
     # Should have at least 2 rows: ads + controls

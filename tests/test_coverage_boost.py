@@ -2,14 +2,25 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram.types import CallbackQuery, Message
 
-from bot.handlers.admin import cb_admin_disputes, cb_dispute_resolve, cb_dispute_view, cmd_admin, cmd_stats
-from bot.handlers.wallet import cb_generate_wallet, cb_wallet, cb_wallet_add, cb_wallet_balance, cmd_wallet
-# from bot.main import on_startup, on_shutdown
+from bot.handlers.admin import (
+    cb_admin_disputes,
+    cb_dispute_resolve,
+    cb_dispute_view,
+    cmd_admin,
+    cmd_stats,
+)
+from bot.handlers.wallet import (
+    cb_generate_wallet,
+    cb_wallet,
+    cb_wallet_add,
+    cb_wallet_balance,
+    cmd_wallet,
+)
 
 
 @pytest.mark.asyncio

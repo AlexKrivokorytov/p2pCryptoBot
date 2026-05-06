@@ -1,7 +1,6 @@
 """Tests for bot/main.py — coverage boost for the main entry point."""
 
-from __future__ import annotations
-
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -17,21 +16,21 @@ async def test_main_execution() -> None:
     mock_runner = MagicMock()
     mock_runner.setup = AsyncMock()
     mock_runner.cleanup = AsyncMock()
-    
+
     mock_site = MagicMock()
     mock_site.start = AsyncMock()
     mock_cp = MagicMock()
     mock_cp.close = AsyncMock()
-    
+
     with (
         patch("bot.main.Bot", return_value=mock_bot),
         patch("bot.main.Dispatcher", return_value=mock_dp),
         patch("bot.main.web.AppRunner", return_value=mock_runner),
         patch("bot.main.web.TCPSite", return_value=mock_site),
-        patch("bot.main.setup_i18n") as mock_i18n_setup,
-        patch("bot.main.check_license_or_abort") as mock_license_check,
+        patch("bot.main.setup_i18n"),
+        patch("bot.main.check_license_or_abort"),
         patch("bot.main.create_async_engine") as mock_create_engine,
-        patch("bot.main.async_sessionmaker") as mock_factory_cls,
+        patch("bot.main.async_sessionmaker"),
         patch("bot.main.CryptoPayClient", return_value=mock_cp),
         patch("bot.main.start_cleanup_task") as mock_cleanup_start,
         patch("bot.main.ROUTERS", [MagicMock()]),

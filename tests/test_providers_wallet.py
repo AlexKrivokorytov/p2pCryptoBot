@@ -10,7 +10,6 @@ import pytest
 
 from providers.wallet_provider import EvmWalletProvider, TonWalletProvider
 
-
 # ── EvmWalletProvider ─────────────────────────────────────────────────────────
 
 
