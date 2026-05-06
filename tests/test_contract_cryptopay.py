@@ -19,6 +19,8 @@ import pytest
 
 from providers.crypto_pay import SUPPORTED_ASSETS, CryptoPayClient
 
+pytestmark = pytest.mark.contract
+
 # ── Canonical response shapes from Crypto Pay API docs ────────────────────────
 # These are the exact fields the real API returns — our client must handle all.
 

@@ -10,6 +10,8 @@ import pytest
 from bot.handlers import order as order_handlers
 from bot.handlers import start as start_handlers
 
+pytestmark = pytest.mark.unit
+
 # ── start.py line 24: tg_user is None guard ───────────────────────────────────
 
 

@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 # ── rate_provider: get_crypto_usdt_price ─────────────────────────────────────
 
 

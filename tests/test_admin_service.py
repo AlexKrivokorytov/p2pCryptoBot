@@ -12,6 +12,8 @@ from db.models.order import Order, OrderStatus
 from services import admin_service
 from services.admin_service import PlatformStats, format_dispute_order, format_stats_message
 
+pytestmark = pytest.mark.unit
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 

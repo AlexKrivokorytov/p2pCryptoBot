@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import pytest
+
 from bot import keyboards
 from db.models.order import Order, OrderStatus, OrderType
+
+pytestmark = pytest.mark.unit
 
 
 def test_main_menu_keyboard():

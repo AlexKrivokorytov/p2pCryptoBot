@@ -6,6 +6,8 @@ from bot.config import _reset_branding_cache, get_branding, load_branding
 from bot.keyboards import main_menu_keyboard
 from services.order_service import _get_platform_fees
 
+pytestmark = pytest.mark.unit
+
 
 def test_load_branding_success():
     """Test that branding.yaml is found and parsed correctly."""

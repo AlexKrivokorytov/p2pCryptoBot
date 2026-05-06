@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models.wallet import UserWallet
 from services import balance_service
 
+pytestmark = pytest.mark.unit
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 

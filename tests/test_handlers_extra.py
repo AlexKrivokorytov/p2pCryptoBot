@@ -18,6 +18,8 @@ from db.models.order import Order
 from db.models.wallet import UserWallet
 from services.admin_service import PlatformStats
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.admin_service.get_platform_stats", new_callable=AsyncMock)

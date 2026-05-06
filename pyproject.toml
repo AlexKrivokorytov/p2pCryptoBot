@@ -85,7 +85,12 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-v --tb=short --cov=bot --cov=services --cov=utils --cov=tasks --cov-report=term-missing:skip-covered"
+addopts = "-v --tb=short --cov=bot --cov=services --cov=providers --cov=utils --cov=tasks --cov=db --cov-report=term-missing:skip-covered"
+markers = [
+    "unit: fast, pure-logic tests with no external dependencies (no DB, no API)",
+    "contract: tests that validate API response contracts using mocks",
+    "integration: tests that require a live PostgreSQL database",
+]
 
 [tool.bandit]
 exclude_dirs = ["tests", "db/migrations"]

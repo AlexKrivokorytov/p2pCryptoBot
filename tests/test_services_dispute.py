@@ -12,6 +12,8 @@ from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 from services import dispute_service
 
+pytestmark = pytest.mark.unit
+
 
 async def _create_order(
     session: AsyncSession, status: OrderStatus = OrderStatus.escrow_held

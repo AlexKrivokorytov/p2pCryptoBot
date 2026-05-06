@@ -39,6 +39,10 @@ COPY --from=builder /install /usr/local
 # Upgrade core packages again in runtime to ensure no vulnerable defaults remain
 RUN pip install --upgrade pip setuptools wheel --quiet --no-cache-dir
 
+# Bake the seller's secret into the sealed image for license validation
+ARG SELLER_SECRET
+ENV SELLER_SECRET=${SELLER_SECRET}
+
 # Copy application source (always fresh — after deps for cache efficiency)
 COPY . .
 

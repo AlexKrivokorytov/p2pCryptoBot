@@ -5,7 +5,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 
+import pytest
+
 from utils.hmac_helpers import compare_hmac, compute_hmac_sha256
+
+pytestmark = pytest.mark.unit
 
 # ── compare_hmac ──────────────────────────────────────────────────────────────
 

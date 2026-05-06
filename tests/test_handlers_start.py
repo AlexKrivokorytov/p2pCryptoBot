@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.handlers import start as start_handlers
 from db.models.user import User
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_cmd_start_new_user(session: AsyncSession) -> None:

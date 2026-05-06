@@ -15,6 +15,8 @@ from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 from services import chat_service
 
+pytestmark = pytest.mark.unit
+
 
 async def _create_test_order(
     session: AsyncSession, order_id: str, maker_id: int, taker_id: int

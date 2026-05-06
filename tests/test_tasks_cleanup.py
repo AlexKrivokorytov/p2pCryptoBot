@@ -16,6 +16,8 @@ from db.models.user import User
 from tasks import cleanup
 from utils.datetime_helpers import utcnow
 
+pytestmark = pytest.mark.unit
+
 
 async def _create_order(session: AsyncSession, status: OrderStatus, offset_seconds: int) -> Order:
     user = User(telegram_id=301, username="cleanup_test")

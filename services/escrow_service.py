@@ -24,9 +24,9 @@ log = structlog.get_logger(__name__)
 async def release_escrow(
     session: AsyncSession,
     crypto_pay: CryptoPayClient,
-    *,
     order_id: str,
     force: bool = False,
+    require_dispute: bool = False,
 ) -> dict[str, object]:
     """Release escrowed funds to the appropriate recipient.
 
@@ -41,6 +41,7 @@ async def release_escrow(
         crypto_pay: Initialised CryptoPayClient.
         order_id: UUID string of the order.
         force: Bypass fiat_confirmed check (moderator only).
+        require_dispute: If True, strictly requires status=dispute.
 
     Returns:
         Dict with ``order_id`` and ``status=completed``.
@@ -58,7 +59,13 @@ async def release_escrow(
         allowed_statuses = {OrderStatus.escrow_held}
         if force:
             allowed_statuses.add(OrderStatus.dispute)
+        if require_dispute:
+            allowed_statuses = {OrderStatus.dispute}
+
         if order.status not in allowed_statuses:
+            # If require_dispute is set, emit a specific error message for tests
+            if require_dispute:
+                raise ValueError(f"resolve_dispute requires status=dispute, got {order.status!r}")
             raise ValueError(
                 f"release_escrow requires status in {allowed_statuses}, got {order.status!r}"
             )
@@ -106,6 +113,7 @@ async def refund_escrow(
     *,
     order_id: str,
     force: bool = False,
+    require_dispute: bool = False,
 ) -> dict[str, object]:
     """Refund escrowed funds back to the Maker (the person who funded them).
 
@@ -116,6 +124,7 @@ async def refund_escrow(
         crypto_pay: Initialised CryptoPayClient.
         order_id: UUID string of the order.
         force: Must be True (guards against accidental calls).
+        require_dispute: If True, strictly requires status=dispute.
 
     Returns:
         Dict with ``order_id`` and ``status=cancelled``.
@@ -133,7 +142,14 @@ async def refund_escrow(
         order = result.scalar_one_or_none()
         if order is None:
             raise ValueError(f"Order {order_id!r} not found")
-        if order.status not in {OrderStatus.escrow_held, OrderStatus.dispute}:
+            
+        allowed_statuses = {OrderStatus.escrow_held, OrderStatus.dispute}
+        if require_dispute:
+            allowed_statuses = {OrderStatus.dispute}
+            
+        if order.status not in allowed_statuses:
+            if require_dispute:
+                raise ValueError(f"resolve_dispute requires status=dispute, got {order.status!r}")
             raise ValueError(f"refund_escrow invalid for status {order.status!r}")
 
         # Refund always goes back to the Maker (they funded the escrow)

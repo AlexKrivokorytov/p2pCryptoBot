@@ -14,6 +14,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.contract
+
 # ── Canonical Binance API response shapes ─────────────────────────────────────
 # Source: https://binance-docs.github.io/apidocs/spot/en/#symbol-price-ticker
 

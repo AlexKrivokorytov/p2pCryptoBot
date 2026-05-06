@@ -12,6 +12,8 @@ from bot.handlers import escrow as escrow_handlers
 from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 
+pytestmark = pytest.mark.unit
+
 
 async def _create_test_user(session: AsyncSession, telegram_id: int, username: str) -> User:
     async with session.begin():

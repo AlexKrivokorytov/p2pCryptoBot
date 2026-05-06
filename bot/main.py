@@ -34,6 +34,7 @@ from bot.handlers.webhook import cryptopay_webhook  # noqa: E402
 from bot.middleware import CryptoPayMiddleware, DbSessionMiddleware  # noqa: E402
 from providers.crypto_pay import CryptoPayClient  # noqa: E402
 from tasks.cleanup import start_cleanup_task  # noqa: E402
+from utils.license_guard import check_license_or_abort  # noqa: E402
 
 # ── Structlog setup ─────────────────────────────────────────────────────────────
 structlog.configure(
@@ -49,6 +50,9 @@ log = structlog.get_logger(__name__)
 
 async def main() -> None:
     """Bootstrap the bot and start polling."""
+    # ── License check — must pass before any other resource is initialised ──────
+    check_license_or_abort(settings.BOT_TOKEN)
+
     # ── Database engine & session factory ───────────────────────────────────────
     engine = create_async_engine(
         settings.POSTGRES_URI,

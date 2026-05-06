@@ -14,6 +14,8 @@ from providers.crypto_pay import CryptoPayClient
 from providers.wallet_provider import EvmWalletProvider, TonWalletProvider
 from services import wallet_service
 
+pytestmark = pytest.mark.unit
+
 
 def test_config_require_error():
     """_require raises RuntimeError if env var is missing and no default."""

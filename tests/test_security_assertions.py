@@ -19,6 +19,8 @@ from unittest.mock import patch
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 
 class TestAESSecurityProperties:
     def test_nonce_is_unique_per_encryption(self) -> None:

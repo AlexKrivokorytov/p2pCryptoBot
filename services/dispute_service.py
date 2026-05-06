@@ -95,28 +95,31 @@ async def resolve_dispute(
 
     Raises:
         ValueError: If decision is invalid or order is not in dispute.
+
+    Note:
+        We intentionally do NOT perform a separate pre-check read here.
+        Both ``release_escrow`` and ``refund_escrow`` open their own
+        ``SELECT ... FOR UPDATE`` transaction and validate the order status
+        atomically. A separate pre-check without a lock would create a race
+        window where two concurrent moderator actions could both pass the
+        ``status == dispute`` check and then both execute a transfer
+        (double-spend). Removing it here forces all validation to happen
+        inside the atomic locked transaction.
     """
     if decision not in VALID_DECISIONS:
         raise ValueError(f"Invalid decision {decision!r}. Must be one of {VALID_DECISIONS}")
 
-    # Validate order is in dispute state first (read-only check)
-    async with session.begin():
-        result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
-        order = result.scalar_one_or_none()
-        if order is None:
-            raise ValueError(f"Order {order_id!r} not found")
-        if order.status != OrderStatus.dispute:
-            raise ValueError(f"resolve_dispute requires status=dispute, got {order.status!r}")
-
-    # Execute the appropriate escrow action
+    # Execute the appropriate escrow action.
+    # release_escrow / refund_escrow each perform SELECT ... FOR UPDATE
+    # and validate order.status atomically — no separate pre-check needed.
     if decision == "taker_wins":
         result_data = await escrow_service.release_escrow(
-            session, crypto_pay, order_id=order_id, force=True
+            session, crypto_pay, order_id=order_id, force=True, require_dispute=True
         )
     else:
         # maker_wins or cancel both refund to maker
         result_data = await escrow_service.refund_escrow(
-            session, crypto_pay, order_id=order_id, force=True
+            session, crypto_pay, order_id=order_id, force=True, require_dispute=True
         )
 
     log.info(

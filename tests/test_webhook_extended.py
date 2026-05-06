@@ -11,6 +11,8 @@ import pytest
 from bot.handlers.webhook import cryptopay_webhook
 from db.models.order import Order, OrderStatus
 
+pytestmark = pytest.mark.unit
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 

@@ -10,6 +10,8 @@ from providers.broker.binance import BinanceBroker
 from providers.broker.bybit import BybitBroker
 from providers.broker.okx import OKXBroker
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_binance_broker():

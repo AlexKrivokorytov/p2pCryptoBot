@@ -15,6 +15,8 @@ from __future__ import annotations
 import pytest
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+pytestmark = pytest.mark.unit
+
 # ── NIST SP 800-38D AES-256-GCM Test Vectors ──────────────────────────────────
 # Source file: gcmEncryptExtIV256.rsp from NIST CAVP test vectors
 # https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/mac/gcmtestvectors.zip

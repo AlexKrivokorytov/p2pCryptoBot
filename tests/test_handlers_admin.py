@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.handlers import admin as admin_handlers
 from bot.states import ArbitrationFSM
 
+pytestmark = pytest.mark.unit
+
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
 

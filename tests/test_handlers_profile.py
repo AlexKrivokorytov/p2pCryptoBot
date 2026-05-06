@@ -12,6 +12,8 @@ from bot.handlers import profile as profile_handlers
 from db.models.user import User
 from services import user_service
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_user_service_increment_stats(engine) -> None:

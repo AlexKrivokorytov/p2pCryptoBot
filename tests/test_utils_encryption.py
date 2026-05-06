@@ -6,7 +6,11 @@ import contextlib
 import os
 from unittest.mock import patch
 
+import pytest
+
 from utils import encryption
+
+pytestmark = pytest.mark.unit
 
 
 def test_encrypt_decrypt():

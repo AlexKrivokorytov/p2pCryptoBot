@@ -17,6 +17,8 @@ from db.models.user import User
 from tasks import cleanup
 from utils.datetime_helpers import utcnow
 
+pytestmark = pytest.mark.unit
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 

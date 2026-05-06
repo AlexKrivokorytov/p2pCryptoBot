@@ -1,14 +1,36 @@
-# branding.yaml.example — Template for white-label branding.
-# Copy this to branding.yaml and customize it.
+# branding.yaml.example — Copy this file to branding.yaml and customize.
+# branding.yaml is listed in .gitignore and will NOT be committed to git.
+# branding.yaml.example IS committed and acts as the template for buyers.
+#
+# No Python knowledge is required to customize your bot.
+# Simply edit the values below and restart your Docker container:
+#   docker compose restart bot
+#
+# ─────────────────────────────────────────────────────────────────────────────
 
 bot:
-  # The name of your exchange shown in messages and menus.
+  # The name of your exchange platform shown everywhere in the bot
+  # (welcome messages, help text, order notifications, etc.)
+  # Example: "MyExchange", "FastTrade", "CoinSwap"
   name: "P2P Exchange"
-  # Welcome message for /start. Supports {bot_name} and {first_name} placeholders.
+
+  # Message sent to users when they first start the bot (or type /start).
+  # Available placeholders:
+  #   {bot_name}   → replaced with the value of bot.name above
+  #   {first_name} → replaced with the user's Telegram first name
   welcome_message: "👋 Welcome to {bot_name}, {first_name}!"
-  # Telegram handle for your support team.
+
+  # Telegram handle of your support account or group.
+  # Shown in the help text and in error messages.
+  # Example: "@MyBotSupport", "@MyExchangeHelp"
   support_handle: "@support"
-  # Detailed help text shown in the Help menu. Supports HTML tags.
+
+  # Full help text displayed when a user taps the Help button.
+  # Available placeholders:
+  #   {support_handle} → replaced with the value of bot.support_handle above
+  # HTML formatting is supported:
+  #   <b>bold</b>, <i>italic</i>, <code>code</code>, <a href="url">link</a>
+  # Use the | character to write multi-line text (YAML block scalar).
   help_text: |
     ℹ️ <b>How P2P works:</b>
 
@@ -20,25 +42,41 @@ bot:
 
     Questions? Contact {support_handle}
 
+# ─────────────────────────────────────────────────────────────────────────────
 ui:
-  # Emojis used in the main menu buttons.
-  create_ad_emoji: "📝"
-  market_emoji: "🛒"
-  trades_emoji: "📋"
-  profile_emoji: "👤"
-  wallet_emoji: "💼"
-  dispute_emoji: "⚖️"
-  escrow_emoji: "🔒"
+  # Emojis displayed on the main menu buttons.
+  # You can replace these with any emoji to match your brand style.
+  create_ad_emoji: "📝"   # Button: "Create Ad"
+  market_emoji: "🛒"       # Button: "P2P Market"
+  trades_emoji: "📋"       # Button: "My Trades"
+  profile_emoji: "👤"      # Button: "Profile"
+  wallet_emoji: "💼"       # Button: "Wallets"
+  dispute_emoji: "⚖️"      # Button: "Open Dispute" (shown inside active trades)
+  escrow_emoji: "🔒"       # Indicator shown next to locked escrow amounts
 
+# ─────────────────────────────────────────────────────────────────────────────
 fees:
-  # Fee charged to the user creating the advertisement (percentage).
+  # Fee charged to the user who creates the advertisement (the Maker).
+  # This is a percentage of the total trade amount.
+  # Example: 0.5 means 0.5% fee. Set to 0.0 for no maker fee.
   maker_percent: 0.0
-  # Fee charged to the user taking an existing advertisement (percentage).
+
+  # Fee charged to the user who accepts an advertisement (the Taker).
+  # This is a percentage of the total trade amount.
+  # Example: 1.0 means 1% fee. Set to 0.0 for no taker fee.
   taker_percent: 0.0
-  # Fixed fee added to every trade regardless of amount.
+
+  # A flat fee added to every trade on top of the percentage fees.
+  # Expressed in the traded crypto asset's units.
+  # Example: 0.001 for BTC means 0.001 BTC per trade regardless of amount.
+  # Set to 0.0 for no fixed fee.
   fixed_fee: 0.0
 
-# List of assets allowed for trading.
+# ─────────────────────────────────────────────────────────────────────────────
+# Which crypto assets are available for trading on your platform.
+# Remove lines for assets you do not want to support.
+# Valid values: USDT, TON, BTC, ETH, USDC
+# At least one asset must be enabled.
 assets_enabled:
   - USDT
   - TON
@@ -46,7 +84,10 @@ assets_enabled:
   - ETH
   - USDC
 
-# List of payment methods available for users to choose from.
+# ─────────────────────────────────────────────────────────────────────────────
+# Payment methods buyers and sellers can choose from when creating a trade.
+# Add, remove, or rename entries to match your target market.
+# These are free-form strings — any text is valid.
 payment_methods:
   - "Sberbank"
   - "Tinkoff"
@@ -55,10 +96,21 @@ payment_methods:
   - "Cash"
   - "Other"
 
+# ─────────────────────────────────────────────────────────────────────────────
 limits:
-  # Minimum order amount in USDT equivalent.
+  # Minimum trade size expressed in USDT equivalent.
+  # Orders below this amount will be rejected.
+  # Recommended: 1.0 (protects against dust/spam attacks).
   order_min_amount_usdt: 1.0
-  # Maximum order amount in USDT equivalent.
+
+  # Maximum trade size expressed in USDT equivalent.
+  # Orders above this amount will be rejected.
+  # Adjust based on your KYC/AML policy and risk tolerance.
+  # Example: 10000.0 for a lower-risk, lower-volume platform.
   order_max_amount_usdt: 50000.0
-  # Seconds allowed for payment before order expires.
+
+  # How long an unfunded order remains listed before automatic cancellation.
+  # Value is in seconds. 1800 = 30 minutes.
+  # Minimum recommended: 600 (10 minutes) to give buyers enough time.
+  # Maximum recommended: 7200 (2 hours) to prevent stale order accumulation.
   order_timeout_sec: 1800

@@ -9,6 +9,8 @@ from aiogram.types import TelegramObject
 
 from bot.middleware import CryptoPayMiddleware, DbSessionMiddleware
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_db_session_middleware() -> None:

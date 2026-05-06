@@ -25,6 +25,8 @@ from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 from services import order_service
 
+pytestmark = pytest.mark.integration
+
 # ── Seed helpers ───────────────────────────────────────────────────────────────
 
 

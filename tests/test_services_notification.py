@@ -11,6 +11,8 @@ from aiogram.methods import SendMessage
 
 from services import notification_service
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_notify_maker_taker_found_success() -> None:

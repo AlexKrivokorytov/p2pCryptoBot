@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.handlers import dispute as dispute_handlers
 from bot.states import DisputeFSM
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_cb_dispute_raise() -> None:

@@ -10,6 +10,8 @@ from aiogram.fsm.context import FSMContext
 from bot.handlers import order as order_handlers
 from bot.states import CreateAdFSM
 
+pytestmark = pytest.mark.unit
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # CREATE AD FLOW
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -10,6 +10,8 @@ import pytest
 
 from utils import encryption
 
+pytestmark = pytest.mark.unit
+
 VALID_KEY = secrets.token_hex(32)  # 64-char hex string
 
 

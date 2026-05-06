@@ -12,6 +12,8 @@ from bot.handlers import wallet as wallet_handlers
 from db.models.wallet import UserWallet
 from services.balance_service import WalletBalance
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_build_wallet_text_with_wallets(session: AsyncSession):

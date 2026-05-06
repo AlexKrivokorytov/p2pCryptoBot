@@ -1,4 +1,4 @@
-name: CI — Full Quality Gate
+name: "🚀 CI — Quality Gate"
 
 on:
   push:
@@ -10,11 +10,14 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   PYTHON_VERSION: "3.12"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Common test environment (reused by all test jobs via YAML anchors)
+# ─────────────────────────────────────────────────────────────────────────────
 jobs:
 
-  # ── Job 1: Lint & Format ────────────────────────────────────────────────────
+  # ── Job 1: Lint & Format + Type Check ────────────────────────────────────────
   lint:
-    name: Lint & Format (ruff) + Type Check (mypy)
+    name: "🔍 Lint & Type Check"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,42 +25,29 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
       - name: Install dev dependencies
         run: pip install -e ".[dev]"
 
-      - name: Ruff lint check
+      - name: "📐 ruff — lint"
         run: ruff check .
 
-      - name: Ruff format check
+      - name: "📐 ruff — format check"
         run: ruff format --check .
 
-      - name: mypy strict
+      - name: "🔎 mypy — strict type check"
         run: mypy --strict bot/ services/ providers/ utils/ tasks/ db/
 
-  # ── Job 2: Tests (coverage ≥ 85%) ──────────────────────────────────────────
-  test:
-    name: Tests (coverage >= 85%)
+  # ── Job 2a: Unit Tests ────────────────────────────────────────────────────────
+  test-unit:
+    name: "🧪 Unit Tests"
     runs-on: ubuntu-latest
     needs: lint
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: p2pbot
-          POSTGRES_PASSWORD: testpassword
-          POSTGRES_DB: p2pbot_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     env:
       POSTGRES_URI: postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test
-      BOT_TOKEN: 0:test_token
+      BOT_TOKEN: "0:test_token"
       CRYPTOPAY_TOKEN: test_cryptopay_token
       CRYPTOPAY_CALLBACK_SECRET: test_secret
       AES_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
@@ -70,144 +60,94 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
-      - name: Copy branding config for tests
+      - name: Copy branding config
         run: cp branding.yaml.example branding.yaml
 
-      - name: Run Alembic migrations
-        run: alembic upgrade head
-
-      - name: Run full test suite
+      - name: "🧪 Run unit tests"
         run: |
-          pytest \
+          pytest -m unit \
             --cov=bot --cov=services --cov=providers --cov=utils --cov=tasks \
-            --cov-report=term-missing \
-            --cov-report=xml:coverage.xml \
-            --cov-report=html:htmlcov \
-            --cov-fail-under=85 \
-            -v | tee pytest_output.txt
+            --cov-report=xml:coverage-unit.xml \
+            --junitxml=test-results/unit.xml \
+            --cov-fail-under=80 \
+            -q
 
-      - name: Coverage dashboard
+      - name: "📊 Publish Unit Test Results"
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
-        run: python utils/coverage_dashboard.py --markdown >> $GITHUB_STEP_SUMMARY
+        with:
+          files: test-results/unit.xml
+          check_name: "🧪 Unit Tests"
+          comment_title: "Unit Test Results"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-report
-          path: |
-            coverage.xml
-            htmlcov/
-            pytest_output.txt
+          name: coverage-unit
+          path: coverage-unit.xml
 
-  # ── Job 3: SAST (Bandit + Semgrep) ─────────────────────────────────────────
-  security-sast:
-    name: SAST (Bandit + Semgrep)
+  # ── Job 2b: Contract Tests (API Boundaries) ───────────────────────────────────
+  test-contract:
+    name: "🔌 Contract Tests"
     runs-on: ubuntu-latest
     needs: lint
+
+    env:
+      POSTGRES_URI: postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test
+      BOT_TOKEN: "0:test_token"
+      CRYPTOPAY_TOKEN: test_cryptopay_token
+      CRYPTOPAY_CALLBACK_SECRET: test_secret
+      AES_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      ADMIN_IDS: "123456"
+      PYTHONIOENCODING: "utf-8"
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
-      - name: Install Bandit
-        run: pip install "bandit[toml]>=1.7.8"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
 
-      - name: Bandit scan (medium+ severity)
+      - name: Copy branding config
+        run: cp branding.yaml.example branding.yaml
+
+      - name: "🔌 Run contract tests (Crypto Pay & Binance API shapes)"
         run: |
-          bandit -r bot/ services/ providers/ utils/ tasks/ \
-            --severity-level medium \
-            --confidence-level medium \
-            -f json -o bandit_report.json \
-            -x tests/ \
-            || (cat bandit_report.json && exit 1)
+          pytest -m contract \
+            --cov=providers \
+            --cov-report=xml:coverage-contract.xml \
+            --junitxml=test-results/contract.xml \
+            -q
 
-      - name: Semgrep scan
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: >
-            p/python
-            p/secrets
-            p/cryptography
-            p/sqlalchemy
-      - uses: actions/upload-artifact@v4
+      - name: "📊 Publish Contract Test Results"
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          name: sast-reports
-          path: bandit_report.json
-
-  # ── Job 4: Dependency Audit (Safety + pip-audit) ────────────────────────────
-  security-deps:
-    name: Dependency Audit (Safety + pip-audit)
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install audit tools
-        run: pip install "safety>=3.0" "pip-audit>=2.7.0,<2.10.0"
-
-      - name: Safety scan
-        env:
-          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
-        run: |
-          safety scan \
-            --file requirements.txt \
-            --output screen \
-            || exit 1
-
-      - name: pip-audit check
-        run: |
-          pip-audit \
-            --requirement requirements.txt \
-            --format json \
-            -o pip_audit_report.json
+          files: test-results/contract.xml
+          check_name: "🔌 Contract Tests"
+          comment_title: "Contract Test Results"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dependency-reports
-          path: |
-            safety_report.json
-            pip_audit_report.json
+          name: coverage-contract
+          path: coverage-contract.xml
 
-  # ── Job 5: Container Scan (Trivy) ───────────────────────────────────────────
-  security-container:
-    name: Container Scan (Trivy)
+  # ── Job 2c: Integration Tests (Live DB + Concurrency) ─────────────────────────
+  test-integration:
+    name: "🗄️ Integration Tests (DB Concurrency)"
     runs-on: ubuntu-latest
     needs: lint
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t p2pbot:${{ github.sha }} --target runtime .
-
-      - name: Trivy scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: p2pbot:${{ github.sha }}
-          format: table
-          severity: CRITICAL,HIGH
-          exit-code: 1
-          ignore-unfixed: true
-
-
-
-
-  # ── Job 7: Crypto Validation (NIST Vectors) ──────────────────────────────────
-  crypto-validation:
-    name: Crypto Validation (NIST Vectors)
-    runs-on: ubuntu-latest
-    needs: lint
     services:
       postgres:
         image: postgres:16
@@ -224,36 +164,289 @@ jobs:
 
     env:
       POSTGRES_URI: postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test
+      BOT_TOKEN: "0:test_token"
+      CRYPTOPAY_TOKEN: test_cryptopay_token
+      CRYPTOPAY_CALLBACK_SECRET: test_secret
       AES_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
-      BOT_TOKEN: 0:test
-      CRYPTOPAY_TOKEN: test
-      CRYPTOPAY_CALLBACK_SECRET: test
       ADMIN_IDS: "123456"
+      PYTHONIOENCODING: "utf-8"
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Copy branding config
+        run: cp branding.yaml.example branding.yaml
+
+      - name: Run Alembic migrations
+        run: alembic upgrade head
+
+      - name: "🗄️ Run integration tests (pessimistic locks, race conditions)"
+        run: |
+          pytest -m integration \
+            --cov=services \
+            --cov-report=xml:coverage-integration.xml \
+            --junitxml=test-results/integration.xml \
+            -q
+
+      - name: "📊 Publish Integration Test Results"
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: test-results/integration.xml
+          check_name: "🗄️ Integration Tests"
+          comment_title: "Integration Test Results"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-integration
+          path: coverage-integration.xml
+
+  # ── Job 3: Coverage Aggregation Report ────────────────────────────────────────
+  coverage-report:
+    name: "📈 Coverage Report"
+    runs-on: ubuntu-latest
+    needs: [test-unit, test-contract, test-integration]
+    if: always()
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: p2pbot
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: p2pbot_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POSTGRES_URI: postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test
+      BOT_TOKEN: "0:test_token"
+      CRYPTOPAY_TOKEN: test_cryptopay_token
+      CRYPTOPAY_CALLBACK_SECRET: test_secret
+      AES_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      ADMIN_IDS: "123456"
+      PYTHONIOENCODING: "utf-8"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Copy branding config
+        run: cp branding.yaml.example branding.yaml
+
+      - name: Run Alembic migrations
+        run: alembic upgrade head
+
+      - name: "📈 Run full suite for combined coverage report"
+        run: |
+          pytest \
+            --cov=bot --cov=services --cov=providers --cov=utils --cov=tasks \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            --cov-report=term-missing \
+            --cov-fail-under=85 \
+            -q
+
+      - name: "📊 Coverage Dashboard → Step Summary"
+        if: always()
+        run: python utils/coverage_dashboard.py --markdown >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-full-report
+          path: |
+            coverage.xml
+            htmlcov/
+
+  # ── Job 4: SAST (Bandit + Semgrep) ───────────────────────────────────────────
+  security-sast:
+    name: "🛡️ SAST (Bandit + Semgrep)"
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install Bandit
+        run: pip install "bandit[toml]>=1.7.8"
+
+      - name: "🔐 Bandit — Python SAST (medium+ severity)"
+        run: |
+          bandit -r bot/ services/ providers/ utils/ tasks/ \
+            --severity-level medium \
+            --confidence-level medium \
+            -f json -o bandit_report.json \
+            -x tests/ \
+            || (cat bandit_report.json && exit 1)
+
+      - name: "🔐 Semgrep — OWASP / secrets / SQLi"
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >
+            p/python
+            p/secrets
+            p/cryptography
+            p/sqlalchemy
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sast-reports
+          path: bandit_report.json
+
+  # ── Job 5: Dependency Audit ───────────────────────────────────────────────────
+  security-deps:
+    name: "📦 Dependency Audit"
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install audit tools
+        run: pip install "safety>=3.0" "pip-audit>=2.7.0,<2.10.0"
+
+      - name: "🔐 Safety — CVE scan"
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
+        run: |
+          safety scan \
+            --file requirements.txt \
+            --output screen \
+            || exit 1
+
+      - name: "🔐 pip-audit — dependency vulnerabilities"
+        run: |
+          pip-audit \
+            --requirement requirements.txt \
+            --format json \
+            -o pip_audit_report.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-reports
+          path: pip_audit_report.json
+
+  # ── Job 6: Container Scan (Trivy) ─────────────────────────────────────────────
+  security-container:
+    name: "🐳 Container Scan (Trivy)"
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t p2pbot:${{ github.sha }} --target runtime .
+
+      - name: "🐳 Trivy — CVE scan (CRITICAL + HIGH = fail)"
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: p2pbot:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          ignore-unfixed: true
+
+  # ── Job 7: Crypto Validation (NIST) ───────────────────────────────────────────
+  crypto-validation:
+    name: "🔐 NIST Crypto Validation"
+    runs-on: ubuntu-latest
+    needs: lint
+
+    env:
+      POSTGRES_URI: postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test
+      AES_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      BOT_TOKEN: "0:test"
+      CRYPTOPAY_TOKEN: test
+      CRYPTOPAY_CALLBACK_SECRET: test
+      ADMIN_IDS: "123456"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
       - name: Install dev dependencies
         run: pip install -e ".[dev]"
 
-      - name: NIST + security assertion tests
+      - name: Copy branding config
+        run: cp branding.yaml.example branding.yaml
+
+      - name: "🔐 NIST AES-256-GCM vectors + security assertions"
         run: |
           pytest tests/test_nist_vectors.py \
             tests/test_security_assertions.py \
-            -v --tb=short
+            -v --tb=short \
+            --junitxml=test-results/crypto.xml
 
-  # ── Quality Gate (fan-in) ────────────────────────────────────────────────────
+      - name: "📊 Publish Crypto Test Results"
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: test-results/crypto.xml
+          check_name: "🔐 NIST Crypto Validation"
+          comment_title: "Crypto Validation Results"
+
+  # ── Quality Gate (fan-in) ─────────────────────────────────────────────────────
   quality-gate:
-    name: "✅ Quality Gate"
+    name: "✅ Quality Gate — Ready to Ship"
     runs-on: ubuntu-latest
     needs:
-      - test
+      - test-unit
+      - test-contract
+      - test-integration
+      - coverage-report
       - security-sast
       - security-deps
       - security-container
       - crypto-validation
     steps:
-      - run: echo "All quality gates passed — ready to ship 🚀"
+      - name: "🎉 All quality gates passed"
+        run: |
+          echo "## ✅ Quality Gate Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Unit Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔌 Contract Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🗄️ Integration Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📈 Coverage ≥ 85% | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🛡️ Bandit SAST | ✅ 0 findings |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 Dependency Audit | ✅ 0 CVEs |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐳 Container Scan | ✅ 0 CRITICAL/HIGH |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔐 NIST Crypto | ✅ Validated |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**This build is production-ready and safe to ship 🚀**" >> $GITHUB_STEP_SUMMARY

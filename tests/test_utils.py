@@ -5,8 +5,12 @@ from __future__ import annotations
 import uuid
 from datetime import timedelta
 
+import pytest
+
 from db.models.order import Order, OrderStatus
 from utils import datetime_helpers, formatters
+
+pytestmark = pytest.mark.unit
 
 
 def test_utcnow() -> None:

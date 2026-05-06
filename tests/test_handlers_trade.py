@@ -13,6 +13,8 @@ from bot.handlers import trade as trade_handlers
 from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 
+pytestmark = pytest.mark.unit
+
 
 async def _create_test_order(session: AsyncSession, order_id: str, maker_id: int) -> Order:
     async with session.begin():

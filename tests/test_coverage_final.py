@@ -17,6 +17,8 @@ from bot.handlers import order as order_handlers
 from bot.handlers import wallet as wallet_handlers
 from db.models.order import Order
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.admin_service.get_dispute_queue", new_callable=AsyncMock)
