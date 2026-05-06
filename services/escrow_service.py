@@ -142,11 +142,11 @@ async def refund_escrow(
         order = result.scalar_one_or_none()
         if order is None:
             raise ValueError(f"Order {order_id!r} not found")
-            
+
         allowed_statuses = {OrderStatus.escrow_held, OrderStatus.dispute}
         if require_dispute:
             allowed_statuses = {OrderStatus.dispute}
-            
+
         if order.status not in allowed_statuses:
             if require_dispute:
                 raise ValueError(f"resolve_dispute requires status=dispute, got {order.status!r}")

@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, String, func
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.models.base import Base
@@ -38,8 +38,10 @@ class UserWallet(Base):
         nullable=False,
         index=True,
     )
-    # Stored as wallet_chain ENUM at DB level; mapped as String for ORM compatibility
-    chain: Mapped[str] = mapped_column(String(10), nullable=False)
+    # Stored as wallet_chain ENUM at DB level; mapped using Enum for asyncpg compatibility
+    chain: Mapped[WalletChain] = mapped_column(
+        Enum(WalletChain, name="wallet_chain", create_type=False), nullable=False
+    )
     address: Mapped[str] = mapped_column(String(256), nullable=False, unique=True)
 
     # AES-256-GCM encrypted private key stored as hex string (nonce + ciphertext)
