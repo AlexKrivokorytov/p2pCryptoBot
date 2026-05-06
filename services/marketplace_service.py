@@ -1,12 +1,12 @@
 """Marketplace services — handling Ads, Payment Details, and Reviews."""
 
 import uuid
-from typing import Sequence
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models.marketplace import Ad, AdType, PaymentMethod, PriceType, Review, UserPaymentDetail
+from db.models.marketplace import Ad, AdType, PriceType, Review, UserPaymentDetail
 
 
 class MarketplaceService:
@@ -44,7 +44,9 @@ class MarketplaceService:
         return ad
 
     @staticmethod
-    async def get_active_ads(session: AsyncSession, asset: str, fiat: str, ad_type: AdType) -> Sequence[Ad]:
+    async def get_active_ads(
+        session: AsyncSession, asset: str, fiat: str, ad_type: AdType
+    ) -> Sequence[Ad]:
         """Fetch active ads for the orderbook."""
         stmt = (
             select(Ad)
@@ -74,9 +76,13 @@ class MarketplaceService:
         return detail
 
     @staticmethod
-    async def get_user_payment_details(session: AsyncSession, user_id: int) -> Sequence[UserPaymentDetail]:
+    async def get_user_payment_details(
+        session: AsyncSession, user_id: int
+    ) -> Sequence[UserPaymentDetail]:
         """Get all active payment details for a user."""
-        stmt = select(UserPaymentDetail).where(UserPaymentDetail.user_id == user_id, UserPaymentDetail.is_active.is_(True))
+        stmt = select(UserPaymentDetail).where(
+            UserPaymentDetail.user_id == user_id, UserPaymentDetail.is_active.is_(True)
+        )
         result = await session.execute(stmt)
         return result.scalars().all()
 
@@ -107,7 +113,7 @@ class MarketplaceService:
         stmt = select(Review.is_positive).where(Review.target_id == user_id)
         result = await session.execute(stmt)
         reviews = result.scalars().all()
-        
+
         total = len(reviews)
         positive = sum(1 for r in reviews if r)
         return {

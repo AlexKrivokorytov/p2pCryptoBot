@@ -104,4 +104,3 @@ async def test_cb_profile(
     text = callback.message.edit_text.call_args[0][0]
     assert "Unverified" in text
     callback.answer.assert_called_once()
-

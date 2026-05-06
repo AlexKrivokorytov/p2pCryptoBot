@@ -1,16 +1,20 @@
 """Tests for Marketplace ORM models (Ads, Reviews, etc.)."""
 
 import uuid
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models.user import User
-from db.models.order import Order, OrderType, OrderStatus, SupportedAsset
 from db.models.marketplace import (
-    Ad, AdType, PriceType, PaymentMethod, UserPaymentDetail,
-    Review, ReferralReward, DisputeTicket
+    Ad,
+    AdType,
+    PriceType,
+    ReferralReward,
+    Review,
 )
+from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
+from db.models.user import User
 
 pytestmark = pytest.mark.asyncio
 
@@ -36,12 +40,12 @@ async def test_create_and_query_ad(session: AsyncSession):
     await session.flush()
 
     assert ad.id is not None
-    
+
     # Query it back
     stmt = select(Ad).where(Ad.maker_id == user.telegram_id)
     result = await session.execute(stmt)
     fetched_ad = result.scalar_one()
-    
+
     assert fetched_ad.fiat == "RUB"
     assert fetched_ad.type == AdType.sell
 
@@ -96,6 +100,6 @@ async def test_referral_reward(session: AsyncSession):
     )
     session.add(reward)
     await session.flush()
-    
+
     assert reward.id is not None
     assert reward.amount == 1.5

@@ -22,7 +22,9 @@ class User(Base):
     )
 
     # Preferences & Referrals
-    language_code: Mapped[str] = mapped_column(String(10), default="en", server_default="en", nullable=False)
+    language_code: Mapped[str] = mapped_column(
+        String(10), default="en", server_default="en", nullable=False
+    )
     referred_by_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
 
     # KYC / verification

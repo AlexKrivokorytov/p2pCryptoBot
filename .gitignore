@@ -64,6 +64,10 @@ test_results/
 scratch/
 temp/
 .agents/
+coverage_report*.txt
+new_tests_run.txt
+test_out.txt
+coverage_dashboard.html
 
 # ── Security & Reports ────────────────────────────────────────────────────────
 *_report.json
@@ -72,4 +76,7 @@ bandit_report.json
 pip_audit_report.json
 safety_report.json
 trivy-results.sarif
+coverage.xml
+.coverage
+htmlcov/
 

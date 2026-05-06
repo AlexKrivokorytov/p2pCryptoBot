@@ -45,8 +45,8 @@ class ReferralService:
         )
         session.add(reward)
         await session.flush()
-        
+
         # Note: Actual balance credit depends on whether we hold platform funds
         # in the bot wallet or a separate master wallet.
-        
+
         return reward

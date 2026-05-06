@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Any, cast
+from typing import Any
 
-from aiogram.types import TelegramObject, User as TgUser
+from aiogram.types import User as TgUser
 from aiogram_i18n import I18nMiddleware
 from aiogram_i18n.cores.base import BaseCore
 from aiogram_i18n.managers.base import BaseManager
@@ -14,22 +14,22 @@ from aiogram_i18n.managers.base import BaseManager
 from db.models.user import User
 
 
-class JsonDictCore(BaseCore[dict[str, Any]]):
+class JsonDictCore(BaseCore[dict[str, Any]]):  # type: ignore[misc]
     """Custom JSON core for aiogram-i18n v1.5."""
 
     def get(self, message: str, locale: str | None = None, /, **kwargs: Any) -> str:
         """Get translated message by dotted key, formatted with kwargs."""
         locale = self.get_locale(locale)
         translator = self.get_translator(locale)
-        
-        keys = message.split('.')
+
+        keys = message.split(".")
         val: Any = translator
         for k in keys:
             if isinstance(val, dict):
                 val = val.get(k, message)
             else:
                 return message
-                
+
         if isinstance(val, str):
             try:
                 return val.format(**kwargs)
@@ -41,18 +41,18 @@ class JsonDictCore(BaseCore[dict[str, Any]]):
         """Find and load all JSON locales."""
         locales = self._extract_locales(self.path)
         paths = self._find_locales(self.path, locales, ext=".json")
-        
+
         translations: dict[str, dict[str, Any]] = {}
         for locale, files in paths.items():
             translations[locale] = {}
             for file in files:
-                with open(file, "r", encoding="utf-8") as f:
+                with open(file, encoding="utf-8") as f:
                     data = json.load(f)
                     translations[locale].update(data)
         return translations
 
 
-class DatabaseManager(BaseManager):
+class DatabaseManager(BaseManager):  # type: ignore[misc]
     """Custom manager to extract language code from the DB User model."""
 
     async def get_locale(
@@ -63,11 +63,11 @@ class DatabaseManager(BaseManager):
         """Get locale from the database user model injected by DbSessionMiddleware."""
         if db_user is not None and getattr(db_user, "language_code", None):
             return db_user.language_code
-        
+
         # Fallback to telegram user language
         if event_from_user is not None and getattr(event_from_user, "language_code", None):
-            return event_from_user.language_code
-        
+            return event_from_user.language_code or "en"
+
         return "en"
 
     async def set_locale(self, locale: str, db_user: User | None = None) -> None:
@@ -78,15 +78,15 @@ class DatabaseManager(BaseManager):
 def setup_i18n() -> I18nMiddleware:
     """Initialize I18nMiddleware with custom JSON core and Database manager."""
     locales_dir = pathlib.Path(__file__).parent.parent / "locales"
-    
+
     # Initialize the core
     core = JsonDictCore(path=str(locales_dir) + "/{locale}")
-    
+
     # Initialize I18nMiddleware
     i18n_middleware = I18nMiddleware(
         core=core,
         manager=DatabaseManager(),
         default_locale="en",
     )
-    
+
     return i18n_middleware

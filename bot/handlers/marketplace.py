@@ -75,9 +75,7 @@ def _build_ad_list_text(ads: list[Ad], page: int, total_pages: int) -> str:
     return "\n".join(lines)
 
 
-def _build_ad_page_keyboard(
-    ads: list[Ad], page: int, total_pages: int
-) -> Any:
+def _build_ad_page_keyboard(ads: list[Ad], page: int, total_pages: int) -> Any:
     """Build inline keyboard with ad buttons and pagination.
 
     Args:
@@ -344,9 +342,7 @@ async def msg_ad_enter_limits(message: Message, state: FSMContext) -> None:
 
 
 @router.callback_query(F.data == "ad:confirmed", CreateAdFSM.confirming)
-async def cb_ad_confirm(
-    callback: CallbackQuery, state: FSMContext, session: AsyncSession
-) -> None:
+async def cb_ad_confirm(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
     """Save the ad to DB and notify the user."""
     data = await state.get_data()
     await state.clear()

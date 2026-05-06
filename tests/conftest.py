@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import sys
 from contextlib import suppress
@@ -18,15 +19,35 @@ from db.models.base import Base
 sys.modules["google.generativeai"] = MagicMock()
 
 # ---------------- Mock aiogram_i18n if not installed (local dev without the package) ----------
-import importlib.util
 
 if importlib.util.find_spec("aiogram_i18n") is None:
+    from typing import Generic, TypeVar
+    T = TypeVar("T")
+
+    class MockBaseCore(Generic[T]):
+        def __init__(self, path: str, **kwargs: Any):
+            self.path = path
+        def get_locale(self, locale: str | None) -> str: return locale or "en"
+        def get_translator(self, locale: str) -> T: return {} # type: ignore
+        def find_locales(self) -> dict[str, T]: return {}
+
+    class MockBaseManager:
+        async def get_locale(self, *args: Any, **kwargs: Any) -> str: return "en"
+        async def set_locale(self, locale: str, **kwargs: Any) -> None: pass
+
+    class MockI18nMiddleware:
+        def __init__(self, *args: Any, **kwargs: Any):
+            self.core = kwargs.get("core")
+            self.manager = kwargs.get("manager")
+
     _i18n_mock = MagicMock()
+    _i18n_mock.I18nMiddleware = MockI18nMiddleware
+    
     sys.modules["aiogram_i18n"] = _i18n_mock
     sys.modules["aiogram_i18n.cores"] = MagicMock()
-    sys.modules["aiogram_i18n.cores.json_event_core"] = MagicMock()
+    sys.modules["aiogram_i18n.cores.base"] = MagicMock(BaseCore=MockBaseCore)
     sys.modules["aiogram_i18n.managers"] = MagicMock()
-    sys.modules["aiogram_i18n.managers.base"] = MagicMock()
+    sys.modules["aiogram_i18n.managers.base"] = MagicMock(BaseManager=MockBaseManager)
 
 
 # Mock branding to avoid file reads during tests.
