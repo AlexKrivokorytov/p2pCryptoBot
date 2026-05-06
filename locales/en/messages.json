@@ -1,0 +1,45 @@
+{
+  "start": {
+    "welcome": "👋 Welcome to <b>{bot_name}</b>, {first_name}!\n\nThis is a P2P crypto escrow marketplace. Trade safely with zero counterparty risk.",
+    "main_menu_title": "🏠 <b>Main Menu</b>"
+  },
+  "market": {
+    "browse_title": "🛒 <b>P2P Market</b>\n\nSelect asset and currency to browse active ads:",
+    "no_ads": "😔 No active ads found.\n\nBe the first — create your own ad!",
+    "ad_row": "{emoji} <b>{asset}</b> → <b>{fiat}</b>  |  Rate: <b>{price}</b>\nLimits: {min}–{max} {fiat}  |  {method}",
+    "ad_detail": "📋 <b>Ad Details</b>\n\n💱 Direction: <b>{direction}</b>\n🪙 Asset: <b>{asset}</b>\n💵 Fiat: <b>{fiat}</b>\n📈 Rate: <b>{price} {fiat}/{asset}</b>\n🔢 Limits: <b>{min} – {max} {fiat}</b>\n💳 Payment: <b>{method}</b>\n📝 Terms: {terms}",
+    "page_info": "Page {page} of {total}"
+  },
+  "ad_create": {
+    "start": "📝 <b>Create New Ad</b>\n\nWhat do you want to do?",
+    "choose_asset": "🪙 <b>Step 1/5</b> — Choose the crypto asset:",
+    "choose_fiat": "💵 <b>Step 2/5</b> — Enter fiat currency (e.g. <code>RUB</code>, <code>USD</code>, <code>EUR</code>):",
+    "choose_price_type": "📈 <b>Step 3/5</b> — Price type:",
+    "enter_price": "💰 <b>Step 3/5</b> — Enter your price per 1 {asset} in {fiat}:",
+    "enter_limits": "🔢 <b>Step 4/5</b> — Enter trade limits in {fiat}.\n\nFormat: <code>min max</code> (e.g. <code>1000 50000</code>):",
+    "choose_payment": "💳 <b>Step 5/5</b> — Choose accepted payment methods (tap to toggle):",
+    "confirm": "✅ <b>Review your Ad</b>\n\nDirection: <b>{direction}</b>\nAsset: <b>{asset}</b>\nFiat: <b>{fiat}</b>\nRate: <b>{price} {fiat}/{asset}</b>\nLimits: <b>{min} – {max} {fiat}</b>\nPayment: <b>{method}</b>\n\nPublish this ad?",
+    "published": "🎉 <b>Ad published!</b>\n\nYour ad is now visible in the P2P Market.",
+    "cancelled": "❌ Ad creation cancelled.",
+    "invalid_fiat": "⚠️ Invalid currency code. Please enter a 3-letter code like <code>RUB</code> or <code>USD</code>.",
+    "invalid_price": "⚠️ Invalid price. Please enter a positive number.",
+    "invalid_limits": "⚠️ Invalid limits. Format: <code>min max</code>, both must be positive numbers and min < max."
+  },
+  "profile": {
+    "title": "👤 <b>Your Profile</b>",
+    "id": "ID: <code>{telegram_id}</code>",
+    "status_verified": "✅ Verified",
+    "status_unverified": "❌ Not verified",
+    "stats_header": "📊 <b>Trade Statistics</b>",
+    "total_trades": "Total trades: <b>{total}</b>",
+    "successful_trades": "Successful: <b>{successful}</b>",
+    "reputation": "⭐ Reputation: <b>{positive}/{total} positive</b> ({rate}%)",
+    "referral_header": "🔗 <b>Referral Program</b>",
+    "referral_link": "Your referral link:\n<code>{link}</code>\n\nEarn 20% of platform fees from every trade made by your referrals."
+  },
+  "errors": {
+    "not_found": "❌ Record not found.",
+    "generic": "⚠️ Something went wrong. Please try again.",
+    "no_permission": "🚫 You don't have permission to do this."
+  }
+}

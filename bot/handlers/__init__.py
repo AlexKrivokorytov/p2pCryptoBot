@@ -13,11 +13,22 @@ from __future__ import annotations
 
 from aiogram import Router
 
-from bot.handlers import admin, chat, dispute, escrow, order, profile, start, trade, wallet
+from bot.handlers import (
+    admin,
+    chat,
+    dispute,
+    escrow,
+    marketplace,
+    order,
+    profile,
+    start,
+    trade,
+    wallet,
+)
 
-# Ordered list of routers — order matters for filter priority (more specific first)
 ROUTERS: list[Router] = [
     start.router,
+    marketplace.router,  # marketplace before order — ad callbacks take priority
     order.router,
     trade.router,
     escrow.router,

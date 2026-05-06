@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Enum, String, func
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, String, func, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.models.base import Base
@@ -35,6 +35,7 @@ class UserWallet(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
         BigInteger,
+        ForeignKey("users.telegram_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

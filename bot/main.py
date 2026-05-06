@@ -35,6 +35,8 @@ from bot.middleware import CryptoPayMiddleware, DbSessionMiddleware  # noqa: E40
 from providers.crypto_pay import CryptoPayClient  # noqa: E402
 from tasks.cleanup import start_cleanup_task  # noqa: E402
 from utils.license_guard import check_license_or_abort  # noqa: E402
+from bot.i18n import setup_i18n  # noqa: E402
+from aiogram_i18n import I18nMiddleware  # noqa: E402
 
 # ── Structlog setup ─────────────────────────────────────────────────────────────
 structlog.configure(
@@ -75,6 +77,10 @@ async def main() -> None:
     # Outer middlewares — cover ALL update types (message, callback, inline, …)
     dp.update.outer_middleware(DbSessionMiddleware(session_pool))
     dp.update.outer_middleware(CryptoPayMiddleware(crypto_pay))
+    
+    # I18n setup
+    i18n = setup_i18n()
+    i18n.setup(dispatcher=dp)
 
     # ── Routers — auto-registered from bot.handlers.ROUTERS ─────────────────────
     for router in ROUTERS:

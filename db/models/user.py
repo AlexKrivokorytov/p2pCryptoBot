@@ -21,6 +21,10 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
+    # Preferences & Referrals
+    language_code: Mapped[str] = mapped_column(String(10), default="en", server_default="en", nullable=False)
+    referred_by_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
+
     # KYC / verification
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

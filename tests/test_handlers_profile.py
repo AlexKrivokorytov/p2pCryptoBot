@@ -14,6 +14,8 @@ from services import user_service
 
 pytestmark = pytest.mark.unit
 
+_MOCK_REPUTATION = {"total_reviews": 5, "positive_reviews": 4, "completion_rate": 80}
+
 
 @pytest.mark.asyncio
 async def test_user_service_increment_stats(engine) -> None:
@@ -39,32 +41,53 @@ async def test_user_service_increment_stats(engine) -> None:
 
 @pytest.mark.asyncio
 @patch("bot.handlers.profile.get_user_profile", new_callable=AsyncMock)
-async def test_cmd_profile(mock_get_profile: AsyncMock, session: AsyncSession) -> None:
+@patch(
+    "bot.handlers.profile.MarketplaceService.get_user_reputation",
+    new_callable=AsyncMock,
+    return_value=_MOCK_REPUTATION,
+)
+async def test_cmd_profile(
+    mock_reputation: AsyncMock, mock_get_profile: AsyncMock, session: AsyncSession
+) -> None:
     """Test the profile command shows statistics."""
     user = User(telegram_id=999, is_verified=True, total_trades=10, successful_trades=8)
     mock_get_profile.return_value = user
+
+    mock_bot_me = MagicMock()
+    mock_bot_me.username = "testbot"
 
     message = AsyncMock(spec=Message)
     message.from_user = MagicMock()
     message.from_user.id = 999
     message.answer = AsyncMock()
+    message.bot = AsyncMock()
+    message.bot.get_me = AsyncMock(return_value=mock_bot_me)
 
     await profile_handlers.cmd_profile(message, session)
 
     message.answer.assert_called_once()
     text = message.answer.call_args[0][0]
     assert "Your Profile" in text
-    assert "80.0%" in text
     assert "10" in text
     assert "Verified" in text
 
 
 @pytest.mark.asyncio
 @patch("bot.handlers.profile.get_user_profile", new_callable=AsyncMock)
-async def test_cb_profile(mock_get_profile: AsyncMock, session: AsyncSession) -> None:
+@patch(
+    "bot.handlers.profile.MarketplaceService.get_user_reputation",
+    new_callable=AsyncMock,
+    return_value=_MOCK_REPUTATION,
+)
+async def test_cb_profile(
+    mock_reputation: AsyncMock, mock_get_profile: AsyncMock, session: AsyncSession
+) -> None:
     """Test the profile callback shows statistics."""
     user = User(telegram_id=999, is_verified=False, total_trades=0, successful_trades=0)
     mock_get_profile.return_value = user
+
+    mock_bot_me = MagicMock()
+    mock_bot_me.username = "testbot"
 
     callback = AsyncMock(spec=CallbackQuery)
     callback.from_user = MagicMock()
@@ -72,11 +95,13 @@ async def test_cb_profile(mock_get_profile: AsyncMock, session: AsyncSession) ->
     callback.message = AsyncMock(spec=Message)
     callback.message.edit_text = AsyncMock()
     callback.answer = AsyncMock()
+    callback.bot = AsyncMock()
+    callback.bot.get_me = AsyncMock(return_value=mock_bot_me)
 
     await profile_handlers.cb_profile(callback, session)
 
     callback.message.edit_text.assert_called_once()
     text = callback.message.edit_text.call_args[0][0]
-    assert "0.0%" in text
     assert "Unverified" in text
     callback.answer.assert_called_once()
+

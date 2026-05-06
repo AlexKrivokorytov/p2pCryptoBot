@@ -17,6 +17,17 @@ from db.models.base import Base
 # ---------------- Mock google.generativeai to avoid metaclass issues on import ----------------
 sys.modules["google.generativeai"] = MagicMock()
 
+# ---------------- Mock aiogram_i18n if not installed (local dev without the package) ----------
+import importlib.util
+
+if importlib.util.find_spec("aiogram_i18n") is None:
+    _i18n_mock = MagicMock()
+    sys.modules["aiogram_i18n"] = _i18n_mock
+    sys.modules["aiogram_i18n.cores"] = MagicMock()
+    sys.modules["aiogram_i18n.cores.json_event_core"] = MagicMock()
+    sys.modules["aiogram_i18n.managers"] = MagicMock()
+    sys.modules["aiogram_i18n.managers.base"] = MagicMock()
+
 
 # Mock branding to avoid file reads during tests.
 # We use an autouse fixture to ensure it works across all tests.

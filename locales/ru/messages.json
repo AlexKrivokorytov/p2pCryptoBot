@@ -1,0 +1,45 @@
+{
+  "start": {
+    "welcome": "👋 Добро пожаловать в <b>{bot_name}</b>, {first_name}!\n\nЭто P2P-маркетплейс с крипто-эскроу. Торгуйте безопасно без риска мошенничества.",
+    "main_menu_title": "🏠 <b>Главное меню</b>"
+  },
+  "market": {
+    "browse_title": "🛒 <b>P2P Маркет</b>\n\nАктивные объявления:",
+    "no_ads": "😔 Активных объявлений не найдено.\n\nСтаньте первым — создайте своё объявление!",
+    "ad_row": "{emoji} <b>{asset}</b> → <b>{fiat}</b>  |  Курс: <b>{price}</b>\nЛимиты: {min}–{max} {fiat}  |  {method}",
+    "ad_detail": "📋 <b>Детали объявления</b>\n\n💱 Направление: <b>{direction}</b>\n🪙 Актив: <b>{asset}</b>\n💵 Фиат: <b>{fiat}</b>\n📈 Курс: <b>{price} {fiat}/{asset}</b>\n🔢 Лимиты: <b>{min} – {max} {fiat}</b>\n💳 Оплата: <b>{method}</b>\n📝 Условия: {terms}",
+    "page_info": "Страница {page} из {total}"
+  },
+  "ad_create": {
+    "start": "📝 <b>Создание объявления</b>\n\nЧто вы хотите сделать?",
+    "choose_asset": "🪙 <b>Шаг 1/5</b> — Выберите криптовалюту:",
+    "choose_fiat": "💵 <b>Шаг 2/5</b> — Введите код фиатной валюты (например <code>RUB</code>, <code>USD</code>, <code>EUR</code>):",
+    "choose_price_type": "📈 <b>Шаг 3/5</b> — Тип цены:",
+    "enter_price": "💰 <b>Шаг 3/5</b> — Введите вашу цену за 1 {asset} в {fiat}:",
+    "enter_limits": "🔢 <b>Шаг 4/5</b> — Введите лимиты сделки в {fiat}.\n\nФормат: <code>мин макс</code> (например <code>1000 50000</code>):",
+    "choose_payment": "💳 <b>Шаг 5/5</b> — Выберите способы оплаты:",
+    "confirm": "✅ <b>Проверьте объявление</b>\n\nНаправление: <b>{direction}</b>\nАктив: <b>{asset}</b>\nФиат: <b>{fiat}</b>\nКурс: <b>{price} {fiat}/{asset}</b>\nЛимиты: <b>{min} – {max} {fiat}</b>\nОплата: <b>{method}</b>\n\nОпубликовать?",
+    "published": "🎉 <b>Объявление опубликовано!</b>\n\nВаше объявление теперь видно на P2P-маркете.",
+    "cancelled": "❌ Создание объявления отменено.",
+    "invalid_fiat": "⚠️ Неверный код валюты. Введите 3-буквенный код, например <code>RUB</code> или <code>USD</code>.",
+    "invalid_price": "⚠️ Неверная цена. Введите положительное число.",
+    "invalid_limits": "⚠️ Неверные лимиты. Формат: <code>мин макс</code>, оба числа должны быть положительными и мин < макс."
+  },
+  "profile": {
+    "title": "👤 <b>Ваш профиль</b>",
+    "id": "ID: <code>{telegram_id}</code>",
+    "status_verified": "✅ Верифицирован",
+    "status_unverified": "❌ Не верифицирован",
+    "stats_header": "📊 <b>Статистика сделок</b>",
+    "total_trades": "Всего сделок: <b>{total}</b>",
+    "successful_trades": "Успешных: <b>{successful}</b>",
+    "reputation": "⭐ Репутация: <b>{positive}/{total} положительных</b> ({rate}%)",
+    "referral_header": "🔗 <b>Реферальная программа</b>",
+    "referral_link": "Ваша реферальная ссылка:\n<code>{link}</code>\n\nЗарабатывайте 20% от комиссий платформы с каждой сделки ваших рефералов."
+  },
+  "errors": {
+    "not_found": "❌ Запись не найдена.",
+    "generic": "⚠️ Что-то пошло не так. Попробуйте ещё раз.",
+    "no_permission": "🚫 У вас нет прав для этого действия."
+  }
+}
