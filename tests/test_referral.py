@@ -52,6 +52,7 @@ async def test_process_referral_reward_success(session: AsyncSession) -> None:
     order_id = uuid.uuid4()
     # Create the order first to satisfy the FK constraint
     from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
+
     order = Order(
         id=order_id,
         maker_id=456,

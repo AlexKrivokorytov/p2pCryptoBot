@@ -43,12 +43,14 @@ async def test_main_execution() -> None:
         # Mock cleanup task to be a real task that finishes
         async def fake_cleanup(sp):
             await asyncio.sleep(0.01)
+
         mock_cleanup_start.side_effect = fake_cleanup
 
         # Mock polling to finish immediately
         mock_dp.start_polling = AsyncMock()
 
         from bot.main import main
+
         await main()
 
         # Verify components were initialized and closed

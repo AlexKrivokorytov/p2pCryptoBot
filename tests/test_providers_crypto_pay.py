@@ -12,10 +12,9 @@ from providers.crypto_pay import CryptoPayClient
 @pytest.fixture
 def client() -> CryptoPayClient:
     """Return a fresh CryptoPayClient with fake environment variables."""
-    with patch.dict(os.environ, {
-        "CRYPTOPAY_TOKEN": "TEST_TOKEN",
-        "CRYPTOPAY_CALLBACK_SECRET": "TEST_SECRET"
-    }):
+    with patch.dict(
+        os.environ, {"CRYPTOPAY_TOKEN": "TEST_TOKEN", "CRYPTOPAY_CALLBACK_SECRET": "TEST_SECRET"}
+    ):
         return CryptoPayClient(testnet=True)
 
 
@@ -116,8 +115,9 @@ class TestRequest:
         mock_session = MagicMock()
         mock_session.get = MagicMock(return_value=mock_cm)
 
-        with patch.object(client, "_get_session", return_value=mock_session), pytest.raises(
-            RuntimeError, match="INVALID_PARAM"
+        with (
+            patch.object(client, "_get_session", return_value=mock_session),
+            pytest.raises(RuntimeError, match="INVALID_PARAM"),
         ):
             await client._request("GET", "badEndpoint")
 

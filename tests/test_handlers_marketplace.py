@@ -53,9 +53,6 @@ def _make_ad(
     return ad
 
 
-
-
-
 def _make_callback(data: str = "test", from_user_id: int = 42) -> MagicMock:
     """Build a mock CallbackQuery with common attributes."""
     cb = MagicMock(spec=CallbackQuery)
@@ -101,7 +98,6 @@ def test_build_ad_page_keyboard_single_page() -> None:
     """Single page: no prev/next buttons."""
     ads = [_make_ad()]
     kb = _build_ad_page_keyboard(ads, page=1, total_pages=1)
-
 
     markup = kb.inline_keyboard
     # Should have at least 2 rows: ads + controls
@@ -421,10 +417,12 @@ async def test_cb_ad_confirm_success() -> None:
     ) as mock_create:
         mock_create.return_value = mock_ad
         # Patch session.begin as an async context manager
-        session.begin = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=None),
-            __aexit__=AsyncMock(return_value=None),
-        ))
+        session.begin = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=None),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
 
         await cb_ad_confirm(cb, state, session)
 
@@ -448,10 +446,12 @@ async def test_cb_ad_confirm_exception() -> None:
         }
     )
     session = MagicMock()
-    session.begin = MagicMock(return_value=AsyncMock(
-        __aenter__=AsyncMock(side_effect=RuntimeError("DB error")),
-        __aexit__=AsyncMock(return_value=None),
-    ))
+    session.begin = MagicMock(
+        return_value=AsyncMock(
+            __aenter__=AsyncMock(side_effect=RuntimeError("DB error")),
+            __aexit__=AsyncMock(return_value=None),
+        )
+    )
 
     await cb_ad_confirm(cb, state, session)
     cb.answer.assert_awaited_with("⚠️ Failed to publish ad. Try again.", show_alert=True)

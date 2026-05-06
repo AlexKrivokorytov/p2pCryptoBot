@@ -22,8 +22,9 @@ class TestGetSellerSecret:
 
     def test_generate_key_without_seller_secret_raises(self) -> None:
         """generate_license_key should raise RuntimeError if SELLER_SECRET is not set."""
-        with patch.dict(os.environ, {}, clear=True), pytest.raises(
-            RuntimeError, match="SELLER_SECRET"
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            pytest.raises(RuntimeError, match="SELLER_SECRET"),
         ):
             os.environ.pop("SELLER_SECRET", None)
             generate_license_key(BOT_TOKEN)

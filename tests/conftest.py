@@ -22,18 +22,28 @@ sys.modules["google.generativeai"] = MagicMock()
 
 if importlib.util.find_spec("aiogram_i18n") is None:
     from typing import Any, TypeVar
+
     T = TypeVar("T")
 
     class MockBaseCore[T]:
         def __init__(self, path: str, **kwargs: Any):
             self.path = path
-        def get_locale(self, locale: str | None) -> str: return locale or "en"
-        def get_translator(self, locale: str) -> T: return {} # type: ignore
-        def find_locales(self) -> dict[str, T]: return {}
+
+        def get_locale(self, locale: str | None) -> str:
+            return locale or "en"
+
+        def get_translator(self, locale: str) -> T:
+            return {}  # type: ignore
+
+        def find_locales(self) -> dict[str, T]:
+            return {}
 
     class MockBaseManager:
-        async def get_locale(self, *args: Any, **kwargs: Any) -> str: return "en"
-        async def set_locale(self, locale: str, **kwargs: Any) -> None: pass
+        async def get_locale(self, *args: Any, **kwargs: Any) -> str:
+            return "en"
+
+        async def set_locale(self, locale: str, **kwargs: Any) -> None:
+            pass
 
     class MockI18nMiddleware:
         def __init__(self, *args: Any, **kwargs: Any):
