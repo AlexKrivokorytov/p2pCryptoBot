@@ -51,6 +51,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: p2pbot
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: p2pbot_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       POSTGRES_URI: postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test
       BOT_TOKEN: "0:test_token"
@@ -73,6 +87,9 @@ jobs:
 
       - name: Copy branding config
         run: cp branding.yaml.example branding.yaml
+
+      - name: Run Alembic migrations
+        run: alembic upgrade head
 
       - name: "🧪 Run unit tests"
         run: |
@@ -103,6 +120,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: p2pbot
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: p2pbot_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       POSTGRES_URI: postgresql+asyncpg://p2pbot:testpassword@localhost:5432/p2pbot_test
       BOT_TOKEN: "0:test_token"
@@ -125,6 +156,9 @@ jobs:
 
       - name: Copy branding config
         run: cp branding.yaml.example branding.yaml
+
+      - name: Run Alembic migrations
+        run: alembic upgrade head
 
       - name: "🔌 Run contract tests (Crypto Pay & Binance API shapes)"
         run: |
