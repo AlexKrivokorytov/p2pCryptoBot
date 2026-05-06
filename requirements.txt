@@ -11,9 +11,9 @@ aiogram==3.27.0
 sqlalchemy[asyncio]==2.0.40
 asyncpg==0.31.0
 
-# Database — Alembic sync migrations (psycopg2, NOT asyncpg)
+# Database — Alembic sync migrations (psycopg3, NOT asyncpg)
 alembic==1.15.2
-psycopg2-binary==2.9.10
+psycopg[binary]==3.3.4
 
 # Crypto Pay: no SDK — we use direct aiohttp calls (see providers/crypto_pay.py)
 # Removed aiocryptopay to eliminate certifi<2024 version constraint (CVE-2024-39689)
