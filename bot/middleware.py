@@ -6,6 +6,7 @@ messages, callbacks, inline queries, etc.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -14,6 +15,41 @@ from aiogram.types import TelegramObject
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from providers.crypto_pay import CryptoPayClient
+
+
+class ThrottlingMiddleware(BaseMiddleware):
+    """Simple in-memory throttling middleware to prevent spam.
+
+    Limits users to one update per 'rate_limit' seconds.
+    """
+
+    def __init__(self, rate_limit: float = 0.5) -> None:
+        self.rate_limit = rate_limit
+        self.cache: dict[int, float] = {}
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        from aiogram.types import CallbackQuery, Message
+
+        user_id = None
+        if (isinstance(event, (Message, CallbackQuery))) and event.from_user:
+            user_id = event.from_user.id
+
+        if user_id:
+            now = time.time()
+            last_hit = self.cache.get(user_id, 0)
+            if now - last_hit < self.rate_limit:
+                # Silently ignore or answer callback if needed
+                if isinstance(event, CallbackQuery):
+                    await event.answer("⚠️ Slow down!", show_alert=True)
+                return
+            self.cache[user_id] = now
+
+        return await handler(event, data)
 
 
 class DbSessionMiddleware(BaseMiddleware):
@@ -60,4 +96,65 @@ class CryptoPayMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         data["crypto_pay"] = self.client
+        return await handler(event, data)
+
+
+class UserRegistrationMiddleware(BaseMiddleware):
+    """Ensure every user interacting with the bot is registered in the database.
+
+    This middleware checks if the user exists in the DB and creates a record if not.
+    It runs for every update, preventing 'Profile not found' errors.
+    """
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        from aiogram.types import CallbackQuery, Message
+
+        from services.user_service import get_or_create_user
+
+        user = None
+        if isinstance(event, (Message, CallbackQuery)):
+            user = event.from_user
+
+        session = data.get("session")
+        if user and session:
+            db_user = await get_or_create_user(
+                session,
+                telegram_id=user.id,
+                username=user.username,
+                first_name=user.first_name,
+            )
+            data["db_user"] = db_user
+
+        return await handler(event, data)
+
+
+class BrandingMiddleware(BaseMiddleware):
+    """Inject the correct branding based on the bot's license_id."""
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        from bot.config import load_license_branding, set_branding
+
+        # license_id is set in dp workflow data by DynamicBotLoader
+        license_id = data.get("license_id")
+        session = data.get("session")
+
+        if license_id and session:
+            branding = await load_license_branding(session, license_id)
+            set_branding(branding)
+        else:
+            # Fallback to default branding
+            from bot.config import load_branding
+
+            set_branding(load_branding())
+
         return await handler(event, data)

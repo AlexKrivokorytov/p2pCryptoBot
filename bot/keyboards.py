@@ -341,7 +341,64 @@ def admin_dashboard_keyboard() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="🔄 Refresh Stats", callback_data="admin:stats:refresh"),
+        InlineKeyboardButton(text="📋 Audit Logs", callback_data="admin:audit"),
     )
+    builder.row(
+        InlineKeyboardButton(text="🛠️ Sandbox", callback_data="admin:sandbox:menu"),
+        InlineKeyboardButton(text="🔍 Search User", callback_data="admin:user:search"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="🏠 Menu", callback_data="menu:main"),
+    )
+    return builder.as_markup()
+
+
+def admin_user_manage_keyboard(user_id: int, is_verified: bool) -> InlineKeyboardMarkup:
+    """Keyboard for managing a specific user (verify/unverify)."""
+    builder = InlineKeyboardBuilder()
+    verify_text = "❌ Unverify" if is_verified else "✅ Verify"
+    verify_data = f"admin:user:verify:{user_id}:{'0' if is_verified else '1'}"
+
+    builder.row(InlineKeyboardButton(text=verify_text, callback_data=verify_data))
+    builder.row(InlineKeyboardButton(text="🔙 Back", callback_data="admin:stats"))
+    return builder.as_markup()
+
+
+def admin_sandbox_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard for the Admin Sandbox (Debug) menu."""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="💎 Activate License", callback_data="admin:sandbox:lic_bypass"),
+        InlineKeyboardButton(text="💰 Add Test USDT", callback_data="admin:sandbox:add_usdt"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="⚙️ Order States", callback_data="admin:sandbox:order_state"),
+        InlineKeyboardButton(text="🔙 Back to Admin", callback_data="admin:stats"),
+    )
+    return builder.as_markup()
+
+
+def admin_sandbox_order_status_keyboard(order_id: str) -> InlineKeyboardMarkup:
+    """Keyboard for selecting a target status to force on an order."""
+    from db.models.order import OrderStatus
+
+    builder = InlineKeyboardBuilder()
+
+    # Common test statuses
+    statuses = [
+        OrderStatus.escrow_held,
+        OrderStatus.completed,
+        OrderStatus.cancelled,
+        OrderStatus.dispute,
+    ]
+
+    for s in statuses:
+        builder.button(
+            text=s.value.upper(), callback_data=f"admin:sandbox:force:{order_id}:{s.value}"
+        )
+
+    builder.adjust(2)
+    builder.row(InlineKeyboardButton(text="❌ Cancel", callback_data="admin:sandbox:menu"))
     return builder.as_markup()
 
 

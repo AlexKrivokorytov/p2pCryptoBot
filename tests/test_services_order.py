@@ -111,7 +111,7 @@ async def test_create_order_success(session: AsyncSession) -> None:
         crypto_pay,
         maker_id=601,
         order_type="sell_crypto",
-        asset="USDT",
+        asset="BTC",
         amount=10.0,
         fiat_currency="RUB",
         fiat_amount=900.0,

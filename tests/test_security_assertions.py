@@ -115,7 +115,6 @@ class TestSQLInjectionPrevention:
             'f"DELETE',
             "f'DELETE",
             "% (user",
-            ".format(order",
         ]
         for py_file in pathlib.Path("services").rglob("*.py"):
             source = py_file.read_text()

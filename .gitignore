@@ -62,3 +62,4 @@ trivy-results.sarif
 
 # ── Project Specific ───────────────────────────────────────────────────────
 UPGRADE_PLAN.md
+abandoned/

@@ -16,7 +16,6 @@ There are no tiers, no upsells, no "Pro" gating. You get the complete, productio
 
 | Feature | Included |
 |---|---|
-| **AI Dispute Mediator** (Gemini 2.0 Flash) | ✅ |
 | **All 5 lifecycle push notifications** | ✅ |
 | **Anonymous Maker-Taker trade chat** | ✅ |
 | **Admin dashboard** with dispute queue | ✅ |

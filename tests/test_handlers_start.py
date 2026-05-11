@@ -25,9 +25,8 @@ async def test_cmd_start_new_user(session: AsyncSession) -> None:
     await start_handlers.cmd_start(message, session)
 
     # Verify user was created in DB
-    async with session.begin():
-        result = await session.execute(select(User).where(User.telegram_id == 12345))
-        user = result.scalar_one_or_none()
+    result = await session.execute(select(User).where(User.telegram_id == 12345))
+    user = result.scalar_one_or_none()
 
     assert user is not None
     assert user.username == "new_user"

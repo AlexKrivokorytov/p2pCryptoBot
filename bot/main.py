@@ -41,11 +41,18 @@ from bot.dynamic_loader import DynamicBotLoader  # noqa: E402
 from bot.handlers import ROUTERS  # noqa: E402
 from bot.handlers.webhook import cryptopay_webhook  # noqa: E402
 from bot.i18n import setup_i18n  # noqa: E402
-from bot.middleware import CryptoPayMiddleware, DbSessionMiddleware  # noqa: E402
+from bot.middleware import (  # noqa: E402
+    BrandingMiddleware,
+    CryptoPayMiddleware,
+    DbSessionMiddleware,
+    ThrottlingMiddleware,
+    UserRegistrationMiddleware,
+)
 from providers.crypto_pay import CryptoPayClient  # noqa: E402
 from providers.ton import TONProvider  # noqa: E402
 from services.bot_spawner import BotSpawnerService  # noqa: E402
 from tasks.cleanup import start_cleanup_task  # noqa: E402
+from tasks.escrow_scanner import EscrowScanner  # noqa: E402
 from tasks.ton_scanner import TONScanner  # noqa: E402
 from utils.license_guard import check_license_or_abort  # noqa: E402
 
@@ -92,7 +99,10 @@ async def main() -> None:
 
     # Outer middlewares — cover ALL update types (message, callback, inline, …)
     dp.update.outer_middleware(DbSessionMiddleware(session_pool))
+    dp.update.outer_middleware(ThrottlingMiddleware())
+    dp.update.outer_middleware(UserRegistrationMiddleware())
     dp.update.outer_middleware(CryptoPayMiddleware(crypto_pay))
+    dp.update.outer_middleware(BrandingMiddleware())
 
     # I18n setup
     i18n = setup_i18n()
@@ -119,7 +129,7 @@ async def main() -> None:
     )
 
     # ── Background cleanup task ──────────────────────────────────────────────────
-    cleanup_task = asyncio.create_task(start_cleanup_task(session_pool, bot))
+    cleanup_task = asyncio.create_task(start_cleanup_task(session_pool, bot, crypto_pay))
 
     # ── TON Blockchain Scanner — B2B Phase 4 ─────────────────────────────────────
     ton_provider = TONProvider(is_testnet=settings.DEBUG)
@@ -129,6 +139,10 @@ async def main() -> None:
         master_wallet=settings.MASTER_TON_WALLET,
     )
     ton_task = asyncio.create_task(ton_scanner.run())
+
+    # ── P2P On-Chain Escrow Scanner — Phase 6 ────────────────────────────────────
+    escrow_scanner = EscrowScanner(session_maker=session_pool, interval_sec=30)
+    escrow_task = asyncio.create_task(escrow_scanner.run())
 
     # Spawn active bots on startup
     asyncio.create_task(bot_spawner.spawn_all_active())
@@ -145,10 +159,12 @@ async def main() -> None:
     finally:
         await dynamic_loader.stop_all()
         ton_scanner.stop()
+        escrow_scanner.stop()
         cleanup_task.cancel()
         ton_task.cancel()
+        escrow_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
-            await asyncio.gather(cleanup_task, ton_task)
+            await asyncio.gather(cleanup_task, ton_task, escrow_task)
         await ton_provider.disconnect()
         await crypto_pay.close()
         # NOTE: bot.session is closed by start_polling (close_bot_session=True default).

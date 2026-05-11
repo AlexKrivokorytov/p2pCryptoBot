@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import structlog
 from aiogram import F, Router
-from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, LabeledPrice, Message, PreCheckoutQuery
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +20,6 @@ router = Router(name="b2b")
 class B2BStates(StatesGroup):
     """States for B2B white-label configuration."""
 
-    waiting_for_token = State()
     waiting_for_branding = State()
 
 
@@ -158,60 +156,82 @@ async def cb_b2b_pay_ton(callback: CallbackQuery, session: AsyncSession) -> None
 
 
 @router.callback_query(F.data == "b2b:spawn")
-async def cb_b2b_spawn(callback: CallbackQuery, state: FSMContext) -> None:
-    """Prompt user for their bot token."""
-    await callback.message.edit_text(  # type: ignore[union-attr]
+async def cb_b2b_spawn(callback: CallbackQuery, session: AsyncSession) -> None:
+    """Show instructions for spawning a bot via Managed Bot API."""
+    if not callback.message:
+        return
+
+    license_data = await b2b_service.get_active_license(session, callback.from_user.id)
+    if not license_data:
+        await callback.answer("❌ Active license required.", show_alert=True)
+        return
+
+    # Link: https://t.me/newbot?p2p_master_bot/suggested_name
+    master_bot = settings.MASTER_BOT_USERNAME.replace("@", "")
+    suggested_name = f"p2p_{callback.from_user.id}"
+    spawn_link = f"https://t.me/newbot?{master_bot}/{suggested_name}"
+
+    text = (
         "🚀 <b>Spawn Your Bot</b>\n\n"
-        "To start your own P2P bot, you need a token from @BotFather.\n\n"
-        "1. Open @BotFather\n"
-        "2. Create a new bot or get token for existing one\n"
-        "3. Paste the token here:\n\n"
-        "<i>Note: Your token is stored encrypted and only used to run your instance.</i>",
-        parse_mode="HTML",
+        "We use Telegram's <b>Managed Bot API</b> for seamless deployment.\n\n"
+        "1. Click the link below to open @BotFather\n"
+        "2. Choose a name and username for your bot\n"
+        "3. @BotFather will send a confirmation back to THIS bot\n\n"
+        f"🔗 <a href='{spawn_link}'>Click here to Create Bot</a>\n\n"
+        "<i>Note: Ваша лицензия ID: <code>{license_data['license_id']}</code></i>"
     )
-    await state.set_state(B2BStates.waiting_for_token)
+    if not isinstance(callback.message, Message):
+        await callback.answer()
+        return
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=b2b_menu_keyboard(has_active_license=True),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+    )
     await callback.answer()
 
 
-@router.message(B2BStates.waiting_for_token)
-async def msg_b2b_token(
+@router.message(F.managed_bot_created)
+async def handle_managed_bot_created(
     message: Message,
-    state: FSMContext,
     session: AsyncSession,
     bot_spawner: BotSpawnerService,
 ) -> None:
-    """Collect and validate bot token, then spawn instance."""
-    if not message.from_user:
-        return
-    token = message.text
-    if not token or ":" not in token:
-        await message.answer("❌ Invalid token format. Please send a valid token from @BotFather.")
+    """Handle service message from BotFather about a new managed bot."""
+    if not message.managed_bot_created or not message.from_user:
         return
 
-    # Find active license
+    bot_info = message.managed_bot_created
+    log.info(
+        "managed_bot_created_received",
+        user_id=message.from_user.id,
+        bot_id=bot_info.bot_id,  # type: ignore[attr-defined]
+    )
+
+    # 1. Find active license
     license_data = await b2b_service.get_active_license(session, message.from_user.id)
     if not license_data:
-        await message.answer("❌ You don't have an active license. Please buy one first.")
-        await state.clear()
+        await message.answer("❌ License not found. Please contact support.")
         return
 
-    license_id = license_data["license_id"]
-
     try:
-        # Update and spawn
-        await bot_spawner.update_bot_token(session, license_id, token)
+        # 2. Get the token from BotFather using Managed Bot API
+        # aiogram 3.27 supports get_managed_bot_token on the bot object
+        token_data = await message.bot.get_managed_bot_token(bot_id=bot_info.bot_id)  # type: ignore[attr-defined, union-attr, call-arg]
+        token = token_data.token  # type: ignore[union-attr]
+
+        # 3. Update and spawn
+        await bot_spawner.update_bot_token(session, license_data["license_id"], token)
+
         await message.answer(
-            "✅ <b>Bot Spawned!</b>\n\n"
-            "Your white-label instance is now running.\n"
-            "Try sending /start to your bot to verify.",
+            "✅ <b>Bot Successfully Spawned!</b>\n\n"
+            f"Your bot @{bot_info.bot_username} is now online.\n"  # type: ignore[attr-defined]
+            "Open it and send /start to begin.",
             reply_markup=b2b_menu_keyboard(has_active_license=True),
             parse_mode="HTML",
         )
-        await state.clear()
     except Exception as e:
-        log.error("b2b_spawn_handler_failed", error=str(e), user_id=message.from_user.id)
-        msg = (
-            "❌ <b>Deployment Failed</b>\n\n"
-            "Could not start your bot. Please check if the token is correct."
-        )
-        await message.answer(msg)
+        log.error("managed_bot_spawn_failed", error=str(e), user_id=message.from_user.id)
+        await message.answer("❌ Failed to retrieve bot token or start instance. Please try again.")

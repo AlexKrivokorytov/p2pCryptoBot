@@ -51,9 +51,8 @@
 *   **🧬 Web3 Wallets**: Real on-chain wallet generation (EVM/TON) with private keys encrypted at rest (AES-256-GCM).
 *   **📊 Market Data**: Live rates from Binance Spot API for precise ad pricing.
 *   **🤝 Integrated Chat**: Anonymous messaging between Maker and Taker within the bot.
-*   **⚖️ Dispute System**: Moderator dashboard for conflict resolution with AI-assisted chat analysis.
+*   **⚖️ Dispute System**: Moderator dashboard for conflict resolution.
 *   **🛠️ Admin Dashboard**: Deep analytics, volume statistics, and dispute queue management.
-*   **🤖 AI Mediator**: Gemini 2.0 Flash integration for automated dispute analysis.
 *   **🎨 White-Label Ready**: Zero-Python customization via `branding.yaml` — change name, fees, emojis, messages without touching code.
 *   **🔑 License Protection**: HMAC-SHA256 license keys bound to Telegram Bot ID — your IP stays yours.
 
@@ -125,7 +124,6 @@ python -m bot.main
 | `POSTGRES_URI` | ✅ | Database connection string |
 | `AES_KEY` | ✅ | 64-character hex key for wallet encryption |
 | `ADMIN_IDS` | ✅ | Comma-separated Telegram IDs of admins |
-| `GEMINI_API_KEY` | ⬜ | Key for AI Mediator (Gemini) — optional |
 
 ---
 
@@ -157,7 +155,6 @@ bandit -r . -ll # Security audit
 - [x] **P2P Engine**: Order lifecycle, escrow via Crypto Pay, pessimistic locking.
 - [x] **Chats & Profiles**: Anonymous Maker-Taker messaging, user profiles.
 - [x] **Admin Panel**: Dispute queue, platform statistics, moderator actions.
-- [x] **AI Mediator**: Gemini 2.0 Flash integration for automated dispute analysis.
 - [x] **Branding System**: Zero-Python customization via `branding.yaml`.
 - [x] **Notifications**: Full lifecycle notifications (taker found, fiat sent, escrow released, dispute, expiry).
 - [x] **Contract Tests**: NIST AES-256-GCM vectors + Crypto Pay API contract tests.

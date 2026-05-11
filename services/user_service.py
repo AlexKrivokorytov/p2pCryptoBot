@@ -33,18 +33,31 @@ async def get_or_create_user(
     Returns:
         User model instance.
     """
-    async with session.begin():
-        from sqlalchemy import select
+    from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
 
-        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
-        user = result.scalar_one_or_none()
-        if user is None:
-            user = User(
-                telegram_id=telegram_id,
-                username=username,
-                first_name=first_name,
-            )
-            session.add(user)
+    # We don't use session.begin() here because the middleware already manages
+    # the transaction lifecycle for the whole update.
+    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        user = User(
+            telegram_id=telegram_id,
+            username=username,
+            first_name=first_name,
+        )
+        session.add(user)
+        try:
+            # Use a savepoint to catch IntegrityError without rolling back the whole transaction
+            async with session.begin_nested():
+                await session.flush()
+        except IntegrityError:
+            # User was likely created by a concurrent request, fetch it
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                raise  # Should not happen
     return user
 
 

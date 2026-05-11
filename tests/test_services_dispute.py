@@ -74,8 +74,9 @@ async def test_resolve_dispute_taker_wins(session: AsyncSession) -> None:
     order = await _create_order(session, status=OrderStatus.dispute)
     crypto_pay = _mock_crypto_pay()
 
+    bot = AsyncMock()
     result = await dispute_service.resolve_dispute(
-        session, crypto_pay, order_id=str(order.id), decision="taker_wins", moderator_id=999
+        session, crypto_pay, bot, order_id=str(order.id), decision="taker_wins", moderator_id=999
     )
 
     assert result["status"] == OrderStatus.completed
@@ -89,8 +90,9 @@ async def test_resolve_dispute_maker_wins(session: AsyncSession) -> None:
     order = await _create_order(session, status=OrderStatus.dispute)
     crypto_pay = _mock_crypto_pay()
 
+    bot = AsyncMock()
     result = await dispute_service.resolve_dispute(
-        session, crypto_pay, order_id=str(order.id), decision="maker_wins", moderator_id=999
+        session, crypto_pay, bot, order_id=str(order.id), decision="maker_wins", moderator_id=999
     )
 
     assert result["status"] == OrderStatus.cancelled
@@ -104,7 +106,8 @@ async def test_resolve_dispute_invalid_decision(session: AsyncSession) -> None:
     order = await _create_order(session, status=OrderStatus.dispute)
     crypto_pay = _mock_crypto_pay()
 
+    bot = AsyncMock()
     with pytest.raises(ValueError, match="Invalid decision"):
         await dispute_service.resolve_dispute(
-            session, crypto_pay, order_id=str(order.id), decision="draw", moderator_id=999
+            session, crypto_pay, bot, order_id=str(order.id), decision="draw", moderator_id=999
         )

@@ -33,13 +33,9 @@ dependencies = [
     # Webhook HTTP server
     "aiohttp>=3.13.5",
     "pyyaml>=6.0",
-    "google-generativeai>=0.7.0",
     "defusedxml>=0.7.1",
     # certifi: unrestricted now that aiocryptopay is removed (CVE-2024-39689 patched)
     "certifi>=2026.4.22",
-    # protobuf: 5.29.6 is max version compatible with google-generativeai (requires <6.0.0)
-    # CVE-2024-51547 is patched in >=5.29.6. Cannot upgrade to 7.x — google-api-core blocks it.
-    "protobuf>=5.29.6,<6.0.0",
     # Multi-language support
     "aiogram-i18n>=1.5",
 ]

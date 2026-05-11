@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +16,18 @@ log = structlog.get_logger(__name__)
 
 # Supported chain keys
 SUPPORTED_CHAINS: frozenset[str] = frozenset({"ton", "evm"})
+
+
+def get_chain_for_asset(asset: str) -> str | None:
+    """Return 'ton' or 'evm' based on the asset ticker, or None if handled by CryptoPay."""
+    asset_upper = asset.upper()
+    if asset_upper == "TON":
+        return "ton"
+    if asset_upper in ("BNB", "ETH", "MATIC", "USDT", "USDC"):
+        # For now, we assume these are on EVM chains
+        return "evm"
+    return None
+
 
 # Lazy cache — providers are created on first access, not at import time
 _provider_cache: dict[str, WalletProvider] = {}
@@ -115,3 +129,159 @@ def decrypt_wallet_key(wallet: UserWallet) -> str:
         Decrypted private key string.
     """
     return decrypt(wallet.encrypted_private_key)
+
+
+async def get_user_wallet_by_chain(
+    session: AsyncSession, user_id: int, chain: str
+) -> UserWallet | None:
+    """Fetch an active wallet for a user on a specific chain.
+
+    Args:
+        session: Active async SQLAlchemy session.
+        user_id: Telegram ID of the user.
+        chain: Blockchain identifier ('ton' or 'evm').
+
+    Returns:
+        UserWallet object or None.
+    """
+    result = await session.execute(
+        select(UserWallet).where(
+            UserWallet.user_id == user_id,
+            UserWallet.chain == chain,
+            UserWallet.is_active.is_(True),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def generate_order_wallet(chain: str) -> dict[str, str]:
+    """Generate a fresh keypair for a specific order's escrow.
+
+    Args:
+        chain: 'ton' or 'evm'.
+
+    Returns:
+        Dict with 'address', 'private_key', 'mnemonic'.
+    """
+    provider = _get_provider(chain)
+    # Use 0 as user_id for system-generated order wallets
+    wallet_data = await provider.generate_wallet(0)
+    return {
+        "address": wallet_data["address"],
+        "private_key": wallet_data["private_key"],
+        "mnemonic": wallet_data.get("mnemonic") or "",
+    }
+
+
+async def transfer_from_wallet(
+    session: AsyncSession,
+    user_id: int,
+    chain: str,
+    to_address: str,
+    asset: str,
+    amount: Any,  # Decimal
+    memo: str | None = None,
+) -> str:
+    """Sign and broadcast a transfer from a user's wallet.
+
+    Handles private key decryption and provider routing.
+
+    Args:
+        session: Active async SQLAlchemy session.
+        user_id: Sender's Telegram ID.
+        chain: Blockchain identifier.
+        to_address: Recipient's public address.
+        asset: Asset ticker.
+        amount: Amount to transfer.
+        memo: Optional transaction memo.
+
+    Returns:
+        Transaction hash.
+
+    Raises:
+        ValueError: If wallet not found or asset unsupported.
+        RuntimeError: If transfer fails.
+    """
+    wallet = await get_user_wallet_by_chain(session, user_id, chain)
+    if not wallet:
+        raise ValueError(f"No active {chain} wallet found for user {user_id}")
+
+    private_key = decrypt_wallet_key(wallet)
+    provider = _get_provider(chain)
+
+    try:
+        tx_hash = await provider.transfer(
+            private_key=private_key,
+            to_address=to_address,
+            asset=asset,
+            amount=amount,
+            memo=memo,
+        )
+        return tx_hash
+    except Exception as exc:
+        log.error(
+            "wallet_transfer_failed",
+            user_id=user_id,
+            chain=chain,
+            asset=asset,
+            error=str(exc),
+            step="transfer_from_wallet",
+        )
+        raise
+
+
+async def transfer_from_order_wallet(
+    session: AsyncSession,
+    order_id: str,
+    chain: str,
+    to_address: str,
+    asset: str,
+    amount: Any,  # Decimal
+    memo: str | None = None,
+) -> str:
+    """Sign and broadcast a transfer from an ORDER's escrow wallet.
+
+    Args:
+        session: Active async SQLAlchemy session.
+        order_id: Order UUID string.
+        chain: 'ton' or 'evm'.
+        to_address: Recipient's public address.
+        asset: Asset ticker.
+        amount: Amount to transfer.
+        memo: Optional transaction memo.
+
+    Returns:
+        Transaction hash.
+    """
+    from db.models.order import Order
+
+    # Acquire pessimistic lock
+    stmt = select(Order).where(Order.id == order_id).with_for_update()
+    result = await session.execute(stmt)
+    order = result.scalar_one_or_none()
+
+    if not order or not order.escrow_wallet_private_key_enc:
+        raise ValueError(f"No escrow wallet found for order {order_id}")
+
+    private_key = decrypt(order.escrow_wallet_private_key_enc)
+    provider = _get_provider(chain)
+
+    try:
+        tx_hash = await provider.transfer(
+            private_key=private_key,
+            to_address=to_address,
+            asset=asset,
+            amount=amount,
+            memo=memo,
+        )
+        return tx_hash
+    except Exception as exc:
+        log.error(
+            "order_transfer_failed",
+            order_id=order_id,
+            chain=chain,
+            asset=asset,
+            error=str(exc),
+            step="transfer_from_order_wallet",
+        )
+        raise

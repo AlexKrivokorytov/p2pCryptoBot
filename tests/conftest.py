@@ -6,7 +6,7 @@ import importlib.util
 import os
 import sys
 from contextlib import suppress
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -91,6 +91,15 @@ def mock_branding(request):
             "order_max_amount_usdt": 50000.0,
             "order_timeout_sec": 1800,
         },
+        "notifications": {
+            "taker_found": "Taker {taker_display} found for order {order_id_short}",
+            "fiat_sent": "Fiat sent for order {order_id_short}",
+            "escrow_released": "Escrow released for order {order_id_short}: {amount} {asset}",
+            "dispute_opened": "Dispute opened for order {order_id_short}: {reason}",
+            "dispute_resolved": "Dispute resolved for order {order_id_short}: {decision}",
+            "order_expired": "Order {order_id_short} for {asset} expired",
+            "escrow_refunded": "Escrow refunded for order {order_id_short}: {amount} {asset}",
+        },
     }
     with (
         patch("bot.config.get_branding", return_value=mock_dict),
@@ -157,3 +166,12 @@ async def session(engine) -> AsyncSession:
         table_names = [f'"{t.name}"' for t in Base.metadata.sorted_tables]
         if table_names:
             await conn.execute(text(f"TRUNCATE {', '.join(table_names)} CASCADE;"))
+
+
+@pytest.fixture
+def mock_crypto_pay():
+    """Mock CryptoPayClient."""
+    mock = MagicMock()
+    mock.create_invoice = AsyncMock()
+    mock.transfer = AsyncMock()
+    return mock

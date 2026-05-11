@@ -24,7 +24,7 @@ This project is a highly robust, production-ready **P2P Crypto Trading Bot** in 
 
 ## 2. Current State: What is Done?
 
-We have successfully implemented **Phases 1 through 4**, plus an Admin moderation panel.
+We have successfully implemented **Phases 1 through 5 (Foundations)**, plus an Admin moderation panel and B2B SaaS features.
 
 1. **Core P2P Engine:** Ad creation, taking orders, and secure escrow state machine (`pending` -> `escrow_held` -> `completed` / `dispute`).
 2. **Trade Chat & Profiles:** Anonymous message routing between Maker and Taker. User statistics (volume, successful trades).
@@ -33,39 +33,36 @@ We have successfully implemented **Phases 1 through 4**, plus an Admin moderatio
    - `balance_service.py` aggregates real-time on-chain balances via `web3.py` and `Toncenter`.
    - `rate_service.py` fetches live market rates from Binance Spot API for P2P ad pricing suggestions.
 5. **Admin Dashboard:** `/admin`, `/stats`, `/disputes`. Moderators can view platform volume, browse the dispute queue, and resolve conflicts via inline buttons.
-6. **Deployment:** Dockerized architecture. The `migrate.sh` script automatically handles Alembic DB migrations safely on startup.
+6. **B2B SaaS Foundations:** 
+   - **Telegram Stars**: Buy 1-year licenses with XTR.
+   - **TON Payments**: Automated license activation via `TONScanner` monitoring the master wallet.
+   - **Bot Spawning**: Create managed white-label bot instances via Telegram's Managed Bot API.
+7. **Expanded Notification System:** Dynamic branding-based templates for all trade lifecycle events (disputes, releases, refunds, expiry).
+8. **AI Removal:** Cleaned the project of all legacy AI/dispute mediation stubs and experimental features to focus on a robust "student-like" or "SaaS-ready" core.
 
 ---
 
 ## 3. Where We Stopped
 
-- **Admin Dashboard Completed:** The admin functionality was fully implemented and covered by tests.
-- **Docker Fix:** Fixed an issue where the DB migrations (`alembic`) wouldn't run properly on a freshly recreated Docker volume. The bot now successfully starts from scratch using `docker-compose up -d`.
-- **Clean up:** Removed outdated handover guides and temporary test output files.
+- **Notification Expansion Completed:** Refactored `notification_service.py` to use dynamic templates from `branding.yaml`. Implemented automated dispute resolution alerts and stagnant trade cleanup.
+- **Task Verification:** 13/13 unit tests passed for the new notification logic. `ruff` and `mypy` are clean.
 
 ---
 
 ## 4. What Remains to be Done (Roadmap)
 
-When returning to the project, the following features are the next highest priorities:
+The following features are the next highest priorities for the project:
 
-### 🔴 Priority 1: AI Mediator (Gemini Integration)
-In `services/dispute_service.py`, the function `ai_mediator_suggest()` is currently a stub. 
-**Goal:** Hook this up using the `google-generativeai` SDK. When a dispute is raised, the AI should read the `Trade Chat` history and suggest a resolution (e.g., `taker_wins` or `maker_wins`) with reasoning to the Admin. 
-*(Note: `GEMINI_API_KEY` is already present in `.env`).*
+### 🟠 Priority 1: True On-Chain Escrow (Phase 6)
+Transition from centralized `Crypto Pay` to decentralized, self-hosted Web3 trading.
+- Implement `transfer()` in `EvmWalletProvider` (Web3.py) and `TonWalletProvider` (Pytoniq).
+- Sign and broadcast transactions using decrypted user private keys to release escrow.
+- Monitor generated user wallets for incoming "Trade Funding" transactions.
 
-### 🟠 Priority 2: Expanded Notification System
-In `services/notification_service.py`, we only have 2 notifications. We need to add:
-- `notify_taker_escrow_released()` (inform the Taker they received the crypto).
-- `notify_dispute_opened()` (inform both parties).
-- `notify_order_expired()` (inform the Maker if their ad timed out).
+### 🟡 Priority 2: Fiat Rate Parsing for Local Currencies
+Integrate a secondary API (like `CurrencyAPI` or `ExchangeRate-API`) to show accurate prices for `RUB`, `UAH`, `KZT`, etc., which are missing from Binance's direct spot pairs.
 
-### 🟡 Priority 3: True On-Chain Escrow (Phase 5)
-Currently, the bot uses the centralized **Crypto Pay** API to hold escrow and transfer funds.
-**Goal:** Transition to true non-custodial / self-hosted Web3 trading.
-- Implement the `transfer()` logic in `EvmWalletProvider` and `TonWalletProvider`.
-- Build raw transactions, sign them with the decrypted private keys, and broadcast them directly to the blockchain to release escrow to the Taker.
-
-### 🟢 Priority 4: Fiat Rate Parsing for Local Currencies
-Currently, `rate_service.py` fetches rates directly from Binance (e.g., `EURUSDT`). Currencies like `RUB`, `UAH`, or `KZT` are not natively traded against USDT on spot markets.
-**Goal:** Integrate a secondary API (like an exchange rate API or specialized crypto-fiat aggregator) to show accurate prices for local fiat currencies.
+### 🟢 Priority 3: B2B License Management & Refunds
+- Add administrative tools to manually revoke or extend B2B licenses.
+- Implement `refundStarPayment` in `bot/handlers/admin.py` to allow moderators to process Stars refunds.
+- Expand `branding.yaml` validation for custom bot instances.

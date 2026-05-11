@@ -5,8 +5,6 @@ Each provider implements :class:`WalletProvider` for a specific blockchain.
 Implementations:
 - :class:`EvmWalletProvider` — keygen (eth-account) + balance (web3.py AsyncWeb3)
 - :class:`TonWalletProvider` — keygen (pytoniq-core) + balance (Toncenter REST)
-
-Transfer methods are stubs pending Phase 5.
 """
 
 from __future__ import annotations
@@ -17,7 +15,25 @@ import secrets
 from decimal import Decimal
 from typing import Any
 
+import aiohttp
 import structlog
+
+# Optional heavy dependencies - moved to top level for testability
+try:
+    from eth_account import Account
+    from web3 import AsyncWeb3
+
+    HAS_EVM = True
+except ImportError:
+    HAS_EVM = False
+
+try:
+    from pytoniq import WalletV4R2  # type: ignore[attr-defined]
+    from pytoniq_core import Address  # type: ignore[attr-defined]
+
+    HAS_TON = True
+except ImportError:
+    HAS_TON = False
 
 log = structlog.get_logger(__name__)
 
@@ -93,7 +109,8 @@ def _generate_evm_account() -> dict[str, str]:
     Returns:
         Dict with ``address``, ``private_key``, and ``mnemonic`` (BIP-39).
     """
-    from eth_account import Account  # noqa: S401 — eth_account is the official EVM key library
+    if not HAS_EVM:
+        raise ImportError("eth-account not installed")
 
     # Enable HD wallet (BIP-39 mnemonic) support
     Account.enable_unaudited_hdwallet_features()  # noqa: S401
@@ -152,6 +169,9 @@ class EvmWalletProvider(WalletProvider):
         Returns:
             Balance as :class:`~decimal.Decimal`. Returns ``Decimal("0")`` on any RPC error.
         """
+        if not HAS_EVM:
+            return Decimal("0")
+
         # BEP-20 / ERC-20 contract addresses on BSC mainnet
         erc20_contracts: dict[str, str] = {
             "USDT": "0x55d398326f99059fF775485246999027B3197955",
@@ -169,8 +189,6 @@ class EvmWalletProvider(WalletProvider):
             }
         ]
         try:
-            from web3 import AsyncWeb3
-
             w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(self.rpc_url))
             asset_upper = asset.upper()
 
@@ -225,16 +243,95 @@ class EvmWalletProvider(WalletProvider):
         amount: Decimal,
         memo: str | None = None,
     ) -> str:
-        """Sign and broadcast an EVM transaction. (Phase 4 — not yet implemented.)"""
+        """Sign and broadcast an EVM transaction.
+
+        Supports native assets (BNB/ETH) and ERC-20 (USDT/USDC).
+        Uses EIP-1559 if supported by the provider, otherwise falls back to legacy.
+        """
+        if not HAS_EVM:
+            raise RuntimeError("web3.py or eth-account not installed")
+
+        w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(self.rpc_url))
+        sender_account = Account.from_key(private_key)
+        sender_address = sender_account.address
+        asset_upper = asset.upper()
+
+        # BEP-20 / ERC-20 contract addresses (matched with get_balance)
+        erc20_contracts: dict[str, str] = {
+            "USDT": "0x55d398326f99059fF775485246999027B3197955",
+            "USDC": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+        }
+
+        nonce = await w3.eth.get_transaction_count(sender_address)
+        chain_id = await w3.eth.chain_id
+
+        # Base transaction parameters
+        tx: dict[str, Any] = {
+            "nonce": nonce,
+            "chainId": chain_id,
+            "from": sender_address,
+        }
+
+        # Try to use EIP-1559 fees
+        try:
+            fee_history = await w3.eth.fee_history(1, "latest", [25.0])
+            base_fee = fee_history["baseFeePerGas"][-1]
+            priority_fee = w3.to_wei(1, "gwei")  # Standard priority
+            tx["maxFeePerGas"] = base_fee * 2 + priority_fee
+            tx["maxPriorityFeePerGas"] = priority_fee
+        except Exception:
+            # Fallback to legacy gas price
+            tx["gasPrice"] = await w3.eth.gas_price
+
+        if asset_upper in ("BNB", "ETH", "MATIC"):
+            # Native transfer
+            tx["to"] = AsyncWeb3.to_checksum_address(to_address)
+            tx["value"] = w3.to_wei(amount, "ether")
+            tx["data"] = b""
+            tx["gas"] = await w3.eth.estimate_gas(tx)  # type: ignore[arg-type]
+        elif asset_upper in erc20_contracts:
+            # ERC-20 transfer
+            contract_addr = erc20_contracts[asset_upper]
+            erc20_abi = [
+                {
+                    "constant": False,
+                    "inputs": [
+                        {"name": "_to", "type": "address"},
+                        {"name": "_value", "type": "uint256"},
+                    ],
+                    "name": "transfer",
+                    "outputs": [{"name": "success", "type": "bool"}],
+                    "type": "function",
+                }
+            ]
+            contract = w3.eth.contract(
+                address=AsyncWeb3.to_checksum_address(contract_addr), abi=erc20_abi
+            )
+            # Encode data manually to avoid full ABI overhead
+            tx["to"] = AsyncWeb3.to_checksum_address(contract_addr)
+            tx["value"] = 0
+            # Convert amount to units (18 decimals)
+            units = int(amount * Decimal(10**18))
+            tx["data"] = contract.functions.transfer(
+                AsyncWeb3.to_checksum_address(to_address), units
+            )._encode_transaction_data()
+            tx["gas"] = await w3.eth.estimate_gas(tx)  # type: ignore[arg-type]
+        else:
+            raise ValueError(f"Unsupported EVM asset: {asset}")
+
+        # Sign and broadcast
+        signed_tx = sender_account.sign_transaction(tx)
+        tx_hash = await w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+
         log.info(
-            "evm_transfer_stub",
-            to_address=to_address,
-            asset=asset,
+            "evm_transfer_broadcast",
+            tx_hash=tx_hash.hex(),
+            asset=asset_upper,
             amount=str(amount),
+            to=to_address,
             step="EvmWalletProvider.transfer",
         )
-        # TODO Phase 4: build raw tx, sign with eth_account, send via eth_sendRawTransaction
-        return "0x" + secrets.token_hex(32)
+        return tx_hash.hex()
 
 
 # ── TON Provider ───────────────────────────────────────────────────────────────
@@ -249,6 +346,9 @@ def _generate_ton_account() -> dict[str, str]:
     Returns:
         Dict with ``address`` (bounceable base64), ``private_key`` (hex), ``mnemonic``.
     """
+    if not HAS_TON:
+        raise ImportError("pytoniq not installed")
+
     from pytoniq_core.crypto.keys import (
         mnemonic_new,
         mnemonic_to_private_key,
@@ -262,16 +362,16 @@ def _generate_ton_account() -> dict[str, str]:
     public_key, private_key = mnemonic_to_private_key(mnemonic_words)
 
     from pytoniq.contract.wallets.wallet import WALLET_V4_R2_CODE
-    from pytoniq_core.boc.address import Address
-    from pytoniq_core.tlb.account import StateInit
-    from pytoniq_core.tlb.custom.wallet import WalletV4Data
 
     # subwallet id for mainnet V4R2 is 698983191
     wallet_id = 698983191 + 0  # 0 is workchain
+    from pytoniq_core.tlb.account import StateInit
+    from pytoniq_core.tlb.custom.wallet import WalletV4Data
+
     data = WalletV4Data(public_key=public_key, wallet_id=wallet_id, seqno=0).serialize()
     state_init = StateInit(code=WALLET_V4_R2_CODE, data=data).serialize()
-    address_obj = Address((0, state_init.hash))  # type: ignore[no-untyped-call]
-    address = address_obj.to_str(is_user_friendly=True, is_bounceable=False)  # type: ignore[no-untyped-call]
+    address_obj = Address((0, state_init.hash))
+    address = address_obj.to_str(is_user_friendly=True, is_bounceable=False)
 
     return {
         "address": address,  # non-bounceable UQ… string
@@ -347,8 +447,6 @@ class TonWalletProvider(WalletProvider):
             return Decimal("0")
 
         try:
-            import aiohttp  # already in requirements
-
             params = {"address": address}
             headers = {}
             if self.api_key:
@@ -402,13 +500,93 @@ class TonWalletProvider(WalletProvider):
         amount: Decimal,
         memo: str | None = None,
     ) -> str:
-        """Sign and send a TON transfer. (Phase 4 — not yet implemented.)"""
-        log.info(
-            "ton_transfer_stub",
-            to_address=to_address,
-            asset=asset,
-            amount=str(amount),
-            step="TonWalletProvider.transfer",
-        )
-        # TODO Phase 4: build TON transfer BoC, sign, publish via Toncenter sendBoc
-        return secrets.token_hex(32)
+        """Sign and send a TON transfer using pytoniq and Toncenter.
+
+        Only supports native TON for now.
+        """
+        if asset.upper() != "TON":
+            raise ValueError(f"Unsupported TON asset: {asset}")
+
+        if not HAS_TON:
+            raise RuntimeError("pytoniq library is not installed")
+
+        # 1. Initialize wallet object from private key
+        try:
+            wallet = WalletV4R2.from_private_key(bytes.fromhex(private_key))
+
+            # 2. Get current seqno from Toncenter
+            headers = {}
+            if self.api_key:
+                headers["X-API-Key"] = self.api_key
+
+            run_url = self.endpoint.rstrip("/").replace("/jsonRPC", "") + "/runGetMethod"
+            run_params = {
+                "address": wallet.address.to_str(),
+                "method": "seqno",
+                "stack": [],
+            }
+
+            async with (
+                aiohttp.ClientSession(headers=headers) as http,
+                http.post(
+                    run_url, json=run_params, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp,
+            ):
+                if resp.status != 200:
+                    raise RuntimeError(f"Failed to fetch seqno: HTTP {resp.status}")
+                run_data = await resp.json()
+                # If wallet not deployed, seqno is 0; TON stack returns hex values usually
+                seqno = 0 if not run_data.get("ok") else int(run_data["result"]["stack"][0][1], 16)
+
+            # 3. Create the transfer message
+            # amount is in nanotons
+            nanotons = int(amount * Decimal(1e9))
+
+            # pytoniq's create_transfer_message
+            query = wallet.create_transfer_message(
+                to_addr=to_address,
+                amount=nanotons,
+                seqno=seqno,
+                payload=memo if memo else "",
+            )
+
+            # 4. Send BoC to Toncenter
+            boc = query.message.to_boc(False).hex()
+            send_url = self.endpoint.rstrip("/").replace("/jsonRPC", "") + "/sendBoc"
+            send_params = {"boc": boc}
+
+            async with (
+                aiohttp.ClientSession(headers=headers) as http,
+                http.post(
+                    send_url, json=send_params, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp,
+            ):
+                if resp.status != 200:
+                    body = await resp.text()
+                    raise RuntimeError(f"Failed to send BoC: HTTP {resp.status} - {body}")
+                send_data = await resp.json()
+                if not send_data.get("ok"):
+                    raise RuntimeError(f"Toncenter error: {send_data.get('error')}")
+
+            tx_hash = query.message.hash.hex()
+
+            log.info(
+                "ton_transfer_broadcast",
+                tx_hash=tx_hash,
+                asset="TON",
+                amount=str(amount),
+                to=to_address,
+                seqno=seqno,
+                step="TonWalletProvider.transfer",
+            )
+            return str(tx_hash)
+
+        except Exception as exc:
+            log.error(
+                "ton_transfer_failed",
+                error=str(exc),
+                to=to_address,
+                amount=str(amount),
+                step="TonWalletProvider.transfer",
+            )
+            raise RuntimeError(f"TON transfer failed: {exc}") from exc

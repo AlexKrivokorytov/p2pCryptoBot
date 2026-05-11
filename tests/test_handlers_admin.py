@@ -160,7 +160,8 @@ async def test_cb_dispute_resolve_not_admin(mock_resolve: AsyncMock, session: As
     state = AsyncMock(spec=FSMContext)
     crypto_pay = AsyncMock()
 
-    await admin_handlers.cb_dispute_resolve(callback, state, session, crypto_pay)
+    bot = AsyncMock()
+    await admin_handlers.cb_dispute_resolve(callback, state, session, crypto_pay, bot)
 
     callback.answer.assert_called_once_with("⛔ Admins only.", show_alert=True)
     mock_resolve.assert_not_called()
@@ -182,10 +183,11 @@ async def test_cb_dispute_resolve_success(mock_resolve: AsyncMock, session: Asyn
     state = AsyncMock(spec=FSMContext)
     crypto_pay = AsyncMock()
 
-    await admin_handlers.cb_dispute_resolve(callback, state, session, crypto_pay)
+    bot = AsyncMock()
+    await admin_handlers.cb_dispute_resolve(callback, state, session, crypto_pay, bot)
 
     mock_resolve.assert_called_once_with(
-        session, crypto_pay, order_id="5a1fc458", decision="taker_wins", moderator_id=999
+        session, crypto_pay, bot, order_id="5a1fc458", decision="taker_wins", moderator_id=999
     )
     callback.message.edit_text.assert_called_once()
     assert "Dispute resolved" in callback.message.edit_text.call_args[0][0]
@@ -208,7 +210,8 @@ async def test_cb_dispute_resolve_error(mock_resolve: AsyncMock, session: AsyncS
     state = AsyncMock(spec=FSMContext)
     crypto_pay = AsyncMock()
 
-    await admin_handlers.cb_dispute_resolve(callback, state, session, crypto_pay)
+    bot = AsyncMock()
+    await admin_handlers.cb_dispute_resolve(callback, state, session, crypto_pay, bot)
 
     callback.message.edit_text.assert_called_once()
     assert "Order not found" in callback.message.edit_text.call_args[0][0]

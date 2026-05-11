@@ -12,7 +12,13 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bot.middleware import CryptoPayMiddleware, DbSessionMiddleware
+from bot.middleware import (
+    BrandingMiddleware,
+    CryptoPayMiddleware,
+    DbSessionMiddleware,
+    ThrottlingMiddleware,
+    UserRegistrationMiddleware,
+)
 from providers.crypto_pay import CryptoPayClient
 
 log = structlog.get_logger(__name__)
@@ -56,13 +62,19 @@ class DynamicBotLoader:
         self.routers = routers
         self.instances: dict[str, BotInstance] = {}
 
-    def _setup_dispatcher(self) -> Dispatcher:
+    def _setup_dispatcher(self, license_id: str | None = None) -> Dispatcher:
         """Create and configure a new dispatcher for a client bot."""
         dp = Dispatcher(storage=MemoryStorage())
 
+        if license_id:
+            dp["license_id"] = license_id
+
         # Register middlewares
         dp.update.outer_middleware(DbSessionMiddleware(self.session_pool))
+        dp.update.outer_middleware(ThrottlingMiddleware())
+        dp.update.outer_middleware(UserRegistrationMiddleware())
         dp.update.outer_middleware(CryptoPayMiddleware(self.crypto_pay))
+        dp.update.outer_middleware(BrandingMiddleware())
 
         # Include common routers
         for router in self.routers:
@@ -79,7 +91,7 @@ class DynamicBotLoader:
             token=token,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         )
-        dp = self._setup_dispatcher()
+        dp = self._setup_dispatcher(license_id=license_id)
 
         instance = BotInstance(bot, dp)
         await instance.start()

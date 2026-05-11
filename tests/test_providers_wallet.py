@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -25,16 +24,12 @@ class TestEvmWalletProviderGetBalance:
         """Should return ETH balance in ether for native asset."""
         mock_w3 = MagicMock()
         mock_w3.eth.get_balance = AsyncMock(return_value=1_000_000_000_000_000_000)
-        mock_w3.eth.contract = MagicMock()
 
-        mock_aw3_cls = MagicMock()
-        mock_aw3_cls.return_value = mock_w3
-        mock_aw3_cls.AsyncHTTPProvider = MagicMock(return_value=MagicMock())
-        mock_aw3_cls.to_checksum_address = MagicMock(side_effect=lambda x: x)
-        mock_aw3_cls.from_wei = MagicMock(return_value="1.0")
+        with patch("providers.wallet_provider.AsyncWeb3") as mock_aw3_cls:
+            mock_aw3_cls.return_value = mock_w3
+            mock_aw3_cls.from_wei = MagicMock(return_value="1.0")
+            mock_aw3_cls.to_checksum_address = MagicMock(side_effect=lambda x: x)
 
-        # Patch at the import inside the function
-        with patch.dict(sys.modules, {"web3": MagicMock(AsyncWeb3=mock_aw3_cls)}):
             balance = await provider.get_balance("0xDeadBeef", "ETH")
 
         assert balance == Decimal("1.0")
@@ -44,26 +39,15 @@ class TestEvmWalletProviderGetBalance:
         self, provider: EvmWalletProvider
     ) -> None:
         """Unsupported asset should return Decimal('0') without error."""
-        mock_w3 = MagicMock()
-        mock_aw3_cls = MagicMock()
-        mock_aw3_cls.return_value = mock_w3
-        mock_aw3_cls.AsyncHTTPProvider = MagicMock(return_value=MagicMock())
-        mock_aw3_cls.to_checksum_address = MagicMock(side_effect=lambda x: x)
-
-        with patch.dict(sys.modules, {"web3": MagicMock(AsyncWeb3=mock_aw3_cls)}):
+        with patch("providers.wallet_provider.AsyncWeb3"):
             balance = await provider.get_balance("0xDeadBeef", "UNKNOWN_TOKEN")
-
         assert balance == Decimal("0")
 
     @pytest.mark.asyncio
     async def test_get_balance_exception_returns_zero(self, provider: EvmWalletProvider) -> None:
         """Exception during RPC call should be caught and return Decimal('0')."""
-        mock_aw3_cls = MagicMock(side_effect=Exception("RPC failed"))
-        mock_aw3_cls.AsyncHTTPProvider = MagicMock(return_value=MagicMock())
-
-        with patch.dict(sys.modules, {"web3": MagicMock(AsyncWeb3=mock_aw3_cls)}):
+        with patch("providers.wallet_provider.AsyncWeb3", side_effect=Exception("RPC failed")):
             balance = await provider.get_balance("0xDeadBeef", "ETH")
-
         assert balance == Decimal("0")
 
 
@@ -101,11 +85,7 @@ class TestTonWalletProviderGetBalance:
         mock_http.__aexit__ = AsyncMock(return_value=None)
         mock_http.get = MagicMock(return_value=mock_get_cm)
 
-        mock_aiohttp = MagicMock()
-        mock_aiohttp.ClientSession = MagicMock(return_value=mock_http)
-        mock_aiohttp.ClientTimeout = MagicMock(return_value=MagicMock())
-
-        with patch.dict(sys.modules, {"aiohttp": mock_aiohttp}):
+        with patch("providers.wallet_provider.aiohttp.ClientSession", return_value=mock_http):
             balance = await provider.get_balance("UQfakeaddress", "TON")
 
         # 5_000_000_000 nanotons = 5 TON
@@ -126,11 +106,7 @@ class TestTonWalletProviderGetBalance:
         mock_http.__aexit__ = AsyncMock(return_value=None)
         mock_http.get = MagicMock(return_value=mock_get_cm)
 
-        mock_aiohttp = MagicMock()
-        mock_aiohttp.ClientSession = MagicMock(return_value=mock_http)
-        mock_aiohttp.ClientTimeout = MagicMock(return_value=MagicMock())
-
-        with patch.dict(sys.modules, {"aiohttp": mock_aiohttp}):
+        with patch("providers.wallet_provider.aiohttp.ClientSession", return_value=mock_http):
             balance = await provider.get_balance("UQfakeaddress", "TON")
 
         assert balance == Decimal("0")
@@ -151,11 +127,7 @@ class TestTonWalletProviderGetBalance:
         mock_http.__aexit__ = AsyncMock(return_value=None)
         mock_http.get = MagicMock(return_value=mock_get_cm)
 
-        mock_aiohttp = MagicMock()
-        mock_aiohttp.ClientSession = MagicMock(return_value=mock_http)
-        mock_aiohttp.ClientTimeout = MagicMock(return_value=MagicMock())
-
-        with patch.dict(sys.modules, {"aiohttp": mock_aiohttp}):
+        with patch("providers.wallet_provider.aiohttp.ClientSession", return_value=mock_http):
             balance = await provider.get_balance("UQfakeaddress", "TON")
 
         assert balance == Decimal("0")
@@ -165,11 +137,9 @@ class TestTonWalletProviderGetBalance:
         self, provider: TonWalletProvider
     ) -> None:
         """Exception during HTTP call should be caught and return Decimal('0')."""
-        mock_aiohttp = MagicMock()
-        mock_aiohttp.ClientSession = MagicMock(side_effect=Exception("Timeout"))
-        mock_aiohttp.ClientTimeout = MagicMock(return_value=MagicMock())
-
-        with patch.dict(sys.modules, {"aiohttp": mock_aiohttp}):
+        with patch(
+            "providers.wallet_provider.aiohttp.ClientSession", side_effect=Exception("Timeout")
+        ):
             balance = await provider.get_balance("UQfakeaddress", "TON")
 
         assert balance == Decimal("0")
@@ -180,14 +150,42 @@ class TestTonWalletProviderTransfer:
 
     @pytest.mark.asyncio
     async def test_transfer_returns_hex_string(self) -> None:
-        """transfer() stub should return a hex string (32 bytes = 64 chars)."""
+        """transfer() should return a hex string."""
         provider = TonWalletProvider(endpoint="https://fake-toncenter.com/jsonRPC")
-        result = await provider.transfer(
-            private_key="pk_fake",
-            to_address="UQdestination",
-            asset="TON",
-            amount=Decimal("1.5"),
-        )
-        assert isinstance(result, str)
-        assert len(result) == 64
-        assert all(c in "0123456789abcdef" for c in result)
+
+        mock_wallet = MagicMock()
+        mock_wallet.address.to_str.return_value = "fake_addr"
+
+        mock_query = MagicMock()
+        mock_query.message.to_boc.return_value.hex.return_value = "fake_boc"
+        mock_query.message.hash.hex.return_value = "f" * 64
+        mock_wallet.create_transfer_message.return_value = mock_query
+
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value={"ok": True, "result": {"stack": [["num", "0x0"]]}})
+
+        mock_post_cm = MagicMock()
+        mock_post_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_post_cm.__aexit__ = AsyncMock(return_value=None)
+
+        mock_http = MagicMock()
+        mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+        mock_http.__aexit__ = AsyncMock(return_value=None)
+        mock_http.post = MagicMock(return_value=mock_post_cm)
+
+        with (
+            patch("providers.wallet_provider.HAS_TON", True),
+            patch("providers.wallet_provider.WalletV4R2") as mock_w_cls,
+            patch("providers.wallet_provider.aiohttp.ClientSession", return_value=mock_http),
+        ):
+            mock_w_cls.from_private_key.return_value = mock_wallet
+
+            result = await provider.transfer(
+                private_key="0" * 64,  # valid 32-byte hex
+                to_address="UQdestination",
+                asset="TON",
+                amount=Decimal("1.5"),
+            )
+
+        assert result == "f" * 64

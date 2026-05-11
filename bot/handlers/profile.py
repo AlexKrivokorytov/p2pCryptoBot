@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards import back_to_menu_keyboard
 from services.marketplace_service import MarketplaceService
-from services.user_service import get_user_profile
+from services.user_service import get_or_create_user
 
 router = Router(name="profile")
 
@@ -64,8 +64,17 @@ async def cmd_profile(message: Message, session: AsyncSession) -> None:
     """Show the user profile via /profile command."""
     if not message.from_user or not message.bot:
         return
+
     bot_me = await message.bot.get_me()
-    user = await get_user_profile(session, message.from_user.id)
+
+    # Use get_or_create to fix "Profile not found" if they haven't run /start
+    user = await get_or_create_user(
+        session,
+        telegram_id=message.from_user.id,
+        username=message.from_user.username,
+        first_name=message.from_user.first_name,
+    )
+
     text = await _build_profile_text(user, session, bot_me.username or "bot")
     await message.answer(text, reply_markup=back_to_menu_keyboard(), parse_mode="HTML")
 
@@ -75,8 +84,16 @@ async def cb_profile(callback: CallbackQuery, session: AsyncSession) -> None:
     """Show the user profile via inline button."""
     if not callback.from_user or not isinstance(callback.message, Message) or not callback.bot:
         return
+
     bot_me = await callback.bot.get_me()
-    user = await get_user_profile(session, callback.from_user.id)
+
+    user = await get_or_create_user(
+        session,
+        telegram_id=callback.from_user.id,
+        username=callback.from_user.username,
+        first_name=callback.from_user.first_name,
+    )
+
     text = await _build_profile_text(user, session, bot_me.username or "bot")
     await callback.message.edit_text(text, reply_markup=back_to_menu_keyboard(), parse_mode="HTML")
     await callback.answer()

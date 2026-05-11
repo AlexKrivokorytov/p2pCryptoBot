@@ -1,9 +1,9 @@
-"""Tests for dispute_service — full coverage including ai_mediator_suggest."""
+"""Tests for dispute_service — full coverage."""
 
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -105,8 +105,9 @@ async def test_resolve_dispute_cancel_decision(session: AsyncSession) -> None:
     order = await _create_order(session, OrderStatus.dispute, 707, 708)
     crypto_pay = _mock_crypto_pay()
 
+    bot = AsyncMock()
     result = await dispute_service.resolve_dispute(
-        session, crypto_pay, order_id=str(order.id), decision="cancel", moderator_id=999
+        session, crypto_pay, bot, order_id=str(order.id), decision="cancel", moderator_id=999
     )
 
     assert result["status"] == OrderStatus.cancelled
@@ -118,9 +119,15 @@ async def test_resolve_dispute_order_not_found(session: AsyncSession) -> None:
     """resolve_dispute raises ValueError for unknown order."""
     crypto_pay = _mock_crypto_pay()
 
+    bot = AsyncMock()
     with pytest.raises(ValueError, match="not found"):
         await dispute_service.resolve_dispute(
-            session, crypto_pay, order_id=str(uuid.uuid4()), decision="taker_wins", moderator_id=999
+            session,
+            crypto_pay,
+            bot,
+            order_id=str(uuid.uuid4()),
+            decision="taker_wins",
+            moderator_id=999,
         )
 
 
@@ -130,120 +137,13 @@ async def test_resolve_dispute_wrong_status(session: AsyncSession) -> None:
     order = await _create_order(session, OrderStatus.escrow_held, 709, 710)
     crypto_pay = _mock_crypto_pay()
 
+    bot = AsyncMock()
     with pytest.raises(ValueError, match="requires status=dispute"):
         await dispute_service.resolve_dispute(
-            session, crypto_pay, order_id=str(order.id), decision="taker_wins", moderator_id=999
+            session,
+            crypto_pay,
+            bot,
+            order_id=str(order.id),
+            decision="taker_wins",
+            moderator_id=999,
         )
-
-
-# ── ai_mediator_suggest ────────────────────────────────────────────────────────
-
-
-class MockResponse:
-    def __init__(self, text: str):
-        self.text = text
-
-
-@pytest.mark.asyncio
-async def test_ai_mediator_no_key() -> None:
-    """Returns neutral suggestion when GEMINI_API_KEY is missing."""
-    with patch.dict("os.environ", {"GEMINI_API_KEY": ""}):
-        result = await dispute_service.ai_mediator_suggest("order-123")
-        assert result["suggestion"] is None
-        assert "not configured" in result["reasoning"]
-        assert result["confidence"] == 0.0
-
-
-@pytest.mark.asyncio
-async def test_ai_mediator_gemini_returns_taker_wins() -> None:
-    """Mocks Gemini returning taker_wins and verifies parsing."""
-    json_data = '{"suggestion": "taker_wins", "reasoning": "Taker paid.", "confidence": 0.9}'
-
-    with (
-        patch.dict("os.environ", {"GEMINI_API_KEY": "fake-key"}),
-        patch("services.dispute_service.asyncio.to_thread") as mock_thread,
-    ):
-        mock_thread.return_value = MockResponse(json_data)
-
-        result = await dispute_service.ai_mediator_suggest("order-123")
-        assert result["suggestion"] == "taker_wins"
-        assert result["reasoning"] == "Taker paid."
-        assert result["confidence"] == 0.9
-
-
-@pytest.mark.asyncio
-async def test_ai_mediator_gemini_returns_maker_wins() -> None:
-    """Mocks Gemini returning maker_wins and verifies parsing."""
-    json_data = (
-        '{"suggestion": "maker_wins", "reasoning": "Maker did not receive.", "confidence": 0.85}'
-    )
-
-    with (
-        patch.dict("os.environ", {"GEMINI_API_KEY": "fake-key"}),
-        patch("services.dispute_service.asyncio.to_thread") as mock_thread,
-    ):
-        mock_thread.return_value = MockResponse(json_data)
-
-        result = await dispute_service.ai_mediator_suggest("order-123")
-        assert result["suggestion"] == "maker_wins"
-        assert result["confidence"] == 0.85
-
-
-@pytest.mark.asyncio
-async def test_ai_mediator_gemini_error_returns_neutral() -> None:
-    """Gemini raises exception, returns neutral."""
-    with (
-        patch.dict("os.environ", {"GEMINI_API_KEY": "fake-key"}),
-        patch("services.dispute_service.asyncio.to_thread") as mock_thread,
-    ):
-        mock_thread.side_effect = Exception("API Error")
-
-        result = await dispute_service.ai_mediator_suggest("order-123")
-        assert result["suggestion"] == "neutral"
-        assert "API Error" in result["reasoning"]
-        assert result["confidence"] == 0.0
-
-
-@pytest.mark.asyncio
-async def test_ai_mediator_gemini_invalid_json_returns_neutral() -> None:
-    """Gemini returns bad JSON, returns neutral."""
-    with (
-        patch.dict("os.environ", {"GEMINI_API_KEY": "fake-key"}),
-        patch("services.dispute_service.asyncio.to_thread") as mock_thread,
-    ):
-        mock_thread.return_value = MockResponse("Not JSON")
-
-        result = await dispute_service.ai_mediator_suggest("order-123")
-        assert result["suggestion"] == "neutral"
-        assert result["confidence"] == 0.0
-
-
-@pytest.mark.asyncio
-async def test_ai_mediator_gemini_markdown_fences_stripped() -> None:
-    """Response wrapped in markdown fences is parsed correctly."""
-    json_data = '```json\n{"suggestion": "taker_wins", "reasoning": "Test", "confidence": 1.0}\n```'
-
-    with (
-        patch.dict("os.environ", {"GEMINI_API_KEY": "fake-key"}),
-        patch("services.dispute_service.asyncio.to_thread") as mock_thread,
-    ):
-        mock_thread.return_value = MockResponse(json_data)
-
-        result = await dispute_service.ai_mediator_suggest("order-123")
-        assert result["suggestion"] == "taker_wins"
-        assert result["confidence"] == 1.0
-
-
-@pytest.mark.asyncio
-async def test_ai_mediator_invalid_suggestion_value_normalized() -> None:
-    """Unknown suggestion value becomes neutral."""
-    json_data = '{"suggestion": "unknown_value", "reasoning": "??", "confidence": 0.5}'
-
-    with (
-        patch.dict("os.environ", {"GEMINI_API_KEY": "fake-key"}),
-        patch("services.dispute_service.asyncio.to_thread") as mock_thread,
-    ):
-        mock_thread.return_value = MockResponse(json_data)
-
-        result = await dispute_service.ai_mediator_suggest("order-123")
-        assert result["suggestion"] == "neutral"

@@ -40,7 +40,7 @@ async def test_user_service_increment_stats(engine) -> None:
 
 
 @pytest.mark.asyncio
-@patch("bot.handlers.profile.get_user_profile", new_callable=AsyncMock)
+@patch("bot.handlers.profile.get_or_create_user", new_callable=AsyncMock)
 @patch(
     "bot.handlers.profile.MarketplaceService.get_user_reputation",
     new_callable=AsyncMock,
@@ -73,7 +73,7 @@ async def test_cmd_profile(
 
 
 @pytest.mark.asyncio
-@patch("bot.handlers.profile.get_user_profile", new_callable=AsyncMock)
+@patch("bot.handlers.profile.get_or_create_user", new_callable=AsyncMock)
 @patch(
     "bot.handlers.profile.MarketplaceService.get_user_reputation",
     new_callable=AsyncMock,

@@ -123,7 +123,7 @@ async def test_cmd_profile_success() -> None:
 
     with (
         patch(
-            "bot.handlers.profile.get_user_profile",
+            "bot.handlers.profile.get_or_create_user",
             new_callable=AsyncMock,
             return_value=user,
         ),
@@ -193,7 +193,7 @@ async def test_cb_profile_success() -> None:
 
     with (
         patch(
-            "bot.handlers.profile.get_user_profile",
+            "bot.handlers.profile.get_or_create_user",
             new_callable=AsyncMock,
             return_value=user,
         ),

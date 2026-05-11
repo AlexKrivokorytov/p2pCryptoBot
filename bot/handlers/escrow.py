@@ -41,10 +41,16 @@ async def cb_escrow_confirm(
             status=result["status"],
             step="cb_escrow_confirm",
         )
-        await callback.message.edit_text(  # type: ignore[union-attr]
+        text = (
             f"✅ <b>Escrow released!</b>\n\n"
             f"Order <code>{order_id[:8]}…</code> is now <b>completed</b>.\n"
-            "Crypto has been sent to the taker.",
+            "Crypto has been sent to the taker."
+        )
+        if result.get("on_chain_tx_hash"):
+            text += f"\n\n<b>Transaction Hash:</b>\n<code>{result['on_chain_tx_hash']}</code>"
+
+        await callback.message.edit_text(  # type: ignore[union-attr]
+            text,
             reply_markup=back_to_menu_keyboard(),
             parse_mode="HTML",
         )
@@ -95,12 +101,26 @@ async def cb_order_status(callback: CallbackQuery, session: AsyncSession) -> Non
     }
     label = status_map.get(order["status"], order["status"])
 
-    if order["status"] == "escrow_held" and order["maker_id"] == callback.from_user.id:
+    msg = f"Order <code>{order_id[:8]}…</code>: {label}\n"
+
+    if order["status"] == "pending_funding" and order.get("escrow_wallet_address"):
+        msg += f"\n<b>On-Chain Escrow Address:</b>\n<code>{order['escrow_wallet_address']}</code>\n"
+        msg += (
+            f"\nPlease send exactly <code>{order['amount']}</code> "
+            f"<b>{order['asset']}</b> to this address to activate your ad."
+        )
+    elif order["status"] == "escrow_held" and order["maker_id"] == callback.from_user.id:
+        msg += "\nHas the taker sent you the fiat payment?"
         await callback.message.answer(  # type: ignore[union-attr]
-            f"Order <code>{order_id[:8]}…</code>: {label}\n\n"
-            "Has the taker sent you the fiat payment?",
+            msg,
             reply_markup=active_trade_maker_keyboard(order_id),
             parse_mode="HTML",
         )
-    else:
-        await callback.answer(f"Status: {label}", show_alert=True)
+        await callback.answer()
+        return
+
+    if order.get("on_chain_tx_hash"):
+        msg += f"\n\n<b>TX Hash:</b> <code>{order['on_chain_tx_hash']}</code>"
+
+    await callback.message.answer(msg, reply_markup=back_to_menu_keyboard(), parse_mode="HTML")  # type: ignore[union-attr]
+    await callback.answer()

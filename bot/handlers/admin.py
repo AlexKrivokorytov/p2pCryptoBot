@@ -11,7 +11,7 @@ Commands:
 from __future__ import annotations
 
 import structlog
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -22,11 +22,18 @@ from bot.keyboards import (
     admin_dashboard_keyboard,
     admin_dispute_action_keyboard,
     admin_disputes_keyboard,
+    admin_user_manage_keyboard,
     dispute_resolve_keyboard,
 )
-from bot.states import ArbitrationFSM
+from bot.states import AdminUserFSM, ArbitrationFSM
 from providers.crypto_pay import CryptoPayClient
-from services import admin_service, dispute_service, order_service
+from services import (
+    admin_audit_service,
+    admin_service,
+    admin_user_service,
+    dispute_service,
+    order_service,
+)
 from utils.formatters import format_error
 
 log = structlog.get_logger(__name__)
@@ -149,6 +156,28 @@ async def cb_admin_disputes(callback: CallbackQuery, session: AsyncSession) -> N
     await callback.answer()
 
 
+@router.callback_query(F.data == "admin:audit")
+async def cb_admin_audit(callback: CallbackQuery, session: AsyncSession) -> None:
+    """Show the recent administrative audit logs."""
+    if (
+        not callback.from_user
+        or not isinstance(callback.message, Message)
+        or not _is_admin(callback.from_user.id)
+    ):
+        await callback.answer("⛔ Admins only.", show_alert=True)
+        return
+
+    logs = await admin_audit_service.get_recent_logs(session, limit=10)
+    text = admin_audit_service.format_logs_message(logs)
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=admin_dashboard_keyboard(),
+        parse_mode="HTML",
+    )
+    await callback.answer()
+
+
 # ── Dispute detail view ────────────────────────────────────────────────────────
 
 
@@ -201,6 +230,7 @@ async def cb_dispute_resolve(
     state: FSMContext,
     session: AsyncSession,
     crypto_pay: CryptoPayClient,
+    bot: Bot,
 ) -> None:
     """Execute moderator dispute resolution decision."""
     parts = callback.data.split(":")  # type: ignore[union-attr]
@@ -220,6 +250,7 @@ async def cb_dispute_resolve(
         result = await dispute_service.resolve_dispute(
             session,
             crypto_pay,
+            bot,
             order_id=order_id,
             decision=decision,
             moderator_id=moderator_id,
@@ -276,3 +307,67 @@ async def msg_arb_order_id(message: Message, state: FSMContext) -> None:
         reply_markup=dispute_resolve_keyboard(order_id),
         parse_mode="HTML",
     )
+
+
+# ── User Management ────────────────────────────────────────────────────────────
+
+
+@router.callback_query(F.data == "admin:user:search")
+async def cb_admin_user_search(callback: CallbackQuery, state: FSMContext) -> None:
+    """Step 1: Start user search flow."""
+    if not _is_admin(callback.from_user.id):
+        return
+
+    await state.set_state(AdminUserFSM.enter_query)
+    await callback.message.answer(  # type: ignore[union-attr]
+        "🔍 <b>Admin: Search User</b>\n\nEnter Telegram ID or Username (e.g. @username):",
+        parse_mode="HTML",
+    )
+    await callback.answer()
+
+
+@router.message(AdminUserFSM.enter_query)
+async def msg_admin_user_query(message: Message, state: FSMContext, session: AsyncSession) -> None:
+    """Step 2: Find and show user."""
+    query = (message.text or "").strip()
+    user = await admin_user_service.find_user_by_query(session, query)
+
+    if not user:
+        await message.answer("❌ User not found.")
+        return
+
+    await state.clear()
+    text = admin_user_service.format_user_info(user)
+    await message.answer(
+        text,
+        reply_markup=admin_user_manage_keyboard(user.telegram_id, user.is_verified),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data.startswith("admin:user:verify:"))
+async def cb_admin_user_verify(callback: CallbackQuery, session: AsyncSession) -> None:
+    """Execute manual verification toggle."""
+    if not _is_admin(callback.from_user.id):
+        return
+
+    parts = callback.data.split(":")  # type: ignore[union-attr]
+    # admin:user:verify:<tg_id>:<1 or 0>
+    user_id = int(parts[3])
+    is_verified = parts[4] == "1"
+
+    await admin_user_service.toggle_user_verification(
+        session, admin_id=callback.from_user.id, user_id=user_id, is_verified=is_verified
+    )
+
+    await callback.answer(f"User {'verified' if is_verified else 'unverified'}!")
+    # Update current message
+    from db.models.user import User
+
+    user = await session.get(User, user_id)
+    if user:
+        await callback.message.edit_text(  # type: ignore[union-attr]
+            admin_user_service.format_user_info(user),
+            reply_markup=admin_user_manage_keyboard(user.telegram_id, user.is_verified),
+            parse_mode="HTML",
+        )

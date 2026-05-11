@@ -129,5 +129,5 @@ async def test_cb_order_status_taker_escrow_held(session: AsyncSession) -> None:
 
     await escrow_handlers.cb_order_status(callback, session)
 
-    callback.answer.assert_called_once()
-    assert "Funds in escrow" in callback.answer.call_args[0][0]
+    callback.message.answer.assert_called_once()
+    assert "Funds in escrow" in callback.message.answer.call_args[0][0]

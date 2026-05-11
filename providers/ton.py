@@ -23,9 +23,9 @@ class TONProvider:
             from pytoniq import LiteClient  # type: ignore[attr-defined]
 
             if self.is_testnet:
-                self._client = await LiteClient.from_testnet_config(ls_index=0, trust_level=2)
+                self._client = await LiteClient.from_testnet_config(trust_level=2)
             else:
-                self._client = await LiteClient.from_mainnet_config(ls_index=14, trust_level=2)
+                self._client = await LiteClient.from_mainnet_config(trust_level=2)
         return self._client
 
     async def connect(self) -> None:

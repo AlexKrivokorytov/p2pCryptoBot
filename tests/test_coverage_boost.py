@@ -53,7 +53,7 @@ async def test_admin_callbacks_no_message() -> None:
     cb.answer.assert_called_with("⛔ Admins only.", show_alert=True)
 
     # Resolve handler just returns
-    assert await cb_dispute_resolve(cb, MagicMock(), MagicMock(), MagicMock()) is None
+    assert await cb_dispute_resolve(cb, MagicMock(), MagicMock(), MagicMock(), MagicMock()) is None
 
 
 @pytest.mark.asyncio

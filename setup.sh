@@ -54,11 +54,6 @@ if [ -z "$ADMIN_IDS" ]; then
     exit 1
 fi
 
-echo ""
-echo "Step 4/4: Gemini API Key (optional -- for AI dispute mediation)"
-echo "   Get it from https://aistudio.google.com/app/apikey"
-read -rp "   GEMINI_API_KEY (press Enter to skip): " GEMINI_API_KEY
-
 # ── Generate secrets ───────────────────────────────────────────────────────────
 
 echo ""
@@ -99,8 +94,6 @@ AES_KEY=${AES_KEY}
 # ── Admins ─────────────────────────────────────────────────────────────────────
 ADMIN_IDS=${ADMIN_IDS}
 
-# ── AI Mediator (optional) ─────────────────────────────────────────────────────
-GEMINI_API_KEY=${GEMINI_API_KEY}
 
 # ── Order settings ─────────────────────────────────────────────────────────────
 # Fine-tune these in branding.yaml instead

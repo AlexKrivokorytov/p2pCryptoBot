@@ -13,40 +13,60 @@ from services import notification_service
 
 pytestmark = pytest.mark.unit
 
+# Sample branding for testing
+MOCK_BRANDING = {
+    "notifications": {
+        "taker_found": "Started {order_id_short} {taker_display}",
+        "fiat_sent": "Fiat sent {order_id_short}",
+        "escrow_released": "Released {order_id_short} {amount} {asset}",
+        "dispute_opened": "Dispute Opened {order_id_short} {reason}",
+        "dispute_resolved": "Dispute Resolved {order_id_short} {decision} {status}",
+        "order_expired": "Ad Expired {order_id_short} {asset}",
+        "escrow_refunded": "Escrow Refunded {order_id_short} {amount} {asset}",
+    }
+}
+
+
+@pytest.fixture
+def mock_branding():
+    """Patch get_branding to return test templates."""
+    with patch("services.notification_service.get_branding", return_value=MOCK_BRANDING):
+        yield MOCK_BRANDING
+
 
 @pytest.mark.asyncio
-async def test_notify_maker_taker_found_success() -> None:
+async def test_notify_maker_taker_found_success(mock_branding) -> None:
     """Successfully notifies the maker about a new taker."""
     bot = AsyncMock(spec=Bot)
 
     result = await notification_service.notify_maker_taker_found(
-        bot, maker_id=123, taker_username="testuser", order_id="uuid-1234"
+        bot, maker_id=123, taker_username="testuser", order_id="uuid-12345678"
     )
 
     assert result is True
     bot.send_message.assert_called_once()
-    args = bot.send_message.call_args[0]
+    args, kwargs = bot.send_message.call_args
     assert args[0] == 123
     assert "@testuser" in args[1]
     assert "uuid-123" in args[1]
 
 
 @pytest.mark.asyncio
-async def test_notify_maker_taker_found_no_username() -> None:
+async def test_notify_maker_taker_found_no_username(mock_branding) -> None:
     """Handles taker without a username gracefully."""
     bot = AsyncMock(spec=Bot)
 
     result = await notification_service.notify_maker_taker_found(
-        bot, maker_id=123, taker_username=None, order_id="uuid-1234"
+        bot, maker_id=123, taker_username=None, order_id="uuid-12345678"
     )
 
     assert result is True
-    args = bot.send_message.call_args[0]
+    args, kwargs = bot.send_message.call_args
     assert "A user" in args[1]
 
 
 @pytest.mark.asyncio
-async def test_notify_maker_taker_found_error() -> None:
+async def test_notify_maker_taker_found_error(mock_branding) -> None:
     """Handles TelegramAPIError gracefully."""
     bot = AsyncMock(spec=Bot)
     bot.send_message.side_effect = TelegramAPIError(
@@ -54,30 +74,30 @@ async def test_notify_maker_taker_found_error() -> None:
     )
 
     result = await notification_service.notify_maker_taker_found(
-        bot, maker_id=123, taker_username="test", order_id="uuid-1234"
+        bot, maker_id=123, taker_username="test", order_id="uuid-12345678"
     )
 
     assert result is False
 
 
 @pytest.mark.asyncio
-async def test_notify_maker_fiat_sent_success() -> None:
+async def test_notify_maker_fiat_sent_success(mock_branding) -> None:
     """Successfully notifies the maker about fiat being sent."""
     bot = AsyncMock(spec=Bot)
 
     result = await notification_service.notify_maker_fiat_sent(
-        bot, maker_id=123, order_id="uuid-1234"
+        bot, maker_id=123, order_id="uuid-12345678"
     )
 
     assert result is True
     bot.send_message.assert_called_once()
-    args = bot.send_message.call_args[0]
+    args, kwargs = bot.send_message.call_args
     assert args[0] == 123
     assert "uuid-123" in args[1]
 
 
 @pytest.mark.asyncio
-async def test_notify_maker_fiat_sent_error() -> None:
+async def test_notify_maker_fiat_sent_error(mock_branding) -> None:
     """Handles TelegramAPIError gracefully during fiat sent notification."""
     bot = AsyncMock(spec=Bot)
     bot.send_message.side_effect = TelegramAPIError(
@@ -85,46 +105,46 @@ async def test_notify_maker_fiat_sent_error() -> None:
     )
 
     result = await notification_service.notify_maker_fiat_sent(
-        bot, maker_id=123, order_id="uuid-1234"
+        bot, maker_id=123, order_id="uuid-12345678"
     )
 
     assert result is False
 
 
 @pytest.mark.asyncio
-async def test_notify_taker_escrow_released_success() -> None:
+async def test_notify_taker_escrow_released_success(mock_branding) -> None:
     """Taker receives notification about released escrow."""
     bot = AsyncMock(spec=Bot)
     result = await notification_service.notify_taker_escrow_released(
-        bot, taker_id=123, order_id="uuid-1", asset="USDT", amount=10.5
+        bot, taker_id=123, order_id="uuid-12345678", asset="USDT", amount=10.5
     )
     assert result is True
     bot.send_message.assert_called_once()
-    args = bot.send_message.call_args[0]
+    args, kwargs = bot.send_message.call_args
     assert args[0] == 123
     assert "Released" in args[1]
     assert "10.5 USDT" in args[1]
 
 
 @pytest.mark.asyncio
-async def test_notify_taker_escrow_released_error() -> None:
+async def test_notify_taker_escrow_released_error(mock_branding) -> None:
     """Returns False on TelegramAPIError."""
     bot = AsyncMock(spec=Bot)
     bot.send_message.side_effect = TelegramAPIError(
         method=SendMessage(chat_id=1, text=""), message="Forbidden"
     )
     result = await notification_service.notify_taker_escrow_released(
-        bot, taker_id=123, order_id="uuid-1", asset="USDT", amount=10.5
+        bot, taker_id=123, order_id="uuid-12345678", asset="USDT", amount=10.5
     )
     assert result is False
 
 
 @pytest.mark.asyncio
-async def test_notify_dispute_opened_both_parties() -> None:
+async def test_notify_dispute_opened_both_parties(mock_branding) -> None:
     """Bot sends messages to both maker and taker."""
     bot = AsyncMock(spec=Bot)
     await notification_service.notify_dispute_opened(
-        bot, maker_id=111, taker_id=222, order_id="uuid-1", reason="Payment not received"
+        bot, maker_id=111, taker_id=222, order_id="uuid-12345678", reason="Payment not received"
     )
     assert bot.send_message.call_count == 2
     calls = bot.send_message.call_args_list
@@ -136,25 +156,54 @@ async def test_notify_dispute_opened_both_parties() -> None:
 
 
 @pytest.mark.asyncio
-async def test_notify_dispute_opened_no_taker() -> None:
+async def test_notify_dispute_opened_no_taker(mock_branding) -> None:
     """Only maker is notified if taker_id is None."""
     bot = AsyncMock(spec=Bot)
     await notification_service.notify_dispute_opened(
-        bot, maker_id=111, taker_id=None, order_id="uuid-1", reason="Timeout"
+        bot, maker_id=111, taker_id=None, order_id="uuid-12345678", reason="Timeout"
     )
     bot.send_message.assert_called_once()
     assert bot.send_message.call_args.args[0] == 111
 
 
 @pytest.mark.asyncio
-async def test_notify_order_expired_success() -> None:
+async def test_notify_dispute_resolved_success(mock_branding) -> None:
+    """Both parties receive resolution notification."""
+    bot = AsyncMock(spec=Bot)
+    await notification_service.notify_dispute_resolved(
+        bot,
+        maker_id=111,
+        taker_id=222,
+        order_id="uuid-12345678",
+        decision="taker_wins",
+        status="completed",
+    )
+    assert bot.send_message.call_count == 2
+    args, kwargs = bot.send_message.call_args
+    assert "Dispute Resolved" in args[1]
+    assert "Taker Wins" in args[1]
+
+
+@pytest.mark.asyncio
+async def test_notify_escrow_refunded_success(mock_branding) -> None:
+    """Maker receives notification about refunded escrow."""
+    bot = AsyncMock(spec=Bot)
+    result = await notification_service.notify_escrow_refunded(
+        bot, maker_id=111, order_id="uuid-12345678", asset="USDT", amount=10.5
+    )
+    assert result is True
+    bot.send_message.assert_called_once()
+    assert bot.send_message.call_args.args[0] == 111
+    assert "Escrow Refunded" in bot.send_message.call_args.args[1]
+
+
+@pytest.mark.asyncio
+async def test_notify_order_expired_success(mock_branding) -> None:
     """Maker receives notification about expired ad."""
     bot = AsyncMock(spec=Bot)
-    # Mock main_menu_keyboard to avoid branding dependency in simple test
-    with patch("bot.keyboards.main_menu_keyboard", return_value=None):
-        result = await notification_service.notify_order_expired(
-            bot, maker_id=111, order_id="uuid-1", asset="BTC"
-        )
+    result = await notification_service.notify_order_expired(
+        bot, maker_id=111, order_id="uuid-12345678", asset="BTC"
+    )
     assert result is True
     bot.send_message.assert_called_once()
     assert bot.send_message.call_args.args[0] == 111
@@ -163,15 +212,13 @@ async def test_notify_order_expired_success() -> None:
 
 
 @pytest.mark.asyncio
-async def test_notify_order_expired_error() -> None:
+async def test_notify_order_expired_error(mock_branding) -> None:
     """Returns False on TelegramAPIError."""
     bot = AsyncMock(spec=Bot)
     bot.send_message.side_effect = TelegramAPIError(
         method=SendMessage(chat_id=1, text=""), message="Retry later"
     )
-    # Mock main_menu_keyboard
-    with patch("bot.keyboards.main_menu_keyboard", return_value=None):
-        result = await notification_service.notify_order_expired(
-            bot, maker_id=111, order_id="uuid-1", asset="BTC"
-        )
+    result = await notification_service.notify_order_expired(
+        bot, maker_id=111, order_id="uuid-12345678", asset="BTC"
+    )
     assert result is False

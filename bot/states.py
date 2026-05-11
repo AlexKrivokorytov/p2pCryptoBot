@@ -52,3 +52,16 @@ class TradeChatFSM(StatesGroup):
     """FSM for anonymous trade chat."""
 
     chatting = State()
+
+
+class AdminSandboxFSM(StatesGroup):
+    """FSM for administrative sandbox testing."""
+
+    enter_order_id = State()
+    choose_status = State()
+
+
+class AdminUserFSM(StatesGroup):
+    """FSM for administrative user management."""
+
+    enter_query = State()

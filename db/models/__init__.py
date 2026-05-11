@@ -1,5 +1,6 @@
 """DB models package."""
 
+from db.models.admin import AdminAuditLog
 from db.models.b2b import B2BLicense, TONInvoice
 from db.models.base import Base
 from db.models.chat import ChatMessage
@@ -36,4 +37,5 @@ __all__ = [
     "DisputeTicket",
     "B2BLicense",
     "TONInvoice",
+    "AdminAuditLog",
 ]

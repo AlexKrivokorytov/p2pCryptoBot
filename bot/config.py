@@ -14,11 +14,15 @@ Usage::
 from __future__ import annotations
 
 import os
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
+from sqlalchemy.ext.asyncio import AsyncSession
+
+branding_ctx: ContextVar[dict[str, Any] | None] = ContextVar("branding_ctx", default=None)
 
 
 def _require(key: str) -> str:
@@ -74,9 +78,6 @@ class Settings:
     TON_RPC_URL: str
     EVM_RPC_URL: str
 
-    # ── AI mediator ───────────────────────────────────────────────────────────
-    GEMINI_API_KEY: str
-
     # ── B2B SaaS settings ─────────────────────────────────────────────────────
     B2B_LICENSE_PRICE_STARS: int
     MASTER_BOT_USERNAME: str
@@ -116,7 +117,6 @@ def load_settings() -> Settings:
         WEBHOOK_PORT=int(_optional("WEBHOOK_PORT", "8080")),
         TON_RPC_URL=_optional("TON_RPC_URL", "https://toncenter.com/api/v2/jsonRPC"),
         EVM_RPC_URL=_optional("EVM_RPC_URL", "https://bsc-dataseed.binance.org/"),
-        GEMINI_API_KEY=_optional("GEMINI_API_KEY"),
         B2B_LICENSE_PRICE_STARS=int(_optional("B2B_LICENSE_PRICE_STARS", "10000")),
         MASTER_BOT_USERNAME=_optional("MASTER_BOT_USERNAME", "p2p_master_bot"),
         MASTER_TON_WALLET=_require("MASTER_TON_WALLET"),
@@ -140,6 +140,7 @@ def get_settings() -> Settings:
 
 
 _branding_cache: dict[str, Any] | None = None
+_license_branding_cache: dict[str, dict[str, Any]] = {}
 
 
 def load_branding() -> dict[str, Any]:
@@ -165,19 +166,60 @@ def load_branding() -> dict[str, Any]:
     return _branding_cache
 
 
-def get_branding() -> dict[str, Any]:
-    """Return the branding configuration singleton.
+async def load_license_branding(session: AsyncSession, license_id: str) -> dict[str, Any]:
+    """Fetch custom branding from DB and deep-merge with defaults.
 
-    Returns:
-        Parsed branding dict. Cached after first call.
+    Validates custom branding against BrandingSchema before merging.
     """
+    from sqlalchemy import select
+
+    from bot.schemas import BrandingSchema, deep_merge
+    from db.models.b2b import B2BLicense
+
+    default_branding = load_branding()
+
+    stmt = select(B2BLicense).where(B2BLicense.id == license_id)
+    result = await session.execute(stmt)
+    license_obj = result.scalar_one_or_none()
+
+    if not license_obj or not license_obj.branding:
+        return default_branding
+
+    try:
+        # Validate overrides
+        overrides = BrandingSchema.from_dict(license_obj.branding).model_dump(exclude_unset=True)
+        # Recursive merge
+        merged = deep_merge(default_branding, overrides)
+        _license_branding_cache[license_id] = merged
+        return merged
+    except Exception as exc:
+        # If custom branding is invalid, fallback to default but log error
+        import structlog
+
+        log = structlog.get_logger(__name__)
+        log.error("invalid_license_branding", license_id=license_id, error=str(exc))
+        return default_branding
+
+
+def get_branding() -> dict[str, Any]:
+    """Return the current branding configuration from context or default."""
+    ctx_val = branding_ctx.get()
+    if ctx_val is not None:
+        return ctx_val
     return load_branding()
+
+
+def set_branding(branding: dict[str, Any]) -> None:
+    """Set the current branding configuration in context."""
+    branding_ctx.set(branding)
 
 
 def _reset_branding_cache() -> None:
     """Reset branding cache — for use in tests only."""
     global _branding_cache  # noqa: PLW0603
     _branding_cache = None
+    _license_branding_cache.clear()
+    branding_ctx.set(None)
 
 
 # Convenience alias — use ``settings`` for direct attribute access.

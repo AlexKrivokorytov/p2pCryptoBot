@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import uuid
+from decimal import Decimal
 from typing import Any
 
 import structlog
@@ -13,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import get_branding
 from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
 from providers.crypto_pay import CryptoPayClient
+from services import wallet_service
+from utils.encryption import encrypt
 
 log = structlog.get_logger(__name__)
 
@@ -55,6 +58,11 @@ def _get_platform_fees(order_type: str) -> tuple[float, float]:
         percent = float(fees.get("taker_percent", 0.0))
     fixed = float(fees.get("fixed_fee", 0.0))
     return percent, fixed
+
+
+def _get_chain_for_asset(asset: str) -> str | None:
+    # Deprecated: use wallet_service.get_chain_for_asset
+    return wallet_service.get_chain_for_asset(asset)
 
 
 async def create_order(
@@ -115,7 +123,11 @@ async def create_order(
         fee_percent = fee_percent if fee_percent is not None else brand_percent
         fee_fixed = fee_fixed if fee_fixed is not None else brand_fixed
 
-    total_fee = (amount * fee_percent / 100) + fee_fixed
+    # ── On-chain escrow wallet generation (Phase 6) ───────────────────────────
+    # If the asset is on a supported chain, we generate a dedicated wallet for it.
+    chain = wallet_service.get_chain_for_asset(asset)
+
+    total_fee = (Decimal(str(amount)) * Decimal(str(fee_percent)) / 100) + Decimal(str(fee_fixed))
     spend_id = str(uuid.uuid4())
 
     async with session.begin():
@@ -133,15 +145,29 @@ async def create_order(
             fee_fixed=fee_fixed,
             total_fee=total_fee,
         )
-        session.add(order)
-        await session.flush()  # get order.id before invoice call
 
-        payload = str(order.id)
-        invoice_data = await crypto_pay.create_invoice(asset, amount, payload)
+        if chain:
+            # Generate real on-chain escrow wallet
+            wallet_data = await wallet_service.generate_order_wallet(chain)
+            order.escrow_wallet_address = wallet_data["address"]
+            order.escrow_wallet_private_key_enc = encrypt(wallet_data["private_key"])
+            order.on_chain_status = "awaiting_deposit"
+            # No CryptoPay invoice for on-chain deals in this flow
+            order.payment_url = None  # type: ignore[assignment]
+            order.invoice_id = None  # type: ignore[assignment]
+        else:
+            # Fallback to Crypto Pay for other assets
+            session.add(order)
+            await session.flush()
+            payload = str(order.id)
+            invoice_data = await crypto_pay.create_invoice(asset, amount, payload)
+            order.invoice_id = invoice_data["invoice_id"]
+            order.crypto_pay_payload = payload
+            order.payment_url = invoice_data["pay_url"]
 
-        order.invoice_id = invoice_data["invoice_id"]
-        order.crypto_pay_payload = payload
-        order.payment_url = invoice_data["pay_url"]
+        if not order.id:
+            session.add(order)
+            await session.flush()
 
     log.info(
         "order_created",
@@ -150,6 +176,8 @@ async def create_order(
         order_type=order_type,
         asset=asset,
         amount=amount,
+        on_chain=bool(chain),
+        escrow_address=order.escrow_wallet_address,
         status=OrderStatus.pending_funding,
         step="create_order",
     )
@@ -158,6 +186,8 @@ async def create_order(
         "status": order.status,
         "invoice_id": order.invoice_id,
         "payment_url": order.payment_url,
+        "escrow_address": order.escrow_wallet_address,
+        "on_chain": bool(chain),
     }
 
 
@@ -368,28 +398,26 @@ async def confirm_fiat_payment(
         # sell_crypto → Maker sold crypto, Taker gets the crypto
         # buy_crypto → Maker buys crypto, Maker gets the crypto
         if order.order_type == OrderType.sell_crypto:
-            recipient_id = order.taker_id
+            _recipient_id = order.taker_id
         else:
-            recipient_id = order.maker_id
+            _recipient_id = order.maker_id
+
+        from services import escrow_service
 
         try:
-            await crypto_pay.transfer(
-                user_id=recipient_id,
-                asset=order.asset,
-                amount=float(order.amount) - float(order.total_fee),
-                spend_id=str(order.spend_id),
-            )
-            order.status = OrderStatus.completed
-            order.fiat_confirmed = True
+            await escrow_service.release_escrow(session, crypto_pay, order_id=order_id, force=True)
             final_status = OrderStatus.completed
         except Exception as exc:
             log.error(
-                "order_transfer_failed",
+                "order_release_failed_during_confirmation",
                 order_id=order_id,
                 error=str(exc),
                 step="confirm_fiat_payment",
-                status="error",
             )
+            # release_escrow already rolls back its internal transaction on error,
+            # and here we are inside another async with session.begin() which will also rollback.
+            # However, we want to mark it as dispute if release failed?
+            # release_escrow doesn't mark as dispute on its own, it just raises.
             order.status = OrderStatus.dispute
             final_status = OrderStatus.dispute
 
@@ -459,6 +487,9 @@ async def get_order_details(
         "fiat_amount": float(order.fiat_amount),
         "payment_method": order.payment_method,
         "dispute_reason": order.dispute_reason,
+        "escrow_wallet_address": order.escrow_wallet_address,
+        "on_chain_tx_hash": order.on_chain_tx_hash,
+        "on_chain_status": order.on_chain_status,
     }
 
 

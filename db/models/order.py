@@ -111,6 +111,12 @@ class Order(Base):
     # Optional dispute reason
     dispute_reason: Mapped[str] = mapped_column(Text, nullable=True)
 
+    # On-chain Escrow
+    escrow_wallet_address: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
+    escrow_wallet_private_key_enc: Mapped[str] = mapped_column(String(512), nullable=True)
+    on_chain_tx_hash: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
+    on_chain_status: Mapped[str] = mapped_column(String(50), nullable=False, default="none")
+
     # Relationships
     maker: Mapped["User"] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "User", foreign_keys=[maker_id], lazy="selectin"
