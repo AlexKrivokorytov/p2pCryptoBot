@@ -8,7 +8,14 @@ Startup sequence:
   5. Include all routers from ``bot.handlers.ROUTERS``.
   6. Start aiohttp webhook server for Crypto Pay callbacks.
   7. Start background cleanup task.
-  8. Start Telegram polling.
+  8. Start Telegram polling with concurrency cap (OOM prevention).
+
+Polling concurrency:
+  ``tasks_concurrency_limit=50`` caps the number of concurrent asyncio tasks that
+  handle incoming updates.  Without this limit a traffic burst creates one unbounded
+  task per update, growing memory linearly until the process is killed by the OOM
+  killer.  The semaphore is implemented inside aiogram 3.27's ``_polling()`` method
+  and is activated only when this kwarg is provided.
 """
 
 from __future__ import annotations
@@ -105,15 +112,22 @@ async def main() -> None:
     # ── Background cleanup task ──────────────────────────────────────────────────
     cleanup_task = asyncio.create_task(start_cleanup_task(session_pool, bot))
 
-    log.info("bot_starting", mode="polling")
+    log.info("bot_starting", mode="polling", tasks_concurrency_limit=50)
     try:
-        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+        await dp.start_polling(
+            bot,
+            allowed_updates=dp.resolve_used_update_types(),
+            # Caps concurrent update-handler tasks to prevent OOM under burst traffic.
+            # aiogram 3.27 creates an asyncio.Semaphore(50) inside _polling() when set.
+            tasks_concurrency_limit=50,
+        )
     finally:
         cleanup_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await cleanup_task
         await crypto_pay.close()
-        await bot.session.close()
+        # NOTE: bot.session is closed by start_polling (close_bot_session=True default).
+        # Do NOT call bot.session.close() here — it would cause a double-close warning.
         await engine.dispose()
         await runner.cleanup()
         log.info("bot_stopped")

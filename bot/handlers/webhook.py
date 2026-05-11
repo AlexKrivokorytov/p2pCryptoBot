@@ -10,10 +10,8 @@ import json
 
 import structlog
 from aiohttp import web
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from db.models.order import Order, OrderStatus
 from providers.crypto_pay import CryptoPayClient
 from services import order_service
 
@@ -85,21 +83,16 @@ async def cryptopay_webhook(request: web.Request) -> web.Response:
                 )
 
         elif invoice_status == "expired":
-            async with session.begin():
-                result = await session.execute(
-                    select(Order).where(Order.crypto_pay_payload == order_uuid).with_for_update()
+            try:
+                await order_service.cancel_order_by_payload(
+                    session, payload=order_uuid, reason="invoice_expired"
                 )
-                order = result.scalar_one_or_none()
-
-                if order is not None and order.status == OrderStatus.pending_funding:
-                    order.status = OrderStatus.cancelled
-                    log.info(
-                        "webhook_order_cancelled",
-                        order_id=str(order.id),
-                        user_id=order.maker_id,
-                        status=OrderStatus.cancelled.value,
-                        step="cryptopay_webhook",
-                        reason="invoice_expired",
-                    )
+            except Exception as exc:
+                log.warning(
+                    "webhook_cancel_failed",
+                    order_uuid=order_uuid,
+                    error=str(exc),
+                    step="cryptopay_webhook",
+                )
 
     return web.Response(status=200, text="OK")

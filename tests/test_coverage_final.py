@@ -53,8 +53,10 @@ async def test_cb_dispute_view(mock_is_admin, session):
         id=order_id,
         asset="TON",
         amount=Decimal("1"),
+        total_fee=Decimal("0.01"),
         fiat_amount=Decimal("100"),
         fiat_currency="RUB",
+        status="dispute",
         maker_id=1,
         taker_id=2,
     )
@@ -181,10 +183,13 @@ async def test_cb_order_view_market_rate(mock_rate, session):
         id=order_id,
         asset="TON",
         amount=Decimal("1"),
+        total_fee=Decimal("0.02"),
         fiat_amount=Decimal("500"),
         fiat_currency="USD",
         order_type="sell_crypto",
+        status="active",
         payment_method="Sberbank",
+        maker_id=123,
     )
     order.maker = MagicMock(spec=User, username="maker1")
 

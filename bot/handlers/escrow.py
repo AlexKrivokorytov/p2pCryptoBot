@@ -2,21 +2,17 @@
 
 from __future__ import annotations
 
-import uuid
-
 import structlog
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards import (
     active_trade_maker_keyboard,
     back_to_menu_keyboard,
 )
-from db.models.order import Order
 from providers.crypto_pay import CryptoPayClient
-from services import escrow_service, notification_service
+from services import escrow_service, notification_service, order_service
 from utils.formatters import format_error
 
 log = structlog.get_logger(__name__)
@@ -53,16 +49,15 @@ async def cb_escrow_confirm(
             parse_mode="HTML",
         )
 
-        # Fetch order details for notification
-        order_result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
-        order = order_result.scalar_one_or_none()
-        if order and order.taker_id:
+        # Fetch order details via service layer for taker notification
+        order = await order_service.get_order_details(session, order_id=order_id)
+        if order and order["taker_id"]:
             await notification_service.notify_taker_escrow_released(
                 bot,
-                order.taker_id,
+                order["taker_id"],
                 order_id,
-                order.asset,
-                float(order.amount) - float(order.total_fee),
+                order["asset"],
+                order["amount"] - order["total_fee"],
             )
     except Exception as exc:
         log.error(
@@ -84,8 +79,8 @@ async def cb_escrow_confirm(
 async def cb_order_status(callback: CallbackQuery, session: AsyncSession) -> None:
     """Check current order status."""
     order_id = callback.data.split(":")[2]  # type: ignore[union-attr]
-    result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
-    order = result.scalar_one_or_none()
+    order = await order_service.get_order_details(session, order_id=order_id)
+
     if order is None:
         await callback.answer("Order not found.", show_alert=True)
         return
@@ -98,9 +93,9 @@ async def cb_order_status(callback: CallbackQuery, session: AsyncSession) -> Non
         "dispute": "⚠️ Under dispute",
         "cancelled": "❌ Cancelled",
     }
-    label = status_map.get(order.status, order.status)
+    label = status_map.get(order["status"], order["status"])
 
-    if order.status == "escrow_held" and order.maker_id == callback.from_user.id:
+    if order["status"] == "escrow_held" and order["maker_id"] == callback.from_user.id:
         await callback.message.answer(  # type: ignore[union-attr]
             f"Order <code>{order_id[:8]}…</code>: {label}\n\n"
             "Has the taker sent you the fiat payment?",

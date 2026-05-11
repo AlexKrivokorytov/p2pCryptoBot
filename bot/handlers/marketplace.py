@@ -20,7 +20,6 @@ from bot.keyboards import (
     asset_keyboard,
     back_to_menu_keyboard,
 )
-from db.models.marketplace import Ad, AdType, PriceType
 from services.marketplace_service import MarketplaceService
 
 log = structlog.get_logger(__name__)
@@ -48,24 +47,20 @@ class CreateAdFSM(StatesGroup):
 # ── Helper: build ad list page ─────────────────────────────────────────────────
 
 
-def _build_ad_list_text(ads: list[Ad], page: int, total_pages: int) -> str:
-    """Build the formatted text block for an ads page.
+# ── Helper: build ad list page ─────────────────────────────────────────────────
 
-    Args:
-        ads: List of Ad objects on the current page.
-        page: Current page number (1-indexed).
-        total_pages: Total pages count.
 
-    Returns:
-        Formatted HTML string.
-    """
+def _build_ad_list_text(ads: list[Any], page: int, total_pages: int) -> str:
+    """Build the formatted text block for an ads page."""
     if not ads:
         return "😔 <b>No active ads found.</b>\n\nBe the first — create your own!"
 
     lines = ["🛒 <b>P2P Market</b>\n"]
     for i, ad in enumerate(ads, start=1):
-        emoji = "📤" if ad.type == AdType.sell else "📥"
-        direction = "Sell" if ad.type == AdType.sell else "Buy"
+        # ad is a model instance but we treat it as having these attrs
+        is_sell = getattr(ad, "type", "sell") == "sell"
+        emoji = "📤" if is_sell else "📥"
+        direction = "Sell" if is_sell else "Buy"
         lines.append(
             f"{i}. {emoji} <b>{direction} {ad.asset}</b> for <b>{ad.fiat}</b>\n"
             f"   Rate: <b>{float(ad.price_value):.2f} {ad.fiat}/{ad.asset}</b>\n"
@@ -75,21 +70,13 @@ def _build_ad_list_text(ads: list[Ad], page: int, total_pages: int) -> str:
     return "\n".join(lines)
 
 
-def _build_ad_page_keyboard(ads: list[Ad], page: int, total_pages: int) -> Any:
-    """Build inline keyboard with ad buttons and pagination.
-
-    Args:
-        ads: Ad objects for the current page.
-        page: Current page (1-indexed).
-        total_pages: Total pages count.
-
-    Returns:
-        InlineKeyboardMarkup.
-    """
+def _build_ad_page_keyboard(ads: list[Any], page: int, total_pages: int) -> Any:
+    """Build inline keyboard with ad buttons and pagination."""
     builder = InlineKeyboardBuilder()
     for i, ad in enumerate(ads, start=1):
-        emoji = "📤" if ad.type == AdType.sell else "📥"
-        direction = "Sell" if ad.type == AdType.sell else "Buy"
+        is_sell = getattr(ad, "type", "sell") == "sell"
+        emoji = "📤" if is_sell else "📥"
+        direction = "Sell" if is_sell else "Buy"
         builder.row(
             InlineKeyboardButton(
                 text=f"{emoji} #{i} {direction} {ad.asset} @ {float(ad.price_value):.2f} {ad.fiat}",
@@ -125,12 +112,7 @@ async def _render_market(callback: CallbackQuery, session: AsyncSession, page: i
         session: DB session.
         page: Page number (1-indexed).
     """
-    # For now we show ALL active ads (no asset/fiat filter yet)
-    from sqlalchemy import select
-
-    stmt = select(Ad).where(Ad.is_active.is_(True)).order_by(Ad.created_at.desc())
-    result = await session.execute(stmt)
-    all_ads = result.scalars().all()
+    all_ads = await MarketplaceService.get_all_active_ads(session)
 
     total_pages = max(1, math.ceil(len(all_ads) / PAGE_SIZE))
     page = max(1, min(page, total_pages))
@@ -161,25 +143,22 @@ async def cb_market_page(callback: CallbackQuery, session: AsyncSession) -> None
 async def cb_ad_view(callback: CallbackQuery, session: AsyncSession) -> None:
     """Show details for a single ad."""
     ad_id = int(callback.data.split(":")[-1])  # type: ignore[union-attr]
-    from sqlalchemy import select
-
-    result = await session.execute(select(Ad).where(Ad.id == ad_id))
-    ad = result.scalar_one_or_none()
+    ad = await MarketplaceService.get_ad_details(session, ad_id=ad_id)
 
     if ad is None:
         await callback.answer("❌ Ad not found.", show_alert=True)
         return
 
-    emoji = "📤" if ad.type == AdType.sell else "📥"
-    direction = "Sell" if ad.type == AdType.sell else "Buy"
-    terms_text = ad.terms or "No special terms."
+    emoji = "📤" if ad["type"] == "sell" else "📥"
+    direction = "Sell" if ad["type"] == "sell" else "Buy"
+    terms_text = ad["terms"] or "No special terms."
 
     text = (
         f"📋 <b>Ad Details</b>\n\n"
-        f"{emoji} Direction: <b>{direction} {ad.asset}</b>\n"
-        f"💵 Fiat: <b>{ad.fiat}</b>\n"
-        f"📈 Rate: <b>{float(ad.price_value):.2f} {ad.fiat}/{ad.asset}</b>\n"
-        f"🔢 Limits: <b>{float(ad.min_limit):.0f} – {float(ad.max_limit):.0f} {ad.fiat}</b>\n\n"
+        f"{emoji} Direction: <b>{direction} {ad['asset']}</b>\n"
+        f"💵 Fiat: <b>{ad['fiat']}</b>\n"
+        f"📈 Rate: <b>{ad['price_value']:.2f} {ad['fiat']}/{ad['asset']}</b>\n"
+        f"🔢 Limits: <b>{ad['min_limit']:.0f} – {ad['max_limit']:.0f} {ad['fiat']}</b>\n\n"
         f"📝 Terms: {terms_text}"
     )
 
@@ -352,6 +331,8 @@ async def cb_ad_confirm(callback: CallbackQuery, state: FSMContext, session: Asy
         return
 
     # Map FSM type string → AdType
+    from db.models.marketplace import AdType, PriceType
+
     ad_type_map = {"sell_crypto": AdType.sell, "buy_crypto": AdType.buy}
     ad_type = ad_type_map.get(data.get("ad_type", "sell_crypto"), AdType.sell)
 

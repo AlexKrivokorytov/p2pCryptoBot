@@ -11,7 +11,6 @@ from bot.keyboards import (
     active_trade_taker_keyboard,
     back_to_menu_keyboard,
 )
-from db.models.order import Order
 from services import notification_service, order_service
 from utils.formatters import format_error
 
@@ -90,7 +89,6 @@ async def cb_fiat_sent(callback: CallbackQuery, session: AsyncSession, bot: Bot)
     await callback.answer()
 
     # Send push notification to Maker
-    async with session.begin():
-        order = await session.get(Order, order_id)
-        if order and order.maker_id:
-            await notification_service.notify_maker_fiat_sent(bot, order.maker_id, order_id)
+    order = await order_service.get_order_details(session, order_id=order_id)
+    if order and order["maker_id"]:
+        await notification_service.notify_maker_fiat_sent(bot, order["maker_id"], order_id)

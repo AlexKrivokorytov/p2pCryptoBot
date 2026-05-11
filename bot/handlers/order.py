@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import uuid
 from decimal import Decimal
 
 import structlog
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards import (
@@ -23,7 +21,7 @@ from bot.keyboards import (
     payment_method_keyboard,
 )
 from bot.states import BrowseOrderBookFSM, CreateAdFSM
-from db.models.order import Order, OrderType, SupportedAsset
+from db.models.order import OrderType, SupportedAsset
 from providers.crypto_pay import CryptoPayClient
 from services import order_service, rate_service
 from utils.formatters import format_error
@@ -324,26 +322,26 @@ async def cb_order_view(
 ) -> None:
     """Show detailed view of a single order from the Order Book."""
     order_id = callback.data.split(":")[2]  # type: ignore[union-attr]
-    result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
-    order = result.scalar_one_or_none()
+    order = await order_service.get_order_details(session, order_id=order_id)
+
     if order is None:
         await callback.answer("Order not found.", show_alert=True)
         return
 
-    type_label = "📤 Selling" if order.order_type == "sell_crypto" else "📥 Buying"
-    maker_name = order.maker.username or order.maker.first_name or "Anonymous"
+    type_label = "📤 Selling" if order["order_type"] == "sell_crypto" else "📥 Buying"
+    maker_name = order["maker_username"]
 
     # Price per unit (maker's rate)
-    maker_rate = float(order.fiat_amount) / float(order.amount) if float(order.amount) else 0
+    maker_rate = float(order["fiat_amount"]) / float(order["amount"]) if float(order["amount"]) else 0
     maker_rate_str = f"{maker_rate:,.2f}"
 
     # Binance market rate comparison (fire-and-forget, non-blocking)
-    market_rate = await rate_service.get_market_rate(str(order.asset), order.fiat_currency)
+    market_rate = await rate_service.get_market_rate(str(order["asset"]), order["fiat_currency"])
     if market_rate is not None:
         diff_pct = ((Decimal(str(maker_rate)) - market_rate) / market_rate) * 100
         sign = "+" if diff_pct >= 0 else ""
         market_line = (
-            f"📊 Market rate: <code>{market_rate:,.2f}</code> {order.fiat_currency} "
+            f"📊 Market rate: <code>{market_rate:,.2f}</code> {order['fiat_currency']} "
             f"(<i>{sign}{diff_pct:.1f}% vs Binance</i>)\n"
         )
     else:
@@ -352,12 +350,12 @@ async def cb_order_view(
     text = (
         f"📋 <b>Order Detail</b>\n\n"
         f"Type: {type_label}\n"
-        f"Asset: <code>{order.asset}</code>\n"
-        f"Amount: <code>{float(order.amount):.8g}</code>\n"
-        f"Price: <code>{float(order.fiat_amount):.2f} {order.fiat_currency}</code>\n"
-        f"Rate: <code>{maker_rate_str}</code> {order.fiat_currency}/unit\n"
+        f"Asset: <code>{order['asset']}</code>\n"
+        f"Amount: <code>{order['amount']:.8g}</code>\n"
+        f"Price: <code>{order['fiat_amount']:.2f} {order['fiat_currency']}</code>\n"
+        f"Rate: <code>{maker_rate_str}</code> {order['fiat_currency']}/unit\n"
         f"{market_line}"
-        f"Payment: <b>{order.payment_method}</b>\n"
+        f"Payment: <b>{order['payment_method']}</b>\n"
         f"Seller: @{maker_name}\n"
     )
 

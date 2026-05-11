@@ -10,14 +10,11 @@ Commands:
 
 from __future__ import annotations
 
-import uuid
-
 import structlog
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import settings
@@ -28,9 +25,8 @@ from bot.keyboards import (
     dispute_resolve_keyboard,
 )
 from bot.states import ArbitrationFSM
-from db.models.order import Order
 from providers.crypto_pay import CryptoPayClient
-from services import admin_service, dispute_service
+from services import admin_service, dispute_service, order_service
 from utils.formatters import format_error
 
 log = structlog.get_logger(__name__)
@@ -168,26 +164,23 @@ async def cb_dispute_view(callback: CallbackQuery, session: AsyncSession) -> Non
         return
 
     order_id_str = callback.data.split(":")[-1]  # type: ignore[union-attr]
-    result = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id_str)))
-    order = result.scalar_one_or_none()
+    order = await order_service.get_order_details(session, order_id=order_id_str)
 
     if order is None:
         await callback.answer("Order not found.", show_alert=True)
         return
 
-    maker_name = getattr(order.maker, "username", None) or str(order.maker_id)
-    taker_name = (
-        getattr(order.taker, "username", None) or str(order.taker_id) if order.taker_id else "—"
-    )
+    maker_name = order["maker_username"]
+    taker_name = order["taker_username"] or "—"
 
     text = (
         f"⚖️ <b>Dispute Detail</b>\n\n"
         f"Order: <code>{order_id_str[:8]}…</code>\n"
-        f"Asset: <b>{order.asset}</b>  "
-        f"Amount: <code>{float(order.amount):.6g}</code>\n"
-        f"Fiat: <code>{float(order.fiat_amount):.2f} {order.fiat_currency}</code>\n"
+        f"Asset: <b>{order['asset']}</b>  "
+        f"Amount: <code>{order['amount']:.6g}</code>\n"
+        f"Fiat: <code>{order['fiat_amount']:.2f} {order['fiat_currency']}</code>\n"
         f"Maker: @{maker_name}  Taker: @{taker_name}\n"
-        f"Reason: <i>{order.dispute_reason or 'Not specified'}</i>\n\n"
+        f"Reason: <i>{order['dispute_reason'] or 'Not specified'}</i>\n\n"
         "Choose resolution:"
     )
 

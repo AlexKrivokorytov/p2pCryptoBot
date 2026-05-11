@@ -6,13 +6,11 @@ import structlog
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards import back_to_menu_keyboard
 from bot.states import DisputeFSM
-from db.models.order import Order
-from services import dispute_service, notification_service
+from services import dispute_service, notification_service, order_service
 from utils.formatters import format_dispute_raised, format_error
 
 log = structlog.get_logger(__name__)
@@ -86,13 +84,10 @@ async def cb_dispute_confirmed(
         )
 
         # Notify both parties
-        import uuid
-
-        order_res = await session.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
-        order = order_res.scalar_one_or_none()
+        order = await order_service.get_order_details(session, order_id=order_id)
         if order:
             await notification_service.notify_dispute_opened(
-                bot, order.maker_id, order.taker_id, order_id, reason
+                bot, order["maker_id"], order["taker_id"], order_id, reason
             )
         log.info(
             "dispute_submitted",

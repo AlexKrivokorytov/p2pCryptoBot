@@ -406,6 +406,62 @@ async def confirm_fiat_payment(
     return {"order_id": order_id, "status": final_status}
 
 
+async def get_order_details(
+    session: AsyncSession,
+    *,
+    order_id: str,
+) -> dict[str, Any] | None:
+    """Return a plain dict of key order fields, including usernames.
+
+    This is the service-layer accessor that handlers use to read order data
+    without importing ``db.models.order.Order`` directly (layer isolation rule).
+
+    Args:
+        session: Active async SQLAlchemy session.
+        order_id: UUID string of the order.
+
+    Returns:
+        Dict with ``order_id``, ``maker_id``, ``maker_username``, ``taker_id``,
+        ``taker_username``, ``asset``, ``amount``, ``total_fee``, ``status``,
+        ``fiat_currency``, ``fiat_amount``, ``payment_method``, and
+        ``dispute_reason``; or ``None`` if the order does not exist.
+    """
+    from sqlalchemy.orm import joinedload
+
+    # Query Order with maker and taker relationships pre-loaded
+    stmt = (
+        select(Order)
+        .options(joinedload(Order.maker), joinedload(Order.taker))
+        .where(Order.id == uuid.UUID(order_id))
+    )
+    result = await session.execute(stmt)
+    order = result.scalar_one_or_none()
+
+    if order is None:
+        return None
+
+    return {
+        "order_id": str(order.id),
+        "maker_id": order.maker_id,
+        "maker_username": getattr(order.maker, "username", None) or str(order.maker_id),
+        "taker_id": order.taker_id,
+        "taker_username": (
+            getattr(order.taker, "username", None) or str(order.taker_id)
+            if order.taker_id
+            else None
+        ),
+        "order_type": order.order_type,
+        "asset": order.asset,
+        "amount": float(order.amount),
+        "total_fee": float(order.total_fee or 0),
+        "status": order.status,
+        "fiat_currency": order.fiat_currency,
+        "fiat_amount": float(order.fiat_amount),
+        "payment_method": order.payment_method,
+        "dispute_reason": order.dispute_reason,
+    }
+
+
 async def cancel_order(
     session: AsyncSession,
     *,
@@ -455,3 +511,44 @@ async def cancel_order(
         reason=reason,
     )
     return {"order_id": order_id, "status": OrderStatus.cancelled}
+
+
+async def cancel_order_by_payload(
+    session: AsyncSession,
+    *,
+    payload: str,
+    reason: str = "invoice_expired",
+) -> dict[str, Any] | None:
+    """Cancel an order identified by its Crypto Pay payload.
+
+    Used by the webhook handler when an invoice expires.
+    Transition: ``pending_funding`` → ``cancelled``.
+
+    Args:
+        session: Active async SQLAlchemy session.
+        payload: The crypto_pay_payload (order UUID string).
+        reason: Cancellation reason for logs.
+
+    Returns:
+        Dict with ``order_id`` and ``status=cancelled``, or None if not found.
+    """
+    async with session.begin():
+        result = await session.execute(
+            select(Order).where(Order.crypto_pay_payload == payload).with_for_update()
+        )
+        order = result.scalar_one_or_none()
+        if order is None:
+            return None
+
+        if order.status == OrderStatus.pending_funding:
+            order.status = OrderStatus.cancelled
+
+    log.info(
+        "order_cancelled_via_payload",
+        order_id=str(order.id),
+        user_id=order.maker_id,
+        status=OrderStatus.cancelled,
+        step="cancel_order_by_payload",
+        reason=reason,
+    )
+    return {"order_id": str(order.id), "status": OrderStatus.cancelled}

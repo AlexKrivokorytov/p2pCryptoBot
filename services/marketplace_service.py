@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -120,4 +121,31 @@ class MarketplaceService:
             "total_reviews": total,
             "positive_reviews": positive,
             "completion_rate": int((positive / total) * 100) if total > 0 else 100,
+        }
+
+    @staticmethod
+    async def get_all_active_ads(session: AsyncSession) -> Sequence[Ad]:
+        """Fetch all active ads ordered by creation date."""
+        stmt = select(Ad).where(Ad.is_active.is_(True)).order_by(Ad.created_at.desc())
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+    @staticmethod
+    async def get_ad_details(session: AsyncSession, ad_id: int) -> dict[str, Any] | None:
+        """Fetch ad details as a dictionary."""
+        stmt = select(Ad).where(Ad.id == ad_id).with_for_update()
+        result = await session.execute(stmt)
+        ad = result.scalar_one_or_none()
+        if not ad:
+            return None
+        return {
+            "id": ad.id,
+            "maker_id": ad.maker_id,
+            "type": ad.type,
+            "asset": ad.asset,
+            "fiat": ad.fiat,
+            "price_value": float(ad.price_value),
+            "min_limit": float(ad.min_limit),
+            "max_limit": float(ad.max_limit),
+            "terms": ad.terms,
         }

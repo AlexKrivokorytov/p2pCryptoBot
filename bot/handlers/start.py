@@ -6,12 +6,10 @@ import structlog
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, Message
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import get_branding
 from bot.keyboards import main_menu_keyboard
-from db.models.user import User
 
 log = structlog.get_logger(__name__)
 router = Router(name="start")
@@ -24,16 +22,14 @@ async def cmd_start(message: Message, session: AsyncSession) -> None:
     if tg_user is None:
         return
 
-    async with session.begin():
-        result = await session.execute(select(User).where(User.telegram_id == tg_user.id))
-        user = result.scalar_one_or_none()
-        if user is None:
-            user = User(
-                telegram_id=tg_user.id,
-                username=tg_user.username,
-                first_name=tg_user.first_name,
-            )
-            session.add(user)
+    from services import user_service
+
+    await user_service.get_or_create_user(
+        session,
+        telegram_id=tg_user.id,
+        username=tg_user.username,
+        first_name=tg_user.first_name,
+    )
 
     log.info(
         "user_start",
