@@ -15,6 +15,7 @@ from aiogram import Router
 
 from bot.handlers import (
     admin,
+    b2b,
     chat,
     dispute,
     escrow,
@@ -36,6 +37,7 @@ ROUTERS: list[Router] = [
     chat.router,
     profile.router,
     wallet.router,
+    b2b.router,
     admin.router,  # admin last — catch-all admin filters
 ]
 

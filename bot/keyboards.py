@@ -42,6 +42,7 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="❓ Help", callback_data="help"),
+        InlineKeyboardButton(text="💎 B2B SaaS", callback_data="b2b:menu"),
     )
     return builder.as_markup()
 
@@ -383,4 +384,35 @@ def admin_dispute_action_keyboard(order_id: str) -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(text="◀️ Back to disputes", callback_data="admin:disputes"),
     )
+    return builder.as_markup()
+
+
+# ── B2B / White-Label SaaS ────────────────────────────────────────────────────
+
+
+def b2b_menu_keyboard(has_active_license: bool = False) -> InlineKeyboardMarkup:
+    """Return keyboard for B2B SaaS menu."""
+    builder = InlineKeyboardBuilder()
+    if has_active_license:
+        builder.row(InlineKeyboardButton(text="🚀 Spawn My Bot", callback_data="b2b:spawn"))
+        builder.row(
+            InlineKeyboardButton(text="🎨 Customize Branding", callback_data="b2b:customize")
+        )
+    else:
+        builder.row(
+            InlineKeyboardButton(text="💎 Buy White-Label License", callback_data="b2b:buy")
+        )
+
+    builder.row(InlineKeyboardButton(text="🏠 Back to menu", callback_data="menu:main"))
+    return builder.as_markup()
+
+
+def b2b_purchase_keyboard() -> InlineKeyboardMarkup:
+    """Return keyboard for purchasing B2B license."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⭐ Pay with Stars (XTR)", callback_data="b2b:pay:stars"))
+    builder.row(
+        InlineKeyboardButton(text="🔷 Pay with TON (Coming Soon)", callback_data="b2b:pay:ton")
+    )
+    builder.row(InlineKeyboardButton(text="🔙 Back", callback_data="b2b:menu"))
     return builder.as_markup()

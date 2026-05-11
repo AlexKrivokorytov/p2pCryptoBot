@@ -73,6 +73,11 @@ class Settings:
     # ── AI mediator ───────────────────────────────────────────────────────────
     GEMINI_API_KEY: str
 
+    # ── B2B SaaS settings ─────────────────────────────────────────────────────
+    B2B_LICENSE_PRICE_STARS: int
+    MASTER_BOT_USERNAME: str
+    MASTER_TON_WALLET: str
+
     # ── DB pool ───────────────────────────────────────────────────────────────
     DB_POOL_SIZE: int = field(default=10)
     DB_MAX_OVERFLOW: int = field(default=20)
@@ -106,6 +111,9 @@ def load_settings() -> Settings:
         TON_RPC_URL=_optional("TON_RPC_URL", "https://toncenter.com/api/v2/jsonRPC"),
         EVM_RPC_URL=_optional("EVM_RPC_URL", "https://bsc-dataseed.binance.org/"),
         GEMINI_API_KEY=_optional("GEMINI_API_KEY"),
+        B2B_LICENSE_PRICE_STARS=int(_optional("B2B_LICENSE_PRICE_STARS", "10000")),
+        MASTER_BOT_USERNAME=_optional("MASTER_BOT_USERNAME", "p2p_master_bot"),
+        MASTER_TON_WALLET=_require("MASTER_TON_WALLET"),
         DB_POOL_SIZE=int(_optional("DB_POOL_SIZE", "10")),
         DB_MAX_OVERFLOW=int(_optional("DB_MAX_OVERFLOW", "20")),
     )

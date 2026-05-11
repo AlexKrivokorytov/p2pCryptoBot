@@ -37,12 +37,16 @@ load_dotenv()  # Must happen before importing settings
 
 
 from bot.config import settings  # noqa: E402
+from bot.dynamic_loader import DynamicBotLoader  # noqa: E402
 from bot.handlers import ROUTERS  # noqa: E402
 from bot.handlers.webhook import cryptopay_webhook  # noqa: E402
 from bot.i18n import setup_i18n  # noqa: E402
 from bot.middleware import CryptoPayMiddleware, DbSessionMiddleware  # noqa: E402
 from providers.crypto_pay import CryptoPayClient  # noqa: E402
+from providers.ton import TONProvider  # noqa: E402
+from services.bot_spawner import BotSpawnerService  # noqa: E402
 from tasks.cleanup import start_cleanup_task  # noqa: E402
+from tasks.ton_scanner import TONScanner  # noqa: E402
 from utils.license_guard import check_license_or_abort  # noqa: E402
 
 # ── Structlog setup ─────────────────────────────────────────────────────────────
@@ -81,6 +85,11 @@ async def main() -> None:
     )
     dp = Dispatcher(storage=MemoryStorage())
 
+    # ── Dynamic Bot Spawner — B2B Phase 5 ────────────────────────────────────────
+    dynamic_loader = DynamicBotLoader(session_pool, crypto_pay, ROUTERS)
+    bot_spawner = BotSpawnerService(session_pool, dynamic_loader)
+    dp["bot_spawner"] = bot_spawner
+
     # Outer middlewares — cover ALL update types (message, callback, inline, …)
     dp.update.outer_middleware(DbSessionMiddleware(session_pool))
     dp.update.outer_middleware(CryptoPayMiddleware(crypto_pay))
@@ -112,6 +121,18 @@ async def main() -> None:
     # ── Background cleanup task ──────────────────────────────────────────────────
     cleanup_task = asyncio.create_task(start_cleanup_task(session_pool, bot))
 
+    # ── TON Blockchain Scanner — B2B Phase 4 ─────────────────────────────────────
+    ton_provider = TONProvider(is_testnet=settings.DEBUG)
+    ton_scanner = TONScanner(
+        provider=ton_provider,
+        session_maker=session_pool,
+        master_wallet=settings.MASTER_TON_WALLET,
+    )
+    ton_task = asyncio.create_task(ton_scanner.run())
+
+    # Spawn active bots on startup
+    asyncio.create_task(bot_spawner.spawn_all_active())
+
     log.info("bot_starting", mode="polling", tasks_concurrency_limit=50)
     try:
         await dp.start_polling(
@@ -122,9 +143,13 @@ async def main() -> None:
             tasks_concurrency_limit=50,
         )
     finally:
+        await dynamic_loader.stop_all()
+        ton_scanner.stop()
         cleanup_task.cancel()
+        ton_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
-            await cleanup_task
+            await asyncio.gather(cleanup_task, ton_task)
+        await ton_provider.disconnect()
         await crypto_pay.close()
         # NOTE: bot.session is closed by start_polling (close_bot_session=True default).
         # Do NOT call bot.session.close() here — it would cause a double-close warning.

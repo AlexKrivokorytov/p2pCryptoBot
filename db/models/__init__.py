@@ -1,5 +1,6 @@
 """DB models package."""
 
+from db.models.b2b import B2BLicense, TONInvoice
 from db.models.base import Base
 from db.models.chat import ChatMessage
 from db.models.marketplace import (
@@ -33,4 +34,6 @@ __all__ = [
     "Review",
     "ReferralReward",
     "DisputeTicket",
+    "B2BLicense",
+    "TONInvoice",
 ]

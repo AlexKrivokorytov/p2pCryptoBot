@@ -332,7 +332,8 @@ async def cb_order_view(
     maker_name = order["maker_username"]
 
     # Price per unit (maker's rate)
-    maker_rate = float(order["fiat_amount"]) / float(order["amount"]) if float(order["amount"]) else 0
+    maker_amount = float(order["amount"])
+    maker_rate = float(order["fiat_amount"]) / maker_amount if maker_amount else 0.0
     maker_rate_str = f"{maker_rate:,.2f}"
 
     # Binance market rate comparison (fire-and-forget, non-blocking)
