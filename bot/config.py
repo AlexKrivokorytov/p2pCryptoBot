@@ -40,6 +40,10 @@ def _optional(key: str, default: str = "") -> str:
 class Settings:
     """Immutable application settings validated at startup."""
 
+    # ── Environment ──────────────────────────────────────────────────────────
+    DEBUG: bool
+    IS_TESTNET: bool
+
     # ── Telegram ─────────────────────────────────────────────────────────────
     BOT_TOKEN: str
 
@@ -93,6 +97,8 @@ def _parse_admin_ids(raw: str) -> frozenset[int]:
 def load_settings() -> Settings:
     """Build and return a validated Settings instance from environment variables."""
     return Settings(
+        DEBUG=_optional("DEBUG", "false").lower() == "true",
+        IS_TESTNET=_optional("IS_TESTNET", "true").lower() == "true",
         BOT_TOKEN=_require("BOT_TOKEN"),
         POSTGRES_URI=_require("POSTGRES_URI"),
         ALEMBIC_DB_URL=_optional(

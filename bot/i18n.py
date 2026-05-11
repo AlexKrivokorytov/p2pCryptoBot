@@ -14,7 +14,7 @@ from aiogram_i18n.managers.base import BaseManager
 from db.models.user import User
 
 
-class JsonDictCore(BaseCore[dict[str, Any]]):
+class JsonDictCore(BaseCore[dict[str, Any]]):  # type: ignore[misc]
     """Custom JSON core for aiogram-i18n v1.5."""
 
     def get(self, message: str, locale: str | None = None, /, **kwargs: Any) -> str:
@@ -52,7 +52,7 @@ class JsonDictCore(BaseCore[dict[str, Any]]):
         return translations
 
 
-class DatabaseManager(BaseManager):
+class DatabaseManager(BaseManager):  # type: ignore[misc]
     """Custom manager to extract language code from the DB User model."""
 
     async def get_locale(
