@@ -49,7 +49,7 @@ from bot.middleware import (  # noqa: E402
     UserRegistrationMiddleware,
 )
 from providers.crypto_pay import CryptoPayClient  # noqa: E402
-from providers.ton import TONProvider  # noqa: E402
+from providers.wallet_provider import TonWalletProvider  # noqa: E402
 from services.bot_spawner import BotSpawnerService  # noqa: E402
 from tasks.cleanup import start_cleanup_task  # noqa: E402
 from tasks.escrow_scanner import EscrowScanner  # noqa: E402
@@ -132,7 +132,7 @@ async def main() -> None:
     cleanup_task = asyncio.create_task(start_cleanup_task(session_pool, bot, crypto_pay))
 
     # ── TON Blockchain Scanner — B2B Phase 4 ─────────────────────────────────────
-    ton_provider = TONProvider(is_testnet=settings.DEBUG)
+    ton_provider = TonWalletProvider(is_testnet=settings.DEBUG)
     ton_scanner = TONScanner(
         provider=ton_provider,
         session_maker=session_pool,
@@ -141,7 +141,7 @@ async def main() -> None:
     ton_task = asyncio.create_task(ton_scanner.run())
 
     # ── P2P On-Chain Escrow Scanner — Phase 6 ────────────────────────────────────
-    escrow_scanner = EscrowScanner(session_maker=session_pool, interval_sec=30)
+    escrow_scanner = EscrowScanner(bot=bot, session_maker=session_pool, interval_sec=30)
     escrow_task = asyncio.create_task(escrow_scanner.run())
 
     # Spawn active bots on startup

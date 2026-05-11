@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -44,13 +45,13 @@ async def _create_order(
             taker_id=taker_id,
             order_type=order_type,
             asset="USDT",
-            amount=100.0,
+            amount=Decimal("100.0"),
             fiat_currency="USD",
-            fiat_amount=100.0,
+            fiat_amount=Decimal("100.0"),
             payment_method="Sberbank",
             status=status,
             spend_id=str(uuid.uuid4()),
-            total_fee=1.0,
+            total_fee=Decimal("1.0"),
             fiat_confirmed=(status == OrderStatus.escrow_held),
         )
         session.add(order)
@@ -143,13 +144,13 @@ async def test_release_escrow_fiat_not_confirmed(session: AsyncSession) -> None:
             taker_id=504,
             order_type=OrderType.sell_crypto,
             asset="USDT",
-            amount=100.0,
+            amount=Decimal("100.0"),
             fiat_currency="USD",
-            fiat_amount=100.0,
+            fiat_amount=Decimal("100.0"),
             payment_method="Sberbank",
             status=OrderStatus.escrow_held,
             spend_id=str(uuid.uuid4()),
-            total_fee=1.0,
+            total_fee=Decimal("1.0"),
             fiat_confirmed=False,  # ← not confirmed
         )
         session.add(order)

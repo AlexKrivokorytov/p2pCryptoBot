@@ -13,9 +13,8 @@ import abc
 import asyncio
 import secrets
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
-import aiohttp
 import structlog
 
 # Optional heavy dependencies - moved to top level for testability
@@ -94,6 +93,17 @@ class WalletProvider(abc.ABC):
 
         Returns:
             Transaction hash (hex string).
+        """
+
+    @abc.abstractmethod
+    async def estimate_fee(self, asset: str) -> Decimal:
+        """Estimate the network fee (gas) required for a typical transfer.
+
+        Args:
+            asset: Asset ticker.
+
+        Returns:
+            Estimated fee in the NATIVE asset of the chain (e.g. TON or BNB).
         """
 
 
@@ -234,6 +244,25 @@ class EvmWalletProvider(WalletProvider):
                 step="EvmWalletProvider.get_balance",
             )
             return Decimal("0")
+
+    async def estimate_fee(self, asset: str) -> Decimal:
+        """Estimate EVM network fee (gas) in native coin (BNB/ETH)."""
+        if not HAS_EVM:
+            return Decimal("0.001")  # Fallback
+
+        try:
+            w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(self.rpc_url))
+            gas_price = await w3.eth.gas_price
+
+            # Native transfer is exactly 21k gas.
+            # ERC-20 is usually 45k-65k. We use 100k for safety buffer.
+            asset_upper = asset.upper()
+            gas_limit = 21000 if asset_upper in ("BNB", "ETH", "MATIC") else 100000
+
+            fee_wei = gas_price * gas_limit
+            return Decimal(str(AsyncWeb3.from_wei(fee_wei, "ether")))
+        except Exception:
+            return Decimal("0.001")
 
     async def transfer(
         self,
@@ -381,18 +410,40 @@ def _generate_ton_account() -> dict[str, str]:
 
 
 class TonWalletProvider(WalletProvider):
-    """TON wallet provider using ``pytoniq-core``.
+    """TON wallet provider using ``pytoniq`` LiteClient.
 
-    Key generation is fully offline — no network call required.
+    Key generation is fully offline.
+    Network operations use the high-performance LiteClient (Project Rule 5).
 
     Args:
-        endpoint: Toncenter or LiteServer JSON-RPC URL.
-        api_key: Optional Toncenter API key for higher rate limits.
+        is_testnet: Whether to use TON testnet config.
     """
 
-    def __init__(self, endpoint: str, api_key: str | None = None) -> None:
-        self.endpoint = endpoint
-        self.api_key = api_key
+    def __init__(self, is_testnet: bool = False) -> None:
+        self.is_testnet = is_testnet
+        self._client: Any = None
+
+    async def _get_client(self) -> Any:
+        """Lazy initialization of LiteClient."""
+        if self._client is None:
+            from pytoniq import LiteClient  # type: ignore[attr-defined]
+
+            if self.is_testnet:
+                self._client = await LiteClient.from_testnet_config(trust_level=2)
+            else:
+                self._client = await LiteClient.from_mainnet_config(trust_level=2)
+            await self._client.connect()
+        return self._client
+
+    async def connect(self) -> None:
+        """Connect to TON network."""
+        await self._get_client()
+
+    async def disconnect(self) -> None:
+        """Close LiteClient connection if active."""
+        if self._client:
+            await self._client.close()
+            self._client = None
 
     async def generate_wallet(self, user_id: int) -> dict[str, Any]:
         """Generate a real TON WalletV4R2 keypair off-thread.
@@ -425,11 +476,10 @@ class TonWalletProvider(WalletProvider):
         return wallet
 
     async def get_balance(self, address: str, asset: str) -> Decimal:
-        """Fetch TON native or jetton balance via Toncenter v2 REST API.
+        """Fetch TON native or jetton balance via LiteClient.
 
         Supported assets:
         - ``"TON"`` — native TON balance
-        - Jetton balances are planned for Phase 5
 
         Args:
             address: TON wallet address (UQ… or EQ…).
@@ -447,33 +497,9 @@ class TonWalletProvider(WalletProvider):
             return Decimal("0")
 
         try:
-            params = {"address": address}
-            headers = {}
-            if self.api_key:
-                headers["X-API-Key"] = self.api_key
-
-            url = self.endpoint.rstrip("/").replace("/jsonRPC", "") + "/getAddressBalance"
-
-            async with (
-                aiohttp.ClientSession(headers=headers) as http,
-                http.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp,
-            ):
-                if resp.status != 200:
-                    log.warning(
-                        "ton_balance_http_error",
-                        status=resp.status,
-                        address=address,
-                        step="TonWalletProvider.get_balance",
-                    )
-                    return Decimal("0")
-                data = await resp.json()
-
-            if not data.get("ok"):
-                return Decimal("0")
-
-            # Balance is in nanotons (1 TON = 1e9 nanotons)
-            nanotons = int(data["result"])
-            balance = Decimal(nanotons) / Decimal(10**9)
+            client = await self._get_client()
+            acc = await client.get_account_state(address)
+            balance = Decimal(acc.balance) / Decimal(10**9)
 
             log.info(
                 "ton_balance_fetched",
@@ -492,6 +518,60 @@ class TonWalletProvider(WalletProvider):
             )
             return Decimal("0")
 
+    async def estimate_fee(self, asset: str) -> Decimal:
+        """Estimate TON network fee (gas) in native TON.
+
+        Currently assumes ~0.05 TON as a safe buffer for simple transfer.
+        """
+        # For simple native transfer, 0.01-0.02 is usually enough.
+        # 0.05 gives a safe margin for storage fees if account is new.
+        return Decimal("0.05")
+
+    async def get_transactions(self, address: str, limit: int = 20) -> list[dict[str, Any]]:
+        """Fetch recent transactions for a given TON address via LiteClient.
+
+        Merged from providers/ton.py for consolidation.
+
+        Args:
+            address: TON address to scan.
+            limit: Number of transactions to fetch.
+
+        Returns:
+            List of transaction details with hash, amount, and memo.
+        """
+        client = await self._get_client()
+        txs = await client.get_transactions(address, count=limit)
+
+        results = []
+        for tx in txs:
+            in_msg = tx.in_msg
+            if not in_msg or not in_msg.info or in_msg.info.type != "int_msg":
+                continue
+
+            # Extract memo (comment)
+            memo = ""
+            if in_msg.body:
+                try:
+                    cell = in_msg.body
+                    slice_ = cell.begin_parse()
+                    if len(slice_) >= 32:
+                        prefix = slice_.load_uint(32)
+                        if prefix == 0:
+                            memo = slice_.load_snake_string()
+                except Exception:
+                    pass
+
+            results.append(
+                {
+                    "hash": tx.hash.hex(),
+                    "amount_nanotons": int(in_msg.info.value),
+                    "memo": memo,
+                    "utime": tx.utime,
+                }
+            )
+
+        return results
+
     async def transfer(
         self,
         private_key: str,
@@ -500,7 +580,7 @@ class TonWalletProvider(WalletProvider):
         amount: Decimal,
         memo: str | None = None,
     ) -> str:
-        """Sign and send a TON transfer using pytoniq and Toncenter.
+        """Sign and send a TON transfer using pytoniq LiteClient.
 
         Only supports native TON for now.
         """
@@ -510,64 +590,34 @@ class TonWalletProvider(WalletProvider):
         if not HAS_TON:
             raise RuntimeError("pytoniq library is not installed")
 
-        # 1. Initialize wallet object from private key
         try:
+            # 1. Initialize wallet object from private key
             wallet = WalletV4R2.from_private_key(bytes.fromhex(private_key))
 
-            # 2. Get current seqno from Toncenter
-            headers = {}
-            if self.api_key:
-                headers["X-API-Key"] = self.api_key
+            # 2. Get current seqno from chain
+            client = await self._get_client()
+            seqno = await wallet.get_seqno(client)
 
-            run_url = self.endpoint.rstrip("/").replace("/jsonRPC", "") + "/runGetMethod"
-            run_params = {
-                "address": wallet.address.to_str(),
-                "method": "seqno",
-                "stack": [],
-            }
+            # 3. Create and broadcast the transfer
+            # pytoniq transfer() method handles seqno and broadcasting
+            await wallet.transfer(
+                client=client,
+                to_addr=to_address,
+                amount=int(amount * Decimal(10**9)),
+                body=memo if memo else "",
+            )
 
-            async with (
-                aiohttp.ClientSession(headers=headers) as http,
-                http.post(
-                    run_url, json=run_params, timeout=aiohttp.ClientTimeout(total=10)
-                ) as resp,
-            ):
-                if resp.status != 200:
-                    raise RuntimeError(f"Failed to fetch seqno: HTTP {resp.status}")
-                run_data = await resp.json()
-                # If wallet not deployed, seqno is 0; TON stack returns hex values usually
-                seqno = 0 if not run_data.get("ok") else int(run_data["result"]["stack"][0][1], 16)
-
-            # 3. Create the transfer message
-            # amount is in nanotons
-            nanotons = int(amount * Decimal(1e9))
-
-            # pytoniq's create_transfer_message
+            # Wait a bit for the transaction to be broadcasted (hash is derived from message)
+            # In LiteClient, we can derive the hash from the message we sent
+            # For simplicity, we return a success indicator or hash if available.
+            # wallet.transfer doesn't return the hash directly in current pytoniq versions.
+            # We calculate it:
             query = wallet.create_transfer_message(
                 to_addr=to_address,
-                amount=nanotons,
+                amount=int(amount * Decimal(10**9)),
                 seqno=seqno,
                 payload=memo if memo else "",
             )
-
-            # 4. Send BoC to Toncenter
-            boc = query.message.to_boc(False).hex()
-            send_url = self.endpoint.rstrip("/").replace("/jsonRPC", "") + "/sendBoc"
-            send_params = {"boc": boc}
-
-            async with (
-                aiohttp.ClientSession(headers=headers) as http,
-                http.post(
-                    send_url, json=send_params, timeout=aiohttp.ClientTimeout(total=10)
-                ) as resp,
-            ):
-                if resp.status != 200:
-                    body = await resp.text()
-                    raise RuntimeError(f"Failed to send BoC: HTTP {resp.status} - {body}")
-                send_data = await resp.json()
-                if not send_data.get("ok"):
-                    raise RuntimeError(f"Toncenter error: {send_data.get('error')}")
-
             tx_hash = query.message.hash.hex()
 
             log.info(
@@ -579,7 +629,7 @@ class TonWalletProvider(WalletProvider):
                 seqno=seqno,
                 step="TonWalletProvider.transfer",
             )
-            return str(tx_hash)
+            return cast(str, tx_hash)
 
         except Exception as exc:
             log.error(

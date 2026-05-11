@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -26,9 +27,9 @@ async def _create_order(
         taker_id=202,
         order_type=OrderType.sell_crypto,
         asset="TON",
-        amount=50.0,
+        amount=Decimal("50.0"),
         fiat_currency="USD",
-        fiat_amount=100.0,
+        fiat_amount=Decimal("100.0"),
         payment_method="Sberbank",
         status=status,
         spend_id=str(uuid.uuid4()),
@@ -111,3 +112,39 @@ async def test_resolve_dispute_invalid_decision(session: AsyncSession) -> None:
         await dispute_service.resolve_dispute(
             session, crypto_pay, bot, order_id=str(order.id), decision="draw", moderator_id=999
         )
+
+
+@pytest.mark.asyncio
+async def test_raise_dispute_from_active(session: AsyncSession) -> None:
+    """Dispute can be raised from active status."""
+    order = await _create_order(session, status=OrderStatus.active)
+
+    result = await dispute_service.raise_dispute(
+        session, order_id=str(order.id), reason="No payment received", raised_by=201
+    )
+
+    assert result["status"] == OrderStatus.dispute
+
+
+@pytest.mark.asyncio
+async def test_raise_dispute_order_not_found(session: AsyncSession) -> None:
+    """raise_dispute raises ValueError for unknown order."""
+    with pytest.raises(ValueError, match="not found"):
+        await dispute_service.raise_dispute(
+            session, order_id=str(uuid.uuid4()), reason="test", raised_by=999
+        )
+
+
+@pytest.mark.asyncio
+async def test_resolve_dispute_cancel_decision(session: AsyncSession) -> None:
+    """Decision 'cancel' triggers refund_escrow and returns cancelled status."""
+    order = await _create_order(session, status=OrderStatus.dispute)
+    crypto_pay = _mock_crypto_pay()
+
+    bot = AsyncMock()
+    result = await dispute_service.resolve_dispute(
+        session, crypto_pay, bot, order_id=str(order.id), decision="cancel", moderator_id=999
+    )
+
+    assert result["status"] == OrderStatus.cancelled
+    assert result["decision"] == "cancel"

@@ -109,15 +109,16 @@ def ad_confirm_keyboard() -> InlineKeyboardMarkup:
 # ── Payment link ───────────────────────────────────────────────────────────────
 
 
-def payment_keyboard(pay_url: str, order_id: str) -> InlineKeyboardMarkup:
+def payment_keyboard(pay_url: str | None, order_id: str) -> InlineKeyboardMarkup:
     """Return the pay-now + check-status keyboard.
 
     Args:
-        pay_url: Crypto Pay payment URL.
+        pay_url: Crypto Pay payment URL (None for on-chain).
         order_id: UUID string of the order.
     """
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="💳 Pay Now", url=pay_url))
+    if pay_url:
+        builder.row(InlineKeyboardButton(text="💳 Pay Now", url=pay_url))
     builder.row(
         InlineKeyboardButton(text="🔄 Check Status", callback_data=f"order:status:{order_id}"),
         InlineKeyboardButton(text="❌ Cancel Order", callback_data=f"order:cancel:{order_id}"),
@@ -212,10 +213,21 @@ def active_trade_maker_keyboard(order_id: str | uuid.UUID) -> InlineKeyboardMark
         ),
     )
     builder.row(
+        # Two-step release flow — Phase 7
         InlineKeyboardButton(
             text=f"{ui.get('escrow_emoji', '🔒')} Release Escrow",
-            callback_data=f"escrow:confirm:{order_id}",
+            callback_data=f"escrow:release_step1:{order_id}",
         )
+    )
+    return builder.as_markup()
+
+
+def escrow_release_confirm_keyboard(order_id: str) -> InlineKeyboardMarkup:
+    """Confirmation keyboard for Step 2 of escrow release (with gas warning)."""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="✅ Yes, Release", callback_data=f"escrow:confirm:{order_id}"),
+        InlineKeyboardButton(text="❌ Cancel", callback_data=f"order:status:{order_id}"),
     )
     return builder.as_markup()
 

@@ -5,7 +5,7 @@ import asyncio
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from providers.ton import TONProvider
+from providers.wallet_provider import TonWalletProvider
 from services import b2b_service
 
 log = structlog.get_logger(__name__)
@@ -16,7 +16,7 @@ class TONScanner:
 
     def __init__(
         self,
-        provider: TONProvider,
+        provider: TonWalletProvider,
         session_maker: async_sessionmaker[AsyncSession],
         master_wallet: str,
         interval_sec: float = 60,

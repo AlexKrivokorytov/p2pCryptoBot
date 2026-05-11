@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from providers.ton import TONProvider
+from providers.wallet_provider import TonWalletProvider as TONProvider
 from services import b2b_service
 from tasks.ton_scanner import TONScanner
 
@@ -120,3 +120,35 @@ async def test_get_ton_license_price():
         mock_rate.return_value = None
         price = await b2b_service.get_ton_license_price()
         assert price == 20.0
+
+
+@pytest.mark.asyncio
+async def test_ton_scanner_run_loop():
+    """TON scanner run loop should handle exceptions and continue."""
+    import asyncio
+
+    provider = AsyncMock(spec=TONProvider)
+    session_maker = MagicMock(spec=async_sessionmaker)
+
+    scanner = TONScanner(provider, session_maker, "EQ_MASTER", interval_sec=0.1)
+
+    # Mock _scan_once to raise an error then stop
+    with patch.object(
+        scanner, "_scan_once", side_effect=[None, Exception("loop error"), None]
+    ) as mock_scan:
+        task = asyncio.create_task(scanner.run())
+        await asyncio.sleep(0.3)
+        scanner.stop()
+        await task
+
+        assert mock_scan.call_count >= 2
+        assert scanner._running is False
+
+
+@pytest.mark.asyncio
+async def test_ton_scanner_run_already_running():
+    """TON scanner should return immediately if already running."""
+    scanner = TONScanner(AsyncMock(), MagicMock(), "EQ")
+    scanner._running = True
+    await scanner.run()
+    assert scanner._running

@@ -104,3 +104,66 @@ async def test_cb_profile(
     text = callback.message.edit_text.call_args[0][0]
     assert "Unverified" in text
     callback.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_build_profile_text_none_user() -> None:
+    """Should return 'Profile not found' if user is None."""
+    session = MagicMock()
+    from bot.handlers.profile import _build_profile_text
+
+    text = await _build_profile_text(None, session, "testbot")
+    assert "Profile not found" in text
+
+
+@pytest.mark.asyncio
+async def test_cmd_profile_no_from_user() -> None:
+    """cmd_profile should return early if from_user is missing."""
+    message = MagicMock()
+    message.from_user = None
+    message.bot = MagicMock()
+    message.answer = AsyncMock()
+    session = MagicMock()
+
+    await profile_handlers.cmd_profile(message, session)
+    message.answer.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cb_profile_no_from_user() -> None:
+    """cb_profile should return early if from_user is None."""
+    cb = MagicMock()
+    cb.from_user = None
+    cb.answer = AsyncMock()
+    session = MagicMock()
+
+    await profile_handlers.cb_profile(cb, session)
+    cb.answer.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_build_profile_text_unverified_zero_trades() -> None:
+    """Unverified user with zero trades should show 0.0% success rate."""
+    from bot.handlers.profile import _build_profile_text
+
+    user = MagicMock()
+    user.telegram_id = 456
+    user.total_trades = 0
+    user.successful_trades = 0
+    user.is_verified = False
+
+    session = MagicMock()
+
+    with patch(
+        "bot.handlers.profile.MarketplaceService.get_user_reputation",
+        new_callable=AsyncMock,
+    ) as mock_rep:
+        mock_rep.return_value = {
+            "total_reviews": 0,
+            "positive_reviews": 0,
+            "completion_rate": 100,
+        }
+        text = await _build_profile_text(user, session, "anotherbot")
+
+    assert "Unverified" in text
+    assert "0.0%" in text

@@ -1,13 +1,18 @@
-"""Background task to scan on-chain escrow wallets for deposits."""
+from __future__ import annotations
 
 import asyncio
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+if TYPE_CHECKING:
+    from aiogram import Bot
+
 from db.models.order import Order, OrderStatus
+from services import notification_service
 from services.order_service import _get_chain_for_asset
 from services.wallet_service import _get_provider
 
@@ -19,9 +24,11 @@ class EscrowScanner:
 
     def __init__(
         self,
+        bot: Bot,
         session_maker: async_sessionmaker[AsyncSession],
         interval_sec: int = 30,
     ):
+        self.bot = bot
         self.session_maker = session_maker
         self.interval_sec = interval_sec
         self._running = False
@@ -86,8 +93,8 @@ class EscrowScanner:
         # Fetch current balance
         balance = await provider.get_balance(order.escrow_wallet_address, order.asset)
 
-        # Required amount (Maker must fund full amount)
-        required = Decimal(str(order.amount))
+        # Required amount (Maker must fund full amount + gas buffer for release)
+        required = Decimal(str(order.amount)) + Decimal(str(order.on_chain_gas_buffer))
 
         if balance >= required:
             log.info(
@@ -115,6 +122,15 @@ class EscrowScanner:
                 order_id=str(order.id),
                 status=order.status,
                 step="EscrowScanner._check_order_deposit",
+            )
+
+            # Notify Maker
+            await notification_service.notify_maker_order_activated(
+                self.bot,
+                order.maker_id,
+                str(order.id),
+                order.asset,
+                float(order.amount),
             )
         else:
             # Log periodically or only on change? For now, silence.

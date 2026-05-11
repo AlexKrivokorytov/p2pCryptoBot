@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import hmac as _hmac  # explicit alias — avoids Bandit B105/B324 false positives
 import os
+from decimal import Decimal
 from typing import Any
 
 import aiohttp
@@ -107,7 +108,7 @@ class CryptoPayClient:
     async def create_invoice(
         self,
         asset: str,
-        amount: float,
+        amount: float | Decimal,
         payload: str,
     ) -> dict[str, Any]:
         """Create a Crypto Pay invoice.
@@ -157,7 +158,7 @@ class CryptoPayClient:
         self,
         user_id: int,
         asset: str,
-        amount: float,
+        amount: float | Decimal,
         spend_id: str,
     ) -> dict[str, Any]:
         """Transfer crypto to a Telegram user via Crypto Pay.

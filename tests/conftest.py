@@ -65,6 +65,10 @@ if importlib.util.find_spec("aiogram_i18n") is None:
     sys.modules["aiogram_i18n.managers"] = MagicMock()
     sys.modules["aiogram_i18n.managers.base"] = MagicMock(BaseManager=MockBaseManager)
 
+# ---------------- Mock pytoniq to ensure HAS_TON=True in providers -------------
+if importlib.util.find_spec("pytoniq") is None:
+    sys.modules["pytoniq"] = MagicMock()
+
 
 # Mock branding to avoid file reads during tests.
 # We use an autouse fixture to ensure it works across all tests.

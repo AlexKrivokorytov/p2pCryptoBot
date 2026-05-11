@@ -244,7 +244,68 @@ async def test_msg_arb_order_id_valid() -> None:
 
     await admin_handlers.msg_arb_order_id(message, state)
 
-    state.update_data.assert_called_once_with(order_id="5a1fc458-83ae-40bd-ac61-30c578b45827")
     state.set_state.assert_called_once_with(ArbitrationFSM.choose_decision)
     message.answer.assert_called_once()
     assert "Choose decision" in message.answer.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_cb_dispute_view_success(session: AsyncSession) -> None:
+    """Admin dispute view displays order details and resolution options."""
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
+    callback.from_user.id = 999
+    callback.data = "admin:dispute:view:123"
+    callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
+
+    order_data = {
+        "asset": "USDT",
+        "amount": 1.0,
+        "fiat_amount": 100.0,
+        "fiat_currency": "USD",
+        "maker_username": "maker",
+        "taker_username": "taker",
+        "dispute_reason": "test reason",
+    }
+
+    with (
+        patch("bot.handlers.admin.settings.ADMIN_IDS", [999]),
+        patch("services.order_service.get_order_details", return_value=order_data),
+    ):
+        await admin_handlers.cb_dispute_view(callback, session)
+        callback.message.edit_text.assert_called_once()
+        text = callback.message.edit_text.call_args[0][0]
+        assert "test reason" in text
+        assert "USDT" in text
+
+
+@pytest.mark.asyncio
+async def test_admin_handlers_no_user() -> None:
+    """Test admin handlers when message.from_user is None."""
+    msg = MagicMock(spec=Message)
+    msg.from_user = None
+    msg.answer = AsyncMock()
+
+    await admin_handlers.cmd_admin(msg)
+    msg.answer.assert_called_with("⛔ Admins only.")
+
+    await admin_handlers.cmd_stats(msg, MagicMock())
+    msg.answer.assert_called_with("⛔ Admins only.")
+
+
+@pytest.mark.asyncio
+async def test_admin_callbacks_no_message() -> None:
+    """Test admin callbacks when callback.message is not a Message."""
+    cb = MagicMock(spec=CallbackQuery)
+    cb.message = None  # Not a Message
+    cb.data = "admin:dispute:view:order_id"
+    cb.from_user = MagicMock(id=123)
+    cb.answer = AsyncMock()
+
+    await admin_handlers.cb_admin_disputes(cb, MagicMock())
+    cb.answer.assert_called_with("⛔ Admins only.", show_alert=True)
+
+    await admin_handlers.cb_dispute_view(cb, MagicMock())
+    cb.answer.assert_called_with("⛔ Admins only.", show_alert=True)

@@ -76,3 +76,17 @@ async def test_cb_help() -> None:
     callback.message.answer.assert_called_once()
     assert "How P2P works" in callback.message.answer.call_args[0][0]
     callback.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_cmd_start_no_from_user() -> None:
+    """cmd_start returns early and does nothing when message.from_user is None."""
+    message = AsyncMock()
+    message.from_user = None
+    session = AsyncMock()
+
+    await start_handlers.cmd_start(message, session)
+
+    # Must not attempt to answer or touch DB
+    message.answer.assert_not_called()
+    session.begin.assert_not_called()

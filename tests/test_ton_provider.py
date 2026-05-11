@@ -4,12 +4,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from providers.ton import TONProvider
+from providers.wallet_provider import TonWalletProvider
 
 
 @pytest.mark.asyncio
 async def test_ton_provider_get_client_mainnet():
-    provider = TONProvider(is_testnet=False)
+    provider = TonWalletProvider(is_testnet=False)
     with patch("pytoniq.LiteClient", new_callable=MagicMock) as mock_client_cls:
         mock_client_cls.from_mainnet_config = AsyncMock()
         client = await provider._get_client()
@@ -19,7 +19,7 @@ async def test_ton_provider_get_client_mainnet():
 
 @pytest.mark.asyncio
 async def test_ton_provider_get_client_testnet():
-    provider = TONProvider(is_testnet=True)
+    provider = TonWalletProvider(is_testnet=True)
     with patch("pytoniq.LiteClient", new_callable=MagicMock) as mock_client_cls:
         mock_client_cls.from_testnet_config = AsyncMock()
         client = await provider._get_client()
@@ -29,11 +29,13 @@ async def test_ton_provider_get_client_testnet():
 
 @pytest.mark.asyncio
 async def test_ton_provider_connect_disconnect():
-    provider = TONProvider()
-    mock_client = AsyncMock()
-    # Ensure provider._client is set so disconnect() can close it
-    provider._client = mock_client
-    with patch.object(provider, "_get_client", return_value=mock_client):
+    provider = TonWalletProvider()
+    mock_client = MagicMock()  # Just a placeholder mockable object
+    mock_client.connect = AsyncMock()
+    mock_client.close = AsyncMock()
+
+    with patch("pytoniq.LiteClient", new_callable=MagicMock) as mock_lc:
+        mock_lc.from_mainnet_config = AsyncMock(return_value=mock_client)
         await provider.connect()
         mock_client.connect.assert_called_once()
 
@@ -44,7 +46,7 @@ async def test_ton_provider_connect_disconnect():
 
 @pytest.mark.asyncio
 async def test_ton_provider_get_transactions():
-    provider = TONProvider()
+    provider = TonWalletProvider()
     mock_client = AsyncMock()
 
     # Mock complex pytoniq transaction structure
@@ -76,7 +78,7 @@ async def test_ton_provider_get_transactions():
 
 @pytest.mark.asyncio
 async def test_ton_provider_get_transactions_no_in_msg():
-    provider = TONProvider()
+    provider = TonWalletProvider()
     mock_client = AsyncMock()
 
     tx = MagicMock()
@@ -87,3 +89,22 @@ async def test_ton_provider_get_transactions_no_in_msg():
     with patch.object(provider, "_get_client", return_value=mock_client):
         results = await provider.get_transactions("some_address")
         assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_ton_provider_memo_parse_exception() -> None:
+    """Should return empty memo if parsing fails."""
+    provider = TonWalletProvider()
+    mock_client = AsyncMock()
+    tx = MagicMock()
+    tx.in_msg.info.type = "int_msg"
+    tx.in_msg.info.value = 100
+    tx.in_msg.body = MagicMock()
+    tx.in_msg.body.begin_parse.side_effect = Exception("Parse fail")
+
+    mock_client.get_transactions.return_value = [tx]
+
+    with patch.object(provider, "_get_client", return_value=mock_client):
+        res = await provider.get_transactions("addr")
+        assert len(res) == 1
+        assert res[0]["memo"] == ""

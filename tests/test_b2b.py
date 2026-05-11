@@ -98,3 +98,55 @@ async def test_msg_successful_payment(session: AsyncSession):
         mock_create.assert_called_with(session, user_id=12345, charge_id="charge_123")
         message.answer.assert_called()
         assert "activated" in message.answer.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_cb_b2b_buy() -> None:
+    """cb_b2b_buy shows payment method selection."""
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
+
+    await b2b_handlers.cb_b2b_buy(callback)
+    callback.message.edit_text.assert_called_once()
+    assert "payment method" in callback.message.edit_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_cb_b2b_pay_ton(session: AsyncSession) -> None:
+    """cb_b2b_pay_ton generates TON invoice and displays memo."""
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
+    callback.from_user.id = 12345
+    callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
+
+    with (
+        patch("services.b2b_service.get_ton_license_price", return_value=1.0),
+        patch("services.b2b_service.create_ton_invoice", return_value={"memo": "TEST_MEMO"}),
+    ):
+        await b2b_handlers.cb_b2b_pay_ton(callback, session)
+        callback.message.edit_text.assert_called_once()
+        assert "TEST_MEMO" in callback.message.edit_text.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_cb_b2b_spawn(session: AsyncSession) -> None:
+    """cb_b2b_spawn prompts user to create a bot via BotFather."""
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
+    callback.from_user.id = 12345
+    callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
+
+    with (
+        patch("services.b2b_service.get_active_license", return_value={"license_id": "lic_123"}),
+        patch("bot.handlers.b2b.settings.MASTER_BOT_USERNAME", "p2p_master_bot"),
+    ):
+        await b2b_handlers.cb_b2b_spawn(callback, session)
+        callback.message.edit_text.assert_called_once()
+        assert "BotFather" in callback.message.edit_text.call_args[0][0]
+        callback.answer.assert_called_once()

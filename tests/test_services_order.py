@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -44,13 +45,13 @@ async def _create_order(
             taker_id=taker_id,
             order_type=order_type,
             asset="USDT",
-            amount=100.0,
+            amount=Decimal("100.0"),
             fiat_currency="USD",
-            fiat_amount=100.0,
+            fiat_amount=Decimal("100.0"),
             payment_method="Sberbank",
             status=status,
             spend_id=str(uuid.uuid4()),
-            total_fee=1.0,
+            total_fee=Decimal("1.0"),
             fiat_confirmed=(status == OrderStatus.escrow_held),
         )
         session.add(order)
@@ -208,7 +209,6 @@ async def test_create_order_with_fee(session: AsyncSession) -> None:
 async def test_activate_order_success(session: AsyncSession) -> None:
     """activate_order transitions pending_funding → active."""
     order = await _create_order(session, OrderStatus.pending_funding, taker_id=None)
-
     result = await order_service.activate_order(session, order_id=str(order.id))
 
     assert result["status"] == OrderStatus.active
@@ -401,3 +401,27 @@ async def test_cancel_order_wrong_status(session: AsyncSession) -> None:
 
     with pytest.raises(ValueError, match="Cannot cancel"):
         await order_service.cancel_order(session, order_id=str(order.id))
+
+
+@pytest.mark.asyncio
+async def test_order_service_confirm_fiat_buy_crypto(session: AsyncSession) -> None:
+    """confirm_fiat_payment releases funds to maker for buy_crypto orders."""
+    order = await _create_order(
+        session,
+        OrderStatus.escrow_held,
+        maker_id=801,
+        taker_id=802,
+        order_type=OrderType.buy_crypto,
+    )
+    crypto_pay = _mock_crypto_pay()
+
+    # Released to maker (buyer)
+    result = await order_service.confirm_fiat_payment(session, crypto_pay, order_id=str(order.id))
+    assert result["status"] == OrderStatus.completed
+
+
+@pytest.mark.asyncio
+async def test_order_service_cancel_by_payload_not_found(session: AsyncSession) -> None:
+    """cancel_order_by_payload returns None if no order matches payload."""
+    res = await order_service.cancel_order_by_payload(session, payload="nonexistent")
+    assert res is None

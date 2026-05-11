@@ -18,8 +18,10 @@ pytestmark = pytest.mark.unit
 
 
 async def _create_order(session: AsyncSession, payload_uuid: str) -> Order:
-    user = User(telegram_id=401, username="webhook_test")
-    session.add(user)
+    user = await session.get(User, 401)
+    if not user:
+        user = User(telegram_id=401, username="webhook_test")
+        session.add(user)
 
     order = Order(
         maker_id=401,
@@ -92,6 +94,7 @@ async def test_webhook_paid_success(engine) -> None:
     # Update crypto_pay_payload to match the actual order id
     async with factory() as session, session.begin():
         db_order = await session.get(Order, order_id)
+        assert db_order is not None
         db_order.crypto_pay_payload = payload_uuid
 
     crypto_pay = MagicMock()
@@ -108,8 +111,97 @@ async def test_webhook_paid_success(engine) -> None:
     # Verify db — order should now be active
     async with factory() as session:
         db_order = await session.get(Order, order_id)
+        assert db_order is not None
         assert db_order.status == OrderStatus.active
 
         # Cleanup
         await session.delete(db_order)
         await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_webhook_invalid_json() -> None:
+    """Returns 400 when body is not valid JSON."""
+    crypto_pay = MagicMock()
+    crypto_pay.verify_webhook_signature.return_value = True
+    request = make_mocked_request("POST", "/webhook/cryptopay", app=_mock_app(None, crypto_pay))
+    request.read = AsyncMock(return_value=b"NOT_JSON")
+
+    response = await cryptopay_webhook(request)
+    assert response.status == 400
+
+
+@pytest.mark.asyncio
+async def test_webhook_expired_transitions_to_cancelled(engine) -> None:
+    """Expired invoice on pending_funding order transitions to cancelled."""
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    payload_uuid = str(uuid.uuid4())
+    async with factory() as session, session.begin():
+        order = await _create_order(session, payload_uuid)
+        order_id = order.id
+
+    crypto_pay = MagicMock()
+    crypto_pay.verify_webhook_signature.return_value = True
+    body = {"payload": {"status": "expired", "payload": payload_uuid, "invoice_id": 456}}
+
+    request = make_mocked_request("POST", "/webhook/cryptopay", app=_mock_app(factory, crypto_pay))
+    request.read = AsyncMock(return_value=json.dumps(body).encode())
+
+    response = await cryptopay_webhook(request)
+    assert response.status == 200
+
+    async with factory() as session:
+        db_order = await session.get(Order, order_id)
+        assert db_order is not None
+        assert db_order.status == OrderStatus.cancelled
+
+
+@pytest.mark.asyncio
+async def test_webhook_expired_but_already_active_noop(engine) -> None:
+    """Expired webhook on active order is a no-op (returns 200)."""
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    payload_uuid = str(uuid.uuid4())
+    async with factory() as session, session.begin():
+        order = await _create_order(session, payload_uuid)
+        order.status = OrderStatus.active
+        order_id = order.id
+
+    crypto_pay = MagicMock()
+    crypto_pay.verify_webhook_signature.return_value = True
+    body = {"payload": {"status": "expired", "payload": payload_uuid, "invoice_id": 789}}
+
+    request = make_mocked_request("POST", "/webhook/cryptopay", app=_mock_app(factory, crypto_pay))
+    request.read = AsyncMock(return_value=json.dumps(body).encode())
+
+    response = await cryptopay_webhook(request)
+    assert response.status == 200
+
+    async with factory() as session:
+        db_order = await session.get(Order, order_id)
+        assert db_order is not None
+        assert db_order.status == OrderStatus.active
+
+
+@pytest.mark.asyncio
+async def test_webhook_paid_activate_fails_gracefully(engine) -> None:
+    """Paid webhook returns 200 even if activation logic fails (graceful error)."""
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    payload_uuid = str(uuid.uuid4())
+    async with factory() as session, session.begin():
+        await _create_order(session, payload_uuid)
+
+    crypto_pay = MagicMock()
+    crypto_pay.verify_webhook_signature.return_value = True
+    body = {"payload": {"status": "paid", "payload": payload_uuid, "invoice_id": 999}}
+
+    request = make_mocked_request("POST", "/webhook/cryptopay", app=_mock_app(factory, crypto_pay))
+    request.read = AsyncMock(return_value=json.dumps(body).encode())
+
+    from unittest.mock import patch
+
+    with patch(
+        "bot.handlers.webhook.order_service.activate_order", side_effect=ValueError("Fails")
+    ):
+        response = await cryptopay_webhook(request)
+
+    assert response.status == 200

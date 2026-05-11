@@ -122,8 +122,8 @@ async def _release_escrow_logic(
         await crypto_pay.transfer(
             user_id=recipient_id,
             asset=order.asset,
-            amount=float(order.amount) - float(order.total_fee),
-            spend_id=str(order.spend_id),
+            amount=order.amount - order.total_fee,
+            spend_id=order.spend_id,
         )
     # Mark order as completed
     order.status = OrderStatus.completed
@@ -233,7 +233,7 @@ async def _refund_escrow_logic(
         await crypto_pay.transfer(
             user_id=order.maker_id,
             asset=order.asset,
-            amount=float(order.amount),
+            amount=order.amount,
             spend_id=f"refund-{order.spend_id}",
         )
     order.status = OrderStatus.cancelled

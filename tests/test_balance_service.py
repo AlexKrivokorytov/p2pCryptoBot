@@ -222,3 +222,16 @@ async def test_cb_wallet_balance_with_balance(
     assert "1.5" in text
     assert "USDT" in text
     assert "250" in text
+
+
+@pytest.mark.asyncio
+async def test_balance_service_unsupported_chain(session: AsyncSession) -> None:
+    """Handles wallets with unsupported chains by returning empty balances."""
+    wallet = UserWallet(chain="unsupported", address="addr", user_id=1)
+
+    with patch("services.wallet_service.get_user_wallets", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = [wallet]
+
+        results = await balance_service.get_portfolio_balances(session, 1)
+        assert len(results) == 1
+        assert results[0].balances == {}

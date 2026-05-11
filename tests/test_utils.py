@@ -81,3 +81,63 @@ def test_format_dispute_raised() -> None:
     assert "Dispute Raised" in msg
     assert "no payment" in msg
     assert order_id[:8] in msg
+
+
+# ── Encryption Tests ─────────────────────────────────────────────────────────
+
+
+def test_encrypt_decrypt_roundtrip():
+    """Test full encryption/decryption cycle."""
+    import os
+    from unittest.mock import patch
+
+    from utils import encryption
+
+    with patch.dict(os.environ, {"AES_KEY": "0" * 64}):
+        original = "hello world"
+        encrypted = encryption.encrypt(original)
+        assert encrypted != original
+
+        decrypted = encryption.decrypt(encrypted)
+        assert decrypted == original
+
+
+def test_decrypt_invalid_hex_raises() -> None:
+    """decrypt raises ValueError for non-hex input."""
+    import os
+    from unittest.mock import patch
+
+    from utils import encryption
+
+    with (
+        patch.dict(os.environ, {"AES_KEY": "0" * 64}),
+        pytest.raises(ValueError, match="Invalid encrypted token"),
+    ):
+        encryption.decrypt("NOT_HEX_$$$$")
+
+
+# ── Naive Datetime Tests ──────────────────────────────────────────────────────
+
+
+def test_is_order_expired_naive_datetime() -> None:
+    """is_order_expired handles naive (tz-unaware) created_at correctly."""
+    from datetime import UTC, datetime, timedelta
+    from unittest.mock import MagicMock
+
+    order = MagicMock()
+    order.created_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=2000)
+
+    assert datetime_helpers.is_order_expired(order, timeout_sec=1800) is True
+
+
+def test_seconds_until_expiry_naive_datetime() -> None:
+    """seconds_until_expiry handles naive created_at."""
+    from datetime import UTC, datetime
+    from unittest.mock import MagicMock
+
+    order = MagicMock()
+    order.created_at = datetime.now(UTC).replace(tzinfo=None)
+
+    result = datetime_helpers.seconds_until_expiry(order, timeout_sec=1800)
+    assert isinstance(result, int)
+    assert result >= 0

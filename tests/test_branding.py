@@ -1,3 +1,4 @@
+from decimal import Decimal
 from unittest.mock import mock_open, patch
 
 import pytest
@@ -113,8 +114,8 @@ def test_fee_engine_maker():
     mock_branding = {"fees": {"maker_percent": 1.2, "taker_percent": 0.8, "fixed_fee": 0.5}}
     with patch("bot.config.load_branding", return_value=mock_branding):
         percent, fixed = _get_platform_fees("sell_crypto")
-        assert percent == 1.2
-        assert fixed == 0.5
+        assert percent == Decimal("1.2")
+        assert fixed == Decimal("0.5")
 
 
 def test_fee_engine_taker():
@@ -123,8 +124,8 @@ def test_fee_engine_taker():
     mock_branding = {"fees": {"maker_percent": 1.2, "taker_percent": 0.8, "fixed_fee": 0.5}}
     with patch("bot.config.load_branding", return_value=mock_branding):
         percent, fixed = _get_platform_fees("buy_crypto")
-        assert percent == 0.8
-        assert fixed == 0.5
+        assert percent == Decimal("0.8")
+        assert fixed == Decimal("0.5")
 
 
 def test_fee_engine_defaults_to_zero():
@@ -133,8 +134,8 @@ def test_fee_engine_defaults_to_zero():
     mock_branding = {}
     with patch("bot.config.load_branding", return_value=mock_branding):
         percent, fixed = _get_platform_fees("sell_crypto")
-        assert percent == 0.0
-        assert fixed == 0.0
+        assert percent == Decimal("0.0")
+        assert fixed == Decimal("0.0")
 
 
 def test_keyboard_uses_branding_emoji():

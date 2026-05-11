@@ -3,6 +3,7 @@
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
@@ -81,8 +82,8 @@ class Order(Base):
 
     # Trade details
     asset: Mapped[str] = mapped_column(Enum(SupportedAsset, name="supported_asset"), nullable=False)
-    amount: Mapped[float] = mapped_column(Numeric(precision=18, scale=8), nullable=False)
-    fiat_amount: Mapped[float] = mapped_column(Numeric(precision=18, scale=2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(precision=18, scale=8), nullable=False)
+    fiat_amount: Mapped[Decimal] = mapped_column(Numeric(precision=18, scale=2), nullable=False)
     fiat_currency: Mapped[str] = mapped_column(String(10), nullable=False)
 
     # Payment method for fiat (e.g. "Sberbank", "Revolut", "SWIFT")
@@ -104,9 +105,15 @@ class Order(Base):
     payment_url: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Fee details
-    fee_percent: Mapped[float] = mapped_column(Numeric(6, 4), default=0.0, nullable=False)
-    fee_fixed: Mapped[float] = mapped_column(Numeric(18, 8), default=0.0, nullable=False)
-    total_fee: Mapped[float] = mapped_column(Numeric(18, 8), default=0.0, nullable=False)
+    fee_percent: Mapped[Decimal] = mapped_column(
+        Numeric(6, 4), default=Decimal("0.0"), nullable=False
+    )
+    fee_fixed: Mapped[Decimal] = mapped_column(
+        Numeric(18, 8), default=Decimal("0.0"), nullable=False
+    )
+    total_fee: Mapped[Decimal] = mapped_column(
+        Numeric(18, 8), default=Decimal("0.0"), nullable=False
+    )
 
     # Optional dispute reason
     dispute_reason: Mapped[str] = mapped_column(Text, nullable=True)
@@ -116,6 +123,9 @@ class Order(Base):
     escrow_wallet_private_key_enc: Mapped[str] = mapped_column(String(512), nullable=True)
     on_chain_tx_hash: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     on_chain_status: Mapped[str] = mapped_column(String(50), nullable=False, default="none")
+    on_chain_gas_buffer: Mapped[Decimal] = mapped_column(
+        Numeric(18, 8), default=Decimal("0.0"), nullable=False
+    )
 
     # Relationships
     maker: Mapped["User"] = relationship(  # type: ignore[name-defined]  # noqa: F821

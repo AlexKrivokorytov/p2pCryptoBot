@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import structlog
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery
@@ -10,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.keyboards import (
     active_trade_maker_keyboard,
     back_to_menu_keyboard,
+    escrow_release_confirm_keyboard,
 )
 from providers.crypto_pay import CryptoPayClient
 from services import escrow_service, notification_service, order_service
@@ -17,6 +20,41 @@ from utils.formatters import format_error
 
 log = structlog.get_logger(__name__)
 router = Router(name="escrow")
+
+
+@router.callback_query(F.data.startswith("escrow:release_step1:"))
+async def cb_escrow_release_step1(
+    callback: CallbackQuery,
+    session: AsyncSession,
+) -> None:
+    """Step 1: Show confirmation and gas warning before releasing on-chain funds."""
+    order_id = callback.data.split(":")[2]  # type: ignore[union-attr]
+    order = await order_service.get_order_details(session, order_id=order_id)
+
+    if order is None:
+        await callback.answer("Order not found.", show_alert=True)
+        return
+
+    gas_buffer = order.get("on_chain_gas_buffer", 0)
+    warning_text = (
+        f"⚠️ <b>Release Escrow Confirmation</b>\n\n"
+        f"Are you sure you want to release <code>{order['amount']} {order['asset']}</code> "
+        f"to the taker?\n\n"
+    )
+
+    if gas_buffer:
+        warning_text += (
+            f"⛽ <b>Gas Warning:</b> Releasing funds on-chain consumes gas. "
+            f"The estimated fee of <code>{gas_buffer}</code> {order['asset']} "
+            f"has already been pre-funded by you in the escrow wallet."
+        )
+
+    await callback.message.edit_text(  # type: ignore[union-attr]
+        warning_text,
+        reply_markup=escrow_release_confirm_keyboard(order_id),
+        parse_mode="HTML",
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("escrow:confirm:"))
@@ -104,10 +142,13 @@ async def cb_order_status(callback: CallbackQuery, session: AsyncSession) -> Non
     msg = f"Order <code>{order_id[:8]}…</code>: {label}\n"
 
     if order["status"] == "pending_funding" and order.get("escrow_wallet_address"):
+        gas_buffer = order.get("on_chain_gas_buffer", 0)
+        total_required = Decimal(str(order["amount"])) + Decimal(str(gas_buffer))
         msg += f"\n<b>On-Chain Escrow Address:</b>\n<code>{order['escrow_wallet_address']}</code>\n"
         msg += (
-            f"\nPlease send exactly <code>{order['amount']}</code> "
-            f"<b>{order['asset']}</b> to this address to activate your ad."
+            f"\nPlease send exactly <code>{total_required:.8g}</code> "
+            f"<b>{order['asset']}</b> to this address to activate your ad.\n\n"
+            f"(Trade: {order['amount']} + Gas: {gas_buffer})"
         )
     elif order["status"] == "escrow_held" and order["maker_id"] == callback.from_user.id:
         msg += "\nHas the taker sent you the fiat payment?"

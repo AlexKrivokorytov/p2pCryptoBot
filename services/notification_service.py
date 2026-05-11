@@ -161,3 +161,35 @@ async def notify_escrow_refunded(
     except TelegramAPIError as e:
         log.error("notify_escrow_refunded_failed", maker_id=maker_id, error=str(e))
         return False
+
+
+async def notify_maker_order_activated(
+    bot: Bot,
+    maker_id: int,
+    order_id: str,
+    asset: str,
+    amount: float,
+) -> bool:
+    """Notify the Maker that their on-chain deposit was detected and ad is live."""
+    branding = get_branding()
+    # We might need to add a new template to branding.yaml later,
+    # for now we'll use a hardcoded fallback or look it up.
+    template = branding.get("notifications", {}).get(
+        "order_activated",
+        "✅ <b>Ad Activated!</b>\n\nYour deposit for order <code>{order_id_short}</code> "
+        "has been detected. Your ad is now live in the P2P Market.\n\n"
+        "Asset: <code>{amount:.8g} {asset}</code>",
+    )
+
+    text = template.format(
+        order_id=order_id,
+        order_id_short=order_id[:8],
+        asset=asset,
+        amount=amount,
+    )
+    try:
+        await bot.send_message(maker_id, text, parse_mode="HTML")
+        return True
+    except TelegramAPIError as e:
+        log.error("notify_maker_order_activated_failed", maker_id=maker_id, error=str(e))
+        return False

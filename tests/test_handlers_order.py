@@ -235,5 +235,101 @@ async def test_cb_market_browse() -> None:
         await order_handlers.cb_market_browse(callback, session, state)
 
         mock_get.assert_called_once_with(session, page=1)
+        mock_get.assert_called_once_with(session, page=1)
         callback.message.edit_text.assert_called_once()
         assert "P2P Market" in callback.message.edit_text.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_cb_asset_chosen_invalid_asset() -> None:
+    """cb_asset_chosen sends alert for an unsupported asset ticker."""
+    callback = AsyncMock()
+    callback.data = "asset:FAKECOIN"
+    state = AsyncMock()
+
+    await order_handlers.cb_asset_chosen(callback, state)
+
+    # Should alert and return — NOT set FSM state
+    callback.answer.assert_called_once()
+    assert "Unknown asset" in callback.answer.call_args[0][0]
+    state.set_state.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_msg_amount_zero_value() -> None:
+    """msg_amount rejects zero as an invalid amount."""
+    message = AsyncMock()
+    message.text = "0"
+    state = AsyncMock()
+
+    await order_handlers.msg_amount(message, state)
+
+    # Should answer with error, not advance FSM
+    message.answer.assert_called_once()
+    assert "valid positive" in message.answer.call_args[0][0]
+    state.set_state.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("bot.handlers.order.order_service.create_order", new_callable=AsyncMock)
+async def test_cb_ad_confirmed_service_error(mock_create: AsyncMock) -> None:
+    """cb_ad_confirmed shows error message when order_service raises."""
+    mock_create.side_effect = ValueError("Unsupported asset")
+
+    callback = AsyncMock()
+    callback.from_user.id = 123
+    callback.data = "ad:confirmed"
+
+    state = AsyncMock()
+    state.get_data = AsyncMock(
+        return_value={
+            "order_type": "sell_crypto",
+            "asset": "USDT",
+            "amount": 100.0,
+            "fiat_currency": "USD",
+            "fiat_amount": 90.0,
+            "payment_method": "Sberbank",
+        }
+    )
+
+    session = AsyncMock()
+    crypto_pay = AsyncMock()
+
+    await order_handlers.cb_ad_confirmed(callback, state, session, crypto_pay)
+
+    # Must show error and call answer()
+    callback.message.edit_text.assert_called_once()
+    error_text = callback.message.edit_text.call_args[0][0]
+    assert "Unsupported asset" in error_text
+    callback.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_cb_order_view_success(session) -> None:
+    """cb_order_view shows order details and market rate."""
+    from decimal import Decimal
+
+    callback = AsyncMock()
+    callback.data = "order:view:123"
+    callback.message = AsyncMock()
+    callback.answer = AsyncMock()
+
+    order_data = {
+        "order_type": "sell_crypto",
+        "maker_username": "maker",
+        "amount": 1.0,
+        "fiat_amount": 100.0,
+        "asset": "USDT",
+        "fiat_currency": "USD",
+        "payment_method": "Any",
+    }
+
+    with (
+        patch("services.order_service.get_order_details", return_value=order_data),
+        patch("services.rate_service.get_market_rate", return_value=Decimal("100.0")),
+    ):
+        await order_handlers.cb_order_view(callback, session)
+        callback.message.edit_text.assert_called_once()
+        text = callback.message.edit_text.call_args[0][0]
+        assert "USDT" in text
+        assert "100.00 USD" in text

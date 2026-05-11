@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 import structlog
@@ -54,7 +55,7 @@ def _get_provider(chain: str) -> WalletProvider:
         from bot.config import settings  # local import avoids circular deps
 
         if chain == "ton":
-            _provider_cache[chain] = TonWalletProvider(endpoint=settings.TON_RPC_URL)
+            _provider_cache[chain] = TonWalletProvider(is_testnet=settings.DEBUG)
         elif chain == "evm":
             _provider_cache[chain] = EvmWalletProvider(rpc_url=settings.EVM_RPC_URL)
     return _provider_cache[chain]
@@ -285,3 +286,17 @@ async def transfer_from_order_wallet(
             step="transfer_from_order_wallet",
         )
         raise
+
+
+async def get_estimated_gas_fee(chain: str, asset: str) -> Decimal:
+    """Return an estimated gas fee for a transfer on the given chain.
+
+    Args:
+        chain: 'ton' or 'evm'.
+        asset: Asset ticker.
+
+    Returns:
+        Estimated fee in native coin.
+    """
+    provider = _get_provider(chain)
+    return await provider.estimate_fee(asset)

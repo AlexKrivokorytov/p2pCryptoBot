@@ -56,13 +56,14 @@ async def test_main_full_startup_and_shutdown() -> None:
         patch("bot.main.asyncio.create_task", return_value=mock_cleanup_task),
         patch("bot.main.setup_i18n", return_value=mock_i18n),
         patch("bot.main.start_cleanup_task", new_callable=AsyncMock),
-        patch("bot.main.ROUTERS", []),
+        patch("bot.main.ROUTERS", [MagicMock()]),
     ):
         from bot.main import main
 
         await main()
 
     mock_dp.start_polling.assert_awaited_once()
+    mock_dp.include_router.assert_called()
     mock_engine.dispose.assert_awaited_once()
     mock_runner.cleanup.assert_awaited_once()
     mock_crypto_pay.close.assert_awaited_once()

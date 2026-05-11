@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import os
 import uuid
 from datetime import timedelta
@@ -81,3 +83,56 @@ async def test_expire_pending_orders(engine) -> None:
         await session.delete(db_o2)
         await session.delete(db_o3)
         await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_start_cleanup_task_cancels_cleanly(engine) -> None:
+    """start_cleanup_task stops gracefully on CancelledError."""
+    from aiogram import Bot
+
+    from providers.crypto_pay import CryptoPayClient
+
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    task = asyncio.create_task(
+        cleanup.start_cleanup_task(
+            factory, bot=AsyncMock(spec=Bot), crypto_pay=AsyncMock(spec=CryptoPayClient)
+        )
+    )
+    await asyncio.sleep(0.05)
+    task.cancel()
+
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+
+@pytest.mark.asyncio
+async def test_start_cleanup_task_handles_exception(engine) -> None:
+    """start_cleanup_task logs errors but keeps running on unexpected exceptions."""
+    from unittest.mock import patch
+
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    call_count = 0
+
+    async def failing_expire(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise RuntimeError("DB temporarily down")
+        return 0
+
+    with (
+        patch.object(cleanup, "expire_pending_orders", side_effect=failing_expire),
+        patch.object(cleanup, "CLEANUP_INTERVAL_SEC", 0),
+    ):
+        task = asyncio.create_task(
+            cleanup.start_cleanup_task(factory, bot=AsyncMock(), crypto_pay=AsyncMock())
+        )
+
+        await asyncio.sleep(0.1)
+        task.cancel()
+
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    assert call_count >= 2, "Should have retried after the error"

@@ -35,13 +35,13 @@ def _validate_asset(asset: str) -> None:
         raise ValueError(f"Unsupported asset {asset!r}. Allowed: {allowed}") from err
 
 
-def _validate_amount(amount: float, label: str = "amount") -> None:
+def _validate_amount(amount: float | Decimal, label: str = "amount") -> None:
     """Raise ValueError if *amount* is non-positive or out of configured bounds."""
     if amount <= 0:
         raise ValueError(f"{label} must be positive, got {amount}")
 
 
-def _get_platform_fees(order_type: str) -> tuple[float, float]:
+def _get_platform_fees(order_type: str) -> tuple[Decimal, Decimal]:
     """Return (fee_percent, fee_fixed) from branding configuration.
 
     Args:
@@ -53,10 +53,10 @@ def _get_platform_fees(order_type: str) -> tuple[float, float]:
     b = get_branding()
     fees = b.get("fees", {})
     if order_type == "sell_crypto":
-        percent = float(fees.get("maker_percent", 0.0))
+        percent = Decimal(str(fees.get("maker_percent", "0.0")))
     else:
-        percent = float(fees.get("taker_percent", 0.0))
-    fixed = float(fees.get("fixed_fee", 0.0))
+        percent = Decimal(str(fees.get("taker_percent", "0.0")))
+    fixed = Decimal(str(fees.get("fixed_fee", "0.0")))
     return percent, fixed
 
 
@@ -72,12 +72,12 @@ async def create_order(
     maker_id: int,
     order_type: str,
     asset: str,
-    amount: float,
+    amount: float | Decimal,
+    fiat_amount: float | Decimal,
     fiat_currency: str,
-    fiat_amount: float,
     payment_method: str = "Any",
-    fee_percent: float | None = None,
-    fee_fixed: float | None = None,
+    fee_percent: float | Decimal | None = None,
+    fee_fixed: float | Decimal | None = None,
 ) -> dict[str, Any]:
     """Create a new P2P ad (order) and a corresponding Crypto Pay invoice.
 
@@ -135,14 +135,14 @@ async def create_order(
             maker_id=maker_id,
             order_type=order_type,
             asset=asset,
-            amount=amount,
-            fiat_amount=fiat_amount,
+            amount=Decimal(str(amount)),
+            fiat_amount=Decimal(str(fiat_amount)),
             fiat_currency=fiat_currency,
             payment_method=payment_method,
             status=OrderStatus.pending_funding,
             spend_id=spend_id,
-            fee_percent=fee_percent,
-            fee_fixed=fee_fixed,
+            fee_percent=Decimal(str(fee_percent)),
+            fee_fixed=Decimal(str(fee_fixed)),
             total_fee=total_fee,
         )
 
@@ -152,6 +152,11 @@ async def create_order(
             order.escrow_wallet_address = wallet_data["address"]
             order.escrow_wallet_private_key_enc = encrypt(wallet_data["private_key"])
             order.on_chain_status = "awaiting_deposit"
+
+            # Fetch estimated gas buffer for release
+            gas_fee = await wallet_service.get_estimated_gas_fee(chain, asset)
+            order.on_chain_gas_buffer = gas_fee
+
             # No CryptoPay invoice for on-chain deals in this flow
             order.payment_url = None  # type: ignore[assignment]
             order.invoice_id = None  # type: ignore[assignment]
@@ -186,7 +191,8 @@ async def create_order(
         "status": order.status,
         "invoice_id": order.invoice_id,
         "payment_url": order.payment_url,
-        "escrow_address": order.escrow_wallet_address,
+        "escrow_wallet_address": order.escrow_wallet_address,
+        "gas_buffer": order.on_chain_gas_buffer,
         "on_chain": bool(chain),
     }
 

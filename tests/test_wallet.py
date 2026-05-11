@@ -86,6 +86,13 @@ async def test_generate_and_save_wallet_evm(mock_get_provider: MagicMock, engine
     assert wallet.chain == WalletChain.evm
 
 
+@pytest.mark.asyncio
+async def test_generate_wallet_invalid_chain(session: AsyncSession) -> None:
+    """Unsupported chain raises ValueError immediately."""
+    with pytest.raises(ValueError, match="Unsupported chain"):
+        await wallet_service.generate_and_save_wallet(session, 999, "solana")
+
+
 # ── Service: get_user_wallets ──────────────────────────────────────────────────
 
 
@@ -107,13 +114,6 @@ async def test_get_user_wallets(mock_get_provider: MagicMock, engine) -> None:
 
     assert len(wallets) == 1
     assert wallets[0].address == "UQTestTONAddress2"
-
-
-@pytest.mark.asyncio
-async def test_generate_wallet_invalid_chain(session: AsyncSession) -> None:
-    """Unsupported chain raises ValueError immediately."""
-    with pytest.raises(ValueError, match="Unsupported chain"):
-        await wallet_service.generate_and_save_wallet(session, 999, "solana")
 
 
 # ── Handler: cmd_wallet ────────────────────────────────────────────────────────
@@ -272,7 +272,7 @@ async def test_ton_provider_generates_address() -> None:
     """TonWalletProvider returns a non-empty address (real or stub fallback)."""
     from providers.wallet_provider import TonWalletProvider
 
-    provider = TonWalletProvider(endpoint="https://toncenter.com/api/v2/jsonRPC")
+    provider = TonWalletProvider(is_testnet=True)
     result = await provider.generate_wallet(user_id=99)
 
     assert "address" in result
@@ -289,8 +289,85 @@ async def test_ton_provider_uniqueness() -> None:
     """Two TonWalletProvider calls must produce different addresses."""
     from providers.wallet_provider import TonWalletProvider
 
-    provider = TonWalletProvider(endpoint="https://toncenter.com/api/v2/jsonRPC")
+    provider = TonWalletProvider(is_testnet=True)
     r1 = await provider.generate_wallet(user_id=1)
     r2 = await provider.generate_wallet(user_id=2)
 
     assert r1["address"] != r2["address"], "Each TON wallet must be unique"
+
+
+@pytest.mark.asyncio
+async def test_cb_wallet_add_handler() -> None:
+    """cb_wallet_add shows wallet addition options."""
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
+
+    await wallet_handlers.cb_wallet_add(callback)
+    callback.message.edit_text.assert_called_once()
+    assert "Add Wallet" in callback.message.edit_text.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_build_wallet_text_with_wallets(session: AsyncSession) -> None:
+    """_build_wallet_text lists all user addresses."""
+    with patch("bot.handlers.wallet.wallet_service.get_user_wallets") as mock_get:
+        mock_get.return_value = [
+            UserWallet(chain="evm", address="0x123"),
+            UserWallet(chain="ton", address="UQabc"),
+        ]
+        text = await wallet_handlers._build_wallet_text(session, 1)
+        assert "0x123" in text
+        assert "UQabc" in text
+
+
+@pytest.mark.asyncio
+async def test_build_balance_text_with_error(session: AsyncSession) -> None:
+    """_build_balance_text handles missing balance data gracefully."""
+    from services.balance_service import WalletBalance
+
+    with patch("bot.handlers.wallet.balance_service.get_portfolio_balances") as mock_get:
+        mock_get.return_value = [
+            WalletBalance(
+                wallet=UserWallet(chain="evm", address="0x123"),
+                balances={},  # simulated error/unavailable
+            )
+        ]
+        text = await wallet_handlers._build_balance_text(session, 1)
+        assert "Balance unavailable" in text
+
+
+# ── Service: internal helpers ────────────────────────────────────────────────
+
+
+def test_get_provider_unsupported() -> None:
+    """_get_provider raises ValueError for unknown chains."""
+    with pytest.raises(ValueError, match="Unsupported chain"):
+        wallet_service._get_provider("invalid_chain")
+
+
+def test_decrypt_wallet_key() -> None:
+    """decrypt_wallet_key returns decrypted plaintext."""
+    wallet = UserWallet(encrypted_private_key="dummy_hex")
+    with patch("services.wallet_service.decrypt") as mock_decrypt:
+        mock_decrypt.return_value = "secret_pk"
+        pk = wallet_service.decrypt_wallet_key(wallet)
+        assert pk == "secret_pk"
+
+
+def test_get_provider_cache() -> None:
+    """_get_provider returns the same instance for the same chain (singleton)."""
+    p1 = wallet_service._get_provider(WalletChain.ton)
+    p2 = wallet_service._get_provider(WalletChain.ton)
+    assert p1 is p2
+
+
+def test_wallet_service_get_evm_provider_uncached() -> None:
+    """Should initialize EVM provider with correct RPC URL if not cached."""
+    with patch.dict("services.wallet_service._provider_cache", {}, clear=True):
+        from bot.config import settings
+
+        with patch.object(settings, "EVM_RPC_URL", "http://fake-evm"):
+            p = wallet_service._get_provider(WalletChain.evm)
+            assert getattr(p, "rpc_url", None) == "http://fake-evm"

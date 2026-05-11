@@ -56,10 +56,12 @@ async def test_on_chain_escrow_full_flow(engine, mock_crypto_pay):
 
     # 2. Simulate Deposit and Run Scanner
     mock_provider = AsyncMock()
-    mock_provider.get_balance.return_value = amount
+    # Add gas buffer to ensure activation (0.05 is the default for TON)
+    mock_provider.get_balance.return_value = amount + Decimal("0.05")
 
     with patch("tasks.escrow_scanner._get_provider", return_value=mock_provider):
-        scanner = EscrowScanner(session_maker=session_factory, interval_sec=1)
+        mock_bot = AsyncMock()
+        scanner = EscrowScanner(bot=mock_bot, session_maker=session_factory, interval_sec=1)
         await scanner._scan_once()
 
     # Verify activation

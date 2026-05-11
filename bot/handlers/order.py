@@ -236,12 +236,30 @@ async def cb_ad_confirmed(
         await callback.answer()
         return
 
+    if result.get("escrow_wallet_address"):
+        # On-chain deal - display address and total required (Amount + Gas)
+        total_required = Decimal(str(data["amount"])) + Decimal(str(result.get("gas_buffer", 0)))
+        text = (
+            f"✅ <b>Ad created!</b>\n\n"
+            f"Order ID: <code>{result['order_id']}</code>\n\n"
+            f"📥 <b>Escrow Address:</b>\n<code>{result['escrow_wallet_address']}</code>\n\n"
+            f"Please send <b>exactly</b> <code>{total_required:.8g}</code> "
+            f"<b>{data['asset']}</b> to this address.\n\n"
+            f"(Trade: {data['amount']} + Gas: {result.get('gas_buffer', 0)})\n\n"
+            "Once the full amount is detected on-chain, your ad will go live."
+        )
+    else:
+        # Crypto Pay deal
+        text = (
+            f"✅ <b>Ad created!</b>\n\n"
+            f"Order ID: <code>{result['order_id']}</code>\n\n"
+            "💳 Pay the invoice below to fund the escrow.\n"
+            "Once paid, your ad will appear in the <b>P2P Market</b>."
+        )
+
     await callback.message.edit_text(  # type: ignore[union-attr]
-        f"✅ <b>Ad created!</b>\n\n"
-        f"Order ID: <code>{result['order_id']}</code>\n\n"
-        "💳 Pay the invoice below to fund the escrow.\n"
-        "Once paid, your ad will appear in the <b>P2P Market</b>.",
-        reply_markup=payment_keyboard(result["payment_url"], result["order_id"]),
+        text,
+        reply_markup=payment_keyboard(result.get("payment_url"), result["order_id"]),
         parse_mode="HTML",
     )
     await callback.answer()
