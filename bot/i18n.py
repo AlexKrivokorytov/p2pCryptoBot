@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from aiogram.types import User as TgUser
 from aiogram_i18n import I18nMiddleware
@@ -13,86 +13,70 @@ from aiogram_i18n.managers.base import BaseManager
 
 from db.models.user import User
 
-if TYPE_CHECKING:
+# We use type: ignore[misc] to bypass "Class cannot subclass Any" errors
+# which occur because aiogram-i18n lacks PEP 561 type stubs.
+# If your environment does not report this error, you can safely ignore the 'unused-ignore' warning.
 
-    class JsonDictCore(Any):
-        """Custom JSON core for aiogram-i18n v1.5."""
 
-        def get(self, message: str, locale: str | None = None, /, **kwargs: Any) -> str: ...
+class JsonDictCore(BaseCore[dict[str, Any]]):  # type: ignore[misc, unused-ignore]
+    """Custom JSON core for aiogram-i18n v1.5."""
 
-        def find_locales(self) -> dict[str, dict[str, Any]]: ...
+    def get(self, message: str, locale: str | None = None, /, **kwargs: Any) -> str:
+        """Get translated message by dotted key, formatted with kwargs."""
+        locale = self.get_locale(locale)
+        translator = self.get_translator(locale)
 
-    class DatabaseManager(Any):
-        """Custom manager to extract language code from the DB User model."""
+        keys = message.split(".")
+        val: Any = translator
+        for k in keys:
+            if isinstance(val, dict):
+                val = val.get(k, message)
+            else:
+                return message
 
-        async def get_locale(
-            self,
-            event_from_user: TgUser | None = None,
-            db_user: User | None = None,
-        ) -> str: ...
+        if isinstance(val, str):
+            try:
+                return val.format(**kwargs)
+            except KeyError:
+                return val
+        return message
 
-        async def set_locale(self, locale: str, db_user: User | None = None) -> None: ...
+    def find_locales(self) -> dict[str, dict[str, Any]]:
+        """Find and load all JSON locales."""
+        locales = self._extract_locales(self.path)
+        paths = self._find_locales(self.path, locales, ext=".json")
 
-else:
+        translations: dict[str, dict[str, Any]] = {}
+        for locale, files in paths.items():
+            translations[locale] = {}
+            for file in files:
+                with open(file, encoding="utf-8") as f:
+                    data = json.load(f)
+                    translations[locale].update(data)
+        return translations
 
-    class JsonDictCore(BaseCore):
-        """Custom JSON core for aiogram-i18n v1.5."""
 
-        def get(self, message: str, locale: str | None = None, /, **kwargs: Any) -> str:
-            """Get translated message by dotted key, formatted with kwargs."""
-            locale = self.get_locale(locale)
-            translator = self.get_translator(locale)
+class DatabaseManager(BaseManager):  # type: ignore[misc, unused-ignore]
+    """Custom manager to extract language code from the DB User model."""
 
-            keys = message.split(".")
-            val: Any = translator
-            for k in keys:
-                if isinstance(val, dict):
-                    val = val.get(k, message)
-                else:
-                    return message
+    async def get_locale(
+        self,
+        event_from_user: TgUser | None = None,
+        db_user: User | None = None,
+    ) -> str:
+        """Get locale from the database user model injected by DbSessionMiddleware."""
+        if db_user is not None and getattr(db_user, "language_code", None):
+            return db_user.language_code
 
-            if isinstance(val, str):
-                try:
-                    return val.format(**kwargs)
-                except KeyError:
-                    return val
-            return message
+        # Fallback to telegram user language
+        if event_from_user is not None and getattr(event_from_user, "language_code", None):
+            return event_from_user.language_code or "en"
 
-        def find_locales(self) -> dict[str, dict[str, Any]]:
-            """Find and load all JSON locales."""
-            locales = self._extract_locales(self.path)
-            paths = self._find_locales(self.path, locales, ext=".json")
+        return "en"
 
-            translations: dict[str, dict[str, Any]] = {}
-            for locale, files in paths.items():
-                translations[locale] = {}
-                for file in files:
-                    with open(file, encoding="utf-8") as f:
-                        data = json.load(f)
-                        translations[locale].update(data)
-            return translations
-
-    class DatabaseManager(BaseManager):
-        """Custom manager to extract language code from the DB User model."""
-
-        async def get_locale(
-            self,
-            event_from_user: TgUser | None = None,
-            db_user: User | None = None,
-        ) -> str:
-            """Get locale from the database user model injected by DbSessionMiddleware."""
-            if db_user is not None and getattr(db_user, "language_code", None):
-                return db_user.language_code
-
-            # Fallback to telegram user language
-            if event_from_user is not None and getattr(event_from_user, "language_code", None):
-                return event_from_user.language_code or "en"
-
-            return "en"
-
-        async def set_locale(self, locale: str, db_user: User | None = None) -> None:
-            """Set locale (not strictly needed here as we update the DB model in handlers)."""
-            pass
+    async def set_locale(self, locale: str, db_user: User | None = None) -> None:
+        """Set locale (not strictly needed here as we update the DB model in handlers)."""
+        pass
 
 
 def setup_i18n() -> I18nMiddleware:

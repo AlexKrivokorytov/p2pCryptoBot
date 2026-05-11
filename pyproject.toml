@@ -92,6 +92,7 @@ markers = [
     "unit: fast, pure-logic tests with no external dependencies (no DB, no API)",
     "contract: tests that validate API response contracts using mocks",
     "integration: tests that require a live PostgreSQL database",
+    "b2b: end-to-end tests for white-label bot spawning and payments",
 ]
 
 [tool.bandit]

@@ -106,6 +106,7 @@ os.environ.setdefault("CRYPTOPAY_TOKEN", "test")
 os.environ.setdefault("CRYPTOPAY_CALLBACK_SECRET", "testsecret")
 os.environ.setdefault("BOT_TOKEN", "0:test")
 os.environ.setdefault("ADMIN_IDS", "123456")
+os.environ.setdefault("MASTER_TON_WALLET", "EQDA986aJ9_5KxYvS6O0T-2r4A-5h_1fW5g7X8-m1-n2-p3-q4")
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
