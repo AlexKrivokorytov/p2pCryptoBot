@@ -63,14 +63,14 @@ async def test_get_active_license_expired(session: AsyncSession):
     session.add(user)
     await session.commit()
 
-    from datetime import datetime, timedelta
+    from datetime import UTC, datetime, timedelta
 
     from db.models.b2b import B2BLicense
 
     # Create expired license
     lic = B2BLicense(
         owner_id=333,
-        expires_at=datetime.utcnow() - timedelta(days=1),
+        expires_at=datetime.now(UTC) - timedelta(days=1),
         is_active=True,
         telegram_payment_charge_id="old_charge",
     )

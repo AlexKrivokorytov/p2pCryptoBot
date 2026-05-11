@@ -144,8 +144,8 @@ class MarketplaceService:
             "type": ad.type,
             "asset": ad.asset,
             "fiat": ad.fiat,
-            "price_value": float(ad.price_value),
-            "min_limit": float(ad.min_limit),
-            "max_limit": float(ad.max_limit),
+            "price_value": ad.price_value,
+            "min_limit": ad.min_limit,
+            "max_limit": ad.max_limit,
             "terms": ad.terms,
         }

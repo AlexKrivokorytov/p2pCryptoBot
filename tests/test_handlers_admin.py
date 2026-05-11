@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -18,7 +19,7 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture(autouse=True)
-def mock_admin_ids() -> None:
+def mock_admin_ids() -> Generator[None, None, None]:
     """Patch settings.ADMIN_IDS so that user_id=999 is admin, 123 is not."""
     with patch.object(admin_handlers, "_is_admin", side_effect=lambda uid: uid == 999):
         yield

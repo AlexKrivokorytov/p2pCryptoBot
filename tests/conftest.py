@@ -5,13 +5,19 @@ from __future__ import annotations
 import importlib.util
 import os
 import sys
+from collections.abc import AsyncGenerator
 from contextlib import suppress
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from db.models.base import Base
 
@@ -154,7 +160,7 @@ async def engine():
 
 
 @pytest_asyncio.fixture
-async def session(engine) -> AsyncSession:
+async def session(engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
     """Return a per-test async session. Truncates tables after each test."""
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as sess:

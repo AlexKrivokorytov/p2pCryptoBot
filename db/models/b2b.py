@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, String
@@ -46,7 +46,7 @@ class B2BLicense(Base):
         UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
     # Relationships
@@ -77,7 +77,7 @@ class TONInvoice(Base):
     tx_hash: Mapped[str] = mapped_column(String(128), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 

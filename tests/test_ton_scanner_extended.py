@@ -36,7 +36,7 @@ async def test_ton_scanner_run_already_running():
     scanner = TONScanner(AsyncMock(), MagicMock(), "EQ")
     scanner._running = True
     await scanner.run()  # Should return immediately
-    assert scanner._running is True
+    assert scanner._running
 
 
 @pytest.mark.asyncio

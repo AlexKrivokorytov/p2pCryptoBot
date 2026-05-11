@@ -149,8 +149,8 @@ def order_book_keyboard(
         buy_emoji = ui.get("buy_emoji", "📥")
         type_emoji = sell_emoji if order.order_type == "sell_crypto" else buy_emoji
         label = (
-            f"{type_emoji} {float(order.amount):.4g} {order.asset} "
-            f"→ {float(order.fiat_amount):.2f} {order.fiat_currency} "
+            f"{type_emoji} {order.amount:.4g} {order.asset} "
+            f"→ {order.fiat_amount:.2f} {order.fiat_currency} "
             f"({order.payment_method})"
         )
         builder.row(

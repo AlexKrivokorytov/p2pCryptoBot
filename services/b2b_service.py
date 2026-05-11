@@ -1,7 +1,7 @@
 """B2B service for managing white-label licenses and payments."""
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
@@ -30,7 +30,7 @@ async def get_active_license(session: AsyncSession, user_id: int) -> dict[str, A
         .where(
             B2BLicense.owner_id == user_id,
             B2BLicense.is_active,
-            B2BLicense.expires_at > datetime.utcnow(),
+            B2BLicense.expires_at > datetime.now(UTC),
         )
         .limit(1)
     )
@@ -79,7 +79,7 @@ async def create_b2b_license(
             }
 
         # Create new license
-        expires_at = datetime.utcnow() + timedelta(days=duration_days)
+        expires_at = datetime.now(UTC) + timedelta(days=duration_days)
 
         # Load default branding from system config
         default_branding = get_branding()

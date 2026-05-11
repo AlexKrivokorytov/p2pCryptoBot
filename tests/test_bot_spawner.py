@@ -1,7 +1,7 @@
 """B2B Phase 5 tests — Managed white-label bot spawning."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -57,7 +57,7 @@ async def test_bot_spawner_spawn_all_active(session: AsyncSession):
     lic = B2BLicense(
         id=license_uuid,
         owner_id=123,
-        expires_at=datetime.utcnow(),
+        expires_at=datetime.now(UTC),
         bot_token_encrypted=encrypt(token),
         is_active=True,
         branding={},
@@ -90,13 +90,14 @@ async def test_bot_spawner_update_token(session: AsyncSession):
     await get_or_create_user(session, telegram_id=456, username="testop")
     await session.commit()
 
-    lic = B2BLicense(owner_id=456, expires_at=datetime.utcnow(), is_active=True, branding={})
+    lic = B2BLicense(owner_id=456, expires_at=datetime.now(UTC), is_active=True, branding={})
     session.add(lic)
     await session.commit()
     license_id = str(lic.id)
 
     loader = AsyncMock(spec=DynamicBotLoader)
-    spawner = BotSpawnerService(None, loader)
+    mock_session_maker = MagicMock(spec=async_sessionmaker)
+    spawner = BotSpawnerService(mock_session_maker, loader)
 
     new_token = "new:token"
     await spawner.update_bot_token(session, license_id, new_token)

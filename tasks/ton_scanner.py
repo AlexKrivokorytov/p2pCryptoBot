@@ -19,7 +19,7 @@ class TONScanner:
         provider: TONProvider,
         session_maker: async_sessionmaker[AsyncSession],
         master_wallet: str,
-        interval_sec: int = 60,
+        interval_sec: float = 60,
     ):
         self.provider = provider
         self.session_maker = session_maker

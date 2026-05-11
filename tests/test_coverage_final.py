@@ -88,4 +88,4 @@ def test_wallet_service_get_evm_provider_uncached():
 
         with patch.object(settings, "EVM_RPC_URL", "http://evm"):
             p = wallet_service._get_provider("evm")
-            assert p.rpc_url == "http://evm"
+            assert getattr(p, "rpc_url", None) == "http://evm"
