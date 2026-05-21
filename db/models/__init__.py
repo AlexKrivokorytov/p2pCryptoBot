@@ -14,7 +14,9 @@ from db.models.marketplace import (
     Review,
     UserPaymentDetail,
 )
-from db.models.order import Order, OrderStatus, SupportedAsset
+from db.models.notification import InAppNotification
+from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
+from db.models.product import CurrencyType, DealStatus, MarketplaceDeal, Product, PromoCode, DiscountType
 from db.models.user import User
 from db.models.wallet import UserWallet, WalletChain
 
@@ -23,6 +25,7 @@ __all__ = [
     "ChatMessage",
     "Order",
     "OrderStatus",
+    "OrderType",
     "SupportedAsset",
     "User",
     "UserWallet",
@@ -38,4 +41,10 @@ __all__ = [
     "B2BLicense",
     "TONInvoice",
     "AdminAuditLog",
+    "Product",
+    "MarketplaceDeal",
+    "CurrencyType",
+    "DealStatus",
+    "PromoCode",
+    "DiscountType",
 ]

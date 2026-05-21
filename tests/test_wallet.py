@@ -90,7 +90,7 @@ async def test_generate_and_save_wallet_evm(mock_get_provider: MagicMock, engine
 async def test_generate_wallet_invalid_chain(session: AsyncSession) -> None:
     """Unsupported chain raises ValueError immediately."""
     with pytest.raises(ValueError, match="Unsupported chain"):
-        await wallet_service.generate_and_save_wallet(session, 999, "solana")
+        await wallet_service.generate_and_save_wallet(session, 999, "bitcoin")
 
 
 # ── Service: get_user_wallets ──────────────────────────────────────────────────
@@ -205,7 +205,7 @@ async def test_cb_generate_wallet_invalid_chain(session: AsyncSession) -> None:
     callback.message = AsyncMock(spec=Message)
     callback.message.edit_text = AsyncMock()
     callback.answer = AsyncMock()
-    callback.data = "wallet:generate:solana"
+    callback.data = "wallet:generate:bitcoin"
 
     state = AsyncMock()
     await wallet_handlers.cb_generate_wallet(callback, session, state)

@@ -134,6 +134,19 @@ async def _release_escrow_logic(
     await user_service.increment_user_trade_stats(session, order.maker_id, successful=True)
     if order.taker_id:
         await user_service.increment_user_trade_stats(session, order.taker_id, successful=True)
+        
+    # Process referral reward (from platform fee)
+    if order.total_fee > 0 and order.taker_id:
+        from services.referral_service import ReferralService
+        await ReferralService.process_referral_reward(
+            session=session,
+            order_id=order.id,
+            deal_id=None,
+            referred_user_id=order.taker_id,
+            asset=order.asset,
+            total_fee=float(order.total_fee),
+            reward_percentage=0.20,
+        )
 
     log.info(
         "escrow_released",

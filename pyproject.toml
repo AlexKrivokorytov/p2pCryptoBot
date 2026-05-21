@@ -38,6 +38,14 @@ dependencies = [
     "certifi>=2026.4.22",
     # Multi-language support
     "aiogram-i18n>=1.5",
+    "solana==0.28.1",
+    "tronpy==0.5.0",
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
+    "bleach>=6.1.0",
+    "python-magic>=0.4.27",
+    "slowapi>=0.1.9",
+    "aiofiles>=23.2.1",
 ]
 
 [project.optional-dependencies]
@@ -52,6 +60,7 @@ dev = [
     "sqlalchemy[mypy]>=2.0",
     "types-aiofiles",
     "types-PyYAML",
+    "types-bleach",
     # Security scanning tools
     "bandit[toml]>=1.7.8",
     "pip-audit>=2.7.0,<2.10.0",
@@ -72,7 +81,7 @@ indent-style = "space"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
-ignore = ["ANN401"]
+ignore = ["ANN401", "B008"]
 
 [tool.mypy]
 python_version = "3.12"

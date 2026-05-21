@@ -19,6 +19,8 @@ class WalletChain(enum.StrEnum):
 
     ton = "ton"
     evm = "evm"
+    solana = "solana"
+    tron = "tron"
 
 
 class UserWallet(Base):

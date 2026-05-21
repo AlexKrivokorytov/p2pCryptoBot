@@ -47,6 +47,8 @@ class SupportedAsset(enum.StrEnum):
     USDT = "USDT"
     USDC = "USDC"
     ETH = "ETH"
+    SOL = "SOL"
+    TRX = "TRX"
 
 
 class Order(Base):
@@ -82,6 +84,7 @@ class Order(Base):
 
     # Trade details
     asset: Mapped[str] = mapped_column(Enum(SupportedAsset, name="supported_asset"), nullable=False)
+    chain: Mapped[str] = mapped_column(String(50), nullable=True)  # ton, evm, tron, solana
     amount: Mapped[Decimal] = mapped_column(Numeric(precision=18, scale=8), nullable=False)
     fiat_amount: Mapped[Decimal] = mapped_column(Numeric(precision=18, scale=2), nullable=False)
     fiat_currency: Mapped[str] = mapped_column(String(10), nullable=False)

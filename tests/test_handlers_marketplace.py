@@ -26,6 +26,7 @@ from bot.handlers.marketplace import (
     msg_ad_enter_price,
 )
 from db.models.marketplace import Ad, AdType
+from db.models.user import User
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -131,11 +132,13 @@ async def test_cb_market_browse() -> None:
     """cb_market_browse should call _render_market for page=1."""
     cb = _make_callback("market:browse")
     session = MagicMock()
+    mock_user = MagicMock(spec=User)
+    mock_user.default_fiat = "RUB"
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     session.execute = AsyncMock(return_value=mock_result)
 
-    await cb_market_browse(cb, session)
+    await cb_market_browse(cb, session, db_user=mock_user)
     cb.answer.assert_awaited()
 
 
@@ -144,11 +147,13 @@ async def test_cb_market_page() -> None:
     """cb_market_page should paginate to the correct page."""
     cb = _make_callback("market:page:3")
     session = MagicMock()
+    mock_user = MagicMock(spec=User)
+    mock_user.default_fiat = "RUB"
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     session.execute = AsyncMock(return_value=mock_result)
 
-    await cb_market_page(cb, session)
+    await cb_market_page(cb, session, db_user=mock_user)
     cb.answer.assert_awaited()
 
 
@@ -231,14 +236,33 @@ async def test_cb_ad_choose_type() -> None:
 @pytest.mark.asyncio
 async def test_cb_ad_choose_asset() -> None:
     """cb_ad_choose_asset should store asset and prompt fiat entry."""
+    cb = _make_callback("ad_asset:TON")
+    state = MagicMock()
+    state.update_data = AsyncMock()
+    state.set_state = AsyncMock()
+    mock_user = MagicMock(spec=User)
+    mock_user.default_fiat = "USD"
+
+    await cb_ad_choose_asset(cb, state, db_user=mock_user)
+    state.update_data.assert_any_call(asset="TON")
+    # TON has only 1 chain in _ASSET_CHAINS, so it skips network selection
+    state.set_state.assert_awaited_with(CreateAdFSM.entering_fiat)
+    cb.answer.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_cb_ad_choose_asset_multi_chain() -> None:
+    """Multi-chain assets like USDT should prompt for network selection."""
     cb = _make_callback("ad_asset:USDT")
     state = MagicMock()
     state.update_data = AsyncMock()
     state.set_state = AsyncMock()
+    mock_user = MagicMock(spec=User)
+    mock_user.default_fiat = "USD"
 
-    await cb_ad_choose_asset(cb, state)
+    await cb_ad_choose_asset(cb, state, db_user=mock_user)
     state.update_data.assert_awaited_with(asset="USDT")
-    state.set_state.assert_awaited_with(CreateAdFSM.entering_fiat)
+    state.set_state.assert_awaited_with(CreateAdFSM.choosing_network)
     cb.answer.assert_awaited_once()
 
 

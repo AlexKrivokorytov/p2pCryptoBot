@@ -25,6 +25,7 @@ class MarketplaceService:
         min_limit: float,
         max_limit: float,
         payment_method_ids: str,
+        chain: str | None = None,
         terms: str | None = None,
     ) -> Ad:
         """Create a new P2P advertisement."""
@@ -38,6 +39,7 @@ class MarketplaceService:
             min_limit=min_limit,
             max_limit=max_limit,
             payment_method_ids=payment_method_ids,
+            chain=chain,
             terms=terms,
         )
         session.add(ad)
@@ -124,9 +126,12 @@ class MarketplaceService:
         }
 
     @staticmethod
-    async def get_all_active_ads(session: AsyncSession) -> Sequence[Ad]:
-        """Fetch all active ads ordered by creation date."""
-        stmt = select(Ad).where(Ad.is_active.is_(True)).order_by(Ad.created_at.desc())
+    async def get_all_active_ads(session: AsyncSession, fiat: str | None = None) -> Sequence[Ad]:
+        """Fetch all active ads, optionally filtered by fiat."""
+        stmt = select(Ad).where(Ad.is_active.is_(True))
+        if fiat:
+            stmt = stmt.where(Ad.fiat == fiat)
+        stmt = stmt.order_by(Ad.created_at.desc())
         result = await session.execute(stmt)
         return result.scalars().all()
 
@@ -147,5 +152,6 @@ class MarketplaceService:
             "price_value": ad.price_value,
             "min_limit": ad.min_limit,
             "max_limit": ad.max_limit,
+            "chain": ad.chain,
             "terms": ad.terms,
         }

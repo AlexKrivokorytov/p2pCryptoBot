@@ -77,11 +77,16 @@ class Settings:
     # ── Web3 RPC endpoints ────────────────────────────────────────────────────
     TON_RPC_URL: str
     EVM_RPC_URL: str
+    SOLANA_RPC_URL: str
+    TRON_RPC_URL: str
 
     # ── B2B SaaS settings ─────────────────────────────────────────────────────
     B2B_LICENSE_PRICE_STARS: int
     MASTER_BOT_USERNAME: str
     MASTER_TON_WALLET: str
+
+    # ── Fiat Rates ────────────────────────────────────────────────────────────
+    EXCHANGE_RATE_API_KEY: str
 
     # ── DB pool ───────────────────────────────────────────────────────────────
     DB_POOL_SIZE: int = field(default=10)
@@ -117,9 +122,12 @@ def load_settings() -> Settings:
         WEBHOOK_PORT=int(_optional("WEBHOOK_PORT", "8080")),
         TON_RPC_URL=_optional("TON_RPC_URL", "https://toncenter.com/api/v2/jsonRPC"),
         EVM_RPC_URL=_optional("EVM_RPC_URL", "https://bsc-dataseed.binance.org/"),
+        SOLANA_RPC_URL=_optional("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com"),
+        TRON_RPC_URL=_optional("TRON_RPC_URL", "https://api.trongrid.io"),
         B2B_LICENSE_PRICE_STARS=int(_optional("B2B_LICENSE_PRICE_STARS", "10000")),
         MASTER_BOT_USERNAME=_optional("MASTER_BOT_USERNAME", "p2p_master_bot"),
         MASTER_TON_WALLET=_require("MASTER_TON_WALLET"),
+        EXCHANGE_RATE_API_KEY=_optional("EXCHANGE_RATE_API_KEY", ""),
         DB_POOL_SIZE=int(_optional("DB_POOL_SIZE", "10")),
         DB_MAX_OVERFLOW=int(_optional("DB_MAX_OVERFLOW", "20")),
     )

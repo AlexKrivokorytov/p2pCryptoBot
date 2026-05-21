@@ -57,24 +57,38 @@ async def test_cmd_start_existing_user(session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_cb_main_menu() -> None:
     """Test main menu callback."""
-    callback = AsyncMock()
+    from aiogram.types import CallbackQuery, Message
+
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
 
     await start_handlers.cb_main_menu(callback)
 
     callback.message.edit_text.assert_called_once()
-    assert "Main Menu" in callback.message.edit_text.call_args[0][0]
+    # It has an emoji now: "🏠 <b>Main Menu</b>"
+    args, _ = callback.message.edit_text.call_args
+    assert "Main Menu" in args[0]
     callback.answer.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_cb_help() -> None:
     """Test help callback."""
-    callback = AsyncMock()
+    from aiogram.types import CallbackQuery, Message
+
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
 
     await start_handlers.cb_help(callback)
 
-    callback.message.answer.assert_called_once()
-    assert "How P2P works" in callback.message.answer.call_args[0][0]
+    # It calls edit_text, not answer
+    callback.message.edit_text.assert_called_once()
+    args, _ = callback.message.edit_text.call_args
+    assert "How P2P works" in args[0]
     callback.answer.assert_called_once()
 
 

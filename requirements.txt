@@ -283,3 +283,8 @@ yarl==1.23.0
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
+
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+
+python-multipart>=0.0.18

@@ -1,8 +1,8 @@
-"""Add on_chain_gas_buffer to Order
+"""add_marketplace_products
 
-Revision ID: d0b86dfec9c3
-Revises: 4293063be26a
-Create Date: 2026-05-11 22:22:53.988098
+Revision ID: b9d88aed8b4d
+Revises: d1e8ea476e1b
+Create Date: 2026-05-14 10:39:15.834250
 """
 
 from __future__ import annotations
@@ -12,8 +12,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "d0b86dfec9c3"
-down_revision: str | None = "4293063be26a"
+revision: str = "b9d88aed8b4d"
+down_revision: str | None = "d1e8ea476e1b"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -55,6 +55,8 @@ def upgrade() -> None:
         ),
         sa.Column("language_code", sa.String(length=10), server_default="en", nullable=False),
         sa.Column("referred_by_id", sa.BigInteger(), nullable=True),
+        sa.Column("default_fiat", sa.String(length=10), server_default="USD", nullable=False),
+        sa.Column("notifications_enabled", sa.Boolean(), server_default="true", nullable=False),
         sa.Column("is_verified", sa.Boolean(), nullable=False),
         sa.Column("is_banned", sa.Boolean(), nullable=False),
         sa.Column("total_trades", sa.BigInteger(), server_default="0", nullable=False),
@@ -75,6 +77,7 @@ def upgrade() -> None:
         sa.Column("maker_id", sa.BigInteger(), nullable=False),
         sa.Column("type", sa.Enum("buy", "sell", name="adtype"), nullable=False),
         sa.Column("asset", sa.String(length=10), nullable=False),
+        sa.Column("chain", sa.String(length=50), nullable=True),
         sa.Column("fiat", sa.String(length=10), nullable=False),
         sa.Column("price_type", sa.Enum("fixed", "floating", name="pricetype"), nullable=False),
         sa.Column("price_value", sa.Numeric(precision=18, scale=2), nullable=False),
@@ -144,9 +147,10 @@ def upgrade() -> None:
         ),
         sa.Column(
             "asset",
-            sa.Enum("BTC", "TON", "USDT", "USDC", "ETH", name="supported_asset"),
+            sa.Enum("BTC", "TON", "USDT", "USDC", "ETH", "SOL", "TRX", name="supported_asset"),
             nullable=False,
         ),
+        sa.Column("chain", sa.String(length=50), nullable=True),
         sa.Column("amount", sa.Numeric(precision=18, scale=8), nullable=False),
         sa.Column("fiat_amount", sa.Numeric(precision=18, scale=2), nullable=False),
         sa.Column("fiat_currency", sa.String(length=10), nullable=False),
@@ -200,6 +204,33 @@ def upgrade() -> None:
     op.create_index(op.f("ix_orders_status"), "orders", ["status"], unique=False)
     op.create_index(op.f("ix_orders_taker_id"), "orders", ["taker_id"], unique=False)
     op.create_table(
+        "products",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("seller_id", sa.BigInteger(), nullable=False),
+        sa.Column("title", sa.String(length=128), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("is_digital", sa.Boolean(), nullable=False),
+        sa.Column("digital_content", sa.Text(), nullable=True),
+        sa.Column("price", sa.Numeric(precision=18, scale=2), nullable=False),
+        sa.Column(
+            "currency_type",
+            sa.Enum("XTR", "FIAT", "CRYPTO", name="product_currency_type"),
+            nullable=False,
+        ),
+        sa.Column("fiat_currency", sa.String(length=10), nullable=True),
+        sa.Column("crypto_asset", sa.String(length=10), nullable=True),
+        sa.Column("is_active", sa.Boolean(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["seller_id"], ["users.telegram_id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_products_seller_id"), "products", ["seller_id"], unique=False)
+    op.create_table(
         "ton_invoices",
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("owner_id", sa.BigInteger(), nullable=False),
@@ -238,7 +269,9 @@ def upgrade() -> None:
         "user_wallets",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
         sa.Column("user_id", sa.BigInteger(), nullable=False),
-        sa.Column("chain", sa.Enum("ton", "evm", name="wallet_chain"), nullable=False),
+        sa.Column(
+            "chain", sa.Enum("ton", "evm", "solana", "tron", name="wallet_chain"), nullable=False
+        ),
         sa.Column("address", sa.String(length=256), nullable=False),
         sa.Column("encrypted_private_key", sa.String(length=1024), nullable=False),
         sa.Column("encrypted_mnemonic", sa.String(length=2048), nullable=True),
@@ -300,6 +333,57 @@ def upgrade() -> None:
         sa.UniqueConstraint("order_id"),
     )
     op.create_table(
+        "marketplace_deals",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("product_id", sa.UUID(), nullable=False),
+        sa.Column("buyer_id", sa.BigInteger(), nullable=False),
+        sa.Column(
+            "status",
+            sa.Enum(
+                "created",
+                "paid",
+                "delivered",
+                "completed",
+                "dispute",
+                "cancelled",
+                name="deal_status",
+            ),
+            nullable=False,
+        ),
+        sa.Column("amount", sa.Numeric(precision=18, scale=2), nullable=False),
+        sa.Column(
+            "currency_type",
+            sa.Enum("XTR", "FIAT", "CRYPTO", name="deal_currency_type"),
+            nullable=False,
+        ),
+        sa.Column("provider_payment_charge_id", sa.String(length=255), nullable=True),
+        sa.Column("telegram_payment_charge_id", sa.String(length=255), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["buyer_id"], ["users.telegram_id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(["product_id"], ["products.id"], ondelete="RESTRICT"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_marketplace_deals_buyer_id"), "marketplace_deals", ["buyer_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_marketplace_deals_product_id"), "marketplace_deals", ["product_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_marketplace_deals_status"), "marketplace_deals", ["status"], unique=False
+    )
+    op.create_table(
         "referral_rewards",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("referrer_id", sa.BigInteger(), nullable=False),
@@ -345,6 +429,10 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table("reviews")
     op.drop_table("referral_rewards")
+    op.drop_index(op.f("ix_marketplace_deals_status"), table_name="marketplace_deals")
+    op.drop_index(op.f("ix_marketplace_deals_product_id"), table_name="marketplace_deals")
+    op.drop_index(op.f("ix_marketplace_deals_buyer_id"), table_name="marketplace_deals")
+    op.drop_table("marketplace_deals")
     op.drop_table("dispute_tickets")
     op.drop_index(op.f("ix_chat_messages_order_id"), table_name="chat_messages")
     op.drop_table("chat_messages")
@@ -353,6 +441,8 @@ def downgrade() -> None:
     op.drop_table("user_payment_details")
     op.drop_index(op.f("ix_ton_invoices_memo"), table_name="ton_invoices")
     op.drop_table("ton_invoices")
+    op.drop_index(op.f("ix_products_seller_id"), table_name="products")
+    op.drop_table("products")
     op.drop_index(op.f("ix_orders_taker_id"), table_name="orders")
     op.drop_index(op.f("ix_orders_status"), table_name="orders")
     op.drop_index(op.f("ix_orders_on_chain_tx_hash"), table_name="orders")

@@ -23,7 +23,12 @@ class ChatMessage(Base):
         server_default=text("gen_random_uuid()"),
     )
 
-    order_id: Mapped[UUID] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    order_id: Mapped[UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), index=True, nullable=True
+    )
+    deal_id: Mapped[UUID] = mapped_column(
+        ForeignKey("marketplace_deals.id", ondelete="CASCADE"), index=True, nullable=True
+    )
 
     sender_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE")
@@ -40,4 +45,5 @@ class ChatMessage(Base):
 
     # Relationships
     order = relationship("Order", backref="messages")
+    deal = relationship("MarketplaceDeal", backref="messages")
     sender = relationship("User", backref="chat_messages")

@@ -34,6 +34,23 @@ try:
 except ImportError:
     HAS_TON = False
 
+try:
+    from solana.keypair import Keypair as SolanaKeypair
+    from solana.rpc.async_api import AsyncClient as SolanaClient
+    from solders.pubkey import Pubkey
+
+    HAS_SOLANA = True
+except ImportError:
+    HAS_SOLANA = False
+
+try:
+    from tronpy import AsyncTron
+    from tronpy.keys import PrivateKey as TronPrivateKey
+
+    HAS_TRON = True
+except ImportError:
+    HAS_TRON = False
+
 log = structlog.get_logger(__name__)
 
 
@@ -640,3 +657,217 @@ class TonWalletProvider(WalletProvider):
                 step="TonWalletProvider.transfer",
             )
             raise RuntimeError(f"TON transfer failed: {exc}") from exc
+
+
+# ── Solana Provider ────────────────────────────────────────────────────────────
+
+
+class SolanaWalletProvider(WalletProvider):
+    """Solana wallet provider using ``solana-py``.
+
+    Args:
+        rpc_url: Solana JSON-RPC endpoint.
+    """
+
+    def __init__(self, rpc_url: str = "https://api.mainnet-beta.solana.com") -> None:
+        self.rpc_url = rpc_url
+
+    async def generate_wallet(self, user_id: int) -> dict[str, Any]:
+        """Generate a fresh Solana keypair."""
+        if not HAS_SOLANA:
+            raise ImportError("solana-py not installed")
+
+        kp = SolanaKeypair()
+        return {
+            "address": str(kp.public_key),
+            "private_key": kp.secret_key.hex(),
+            "mnemonic": None,  # solana-py doesn't expose mnemonic easily in older versions
+        }
+
+    async def get_balance(self, address: str, asset: str) -> Decimal:
+        """Fetch SOL or SPL token balance."""
+        if not HAS_SOLANA:
+            return Decimal("0")
+
+        if asset.upper() != "SOL":
+            # For now only SOL is supported in MVP
+            return Decimal("0")
+
+        try:
+            async with SolanaClient(self.rpc_url) as client:
+                # Type ignore: Pubkey vs PublicKey mismatch in older solana-py
+                resp = await client.get_balance(Pubkey.from_string(address))  # type: ignore[arg-type]
+                # solana-py 0.28 returns GetBalanceResp
+                balance = Decimal(resp.value) / Decimal(10**9)
+                return balance
+        except Exception as exc:
+            log.warning("solana_balance_error", address=address, error=str(exc))
+            return Decimal("0")
+
+    async def estimate_fee(self, asset: str) -> Decimal:
+        """Solana fee is usually fixed at 5000 lamports."""
+        return Decimal("0.000005")
+
+    async def transfer(
+        self,
+        private_key: str,
+        to_address: str,
+        asset: str,
+        amount: Decimal,
+        memo: str | None = None,
+    ) -> str:
+        """Sign and send SOL."""
+        if not HAS_SOLANA:
+            raise RuntimeError("solana-py not installed")
+
+        if asset.upper() != "SOL":
+            raise ValueError(f"Unsupported Solana asset: {asset}")
+
+        from solana.system_program import TransferParams, transfer
+        from solana.transaction import Transaction
+
+        sender_kp = SolanaKeypair.from_secret_key(bytes.fromhex(private_key))
+        to_pubkey = Pubkey.from_string(to_address)
+        lamports = int(amount * Decimal(10**9))
+
+        async with SolanaClient(self.rpc_url) as client:
+            # 1. Get recent blockhash
+            recent_blockhash_resp = await client.get_latest_blockhash()
+            recent_blockhash = recent_blockhash_resp.value.blockhash
+
+            # 2. Build transaction
+            txn = Transaction(recent_blockhash=recent_blockhash)  # type: ignore[arg-type]
+            txn.add(
+                transfer(
+                    TransferParams(
+                        from_pubkey=sender_kp.public_key,
+                        to_pubkey=to_pubkey,  # type: ignore[arg-type]
+                        lamports=lamports,
+                    )
+                )
+            )
+
+            # 3. Sign and send
+            resp = await client.send_transaction(txn, sender_kp)
+            tx_hash = str(resp.value)
+
+            log.info(
+                "solana_transfer_broadcast",
+                tx_hash=tx_hash,
+                to=to_address,
+                amount=str(amount),
+            )
+            return tx_hash
+
+
+# ── Tron Provider ──────────────────────────────────────────────────────────────
+
+
+class TronWalletProvider(WalletProvider):
+    """Tron wallet provider using ``tronpy``.
+
+    Args:
+        is_mainnet: Whether to use Tron mainnet or Nile testnet.
+    """
+
+    def __init__(self, is_mainnet: bool = True) -> None:
+        self.network = "mainnet" if is_mainnet else "nile"
+
+    async def generate_wallet(self, user_id: int) -> dict[str, Any]:
+        """Generate a fresh Tron keypair."""
+        if not HAS_TRON:
+            raise ImportError("tronpy not installed")
+
+        # Tronpy keygen is fast enough for event loop but we follow the pattern
+        def _gen() -> dict[str, Any]:
+            from tronpy.keys import PrivateKey
+
+            pk = PrivateKey.random()
+            return {
+                "address": pk.public_key.to_base58check_address(),
+                "private_key": pk.hex(),
+                "mnemonic": None,
+            }
+
+        return await asyncio.to_thread(_gen)
+
+    async def get_balance(self, address: str, asset: str) -> Decimal:
+        """Fetch TRX or TRC-20 balance."""
+        if not HAS_TRON:
+            return Decimal("0")
+
+        try:
+            async with AsyncTron(network=self.network) as client:
+                if asset.upper() == "TRX":
+                    balance = await client.get_account_balance(address)
+                    return Decimal(str(balance))
+                else:
+                    # TRC-20 USDT/USDC (simplified)
+                    contracts = {
+                        "USDT": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+                        "USDC": "TE7EE4GEPhCDS9iK1S8YQd9wG877Y379mK",
+                    }
+                    if asset.upper() in contracts:
+                        cntr = await client.get_contract(contracts[asset.upper()])
+                        raw = await cntr.functions.balanceOf(address)
+                        return Decimal(str(raw)) / Decimal(10**6)
+                    return Decimal("0")
+        except Exception as exc:
+            log.warning("tron_balance_error", address=address, error=str(exc))
+            return Decimal("0")
+
+    async def estimate_fee(self, asset: str) -> Decimal:
+        """Tron fee is usually 1-2 TRX for native, 13-30 TRX for TRC-20."""
+        return Decimal("1.0") if asset.upper() == "TRX" else Decimal("15.0")
+
+    async def transfer(
+        self,
+        private_key: str,
+        to_address: str,
+        asset: str,
+        amount: Decimal,
+        memo: str | None = None,
+    ) -> str:
+        """Sign and send TRX or TRC-20."""
+        if not HAS_TRON:
+            raise RuntimeError("tronpy not installed")
+
+        async with AsyncTron(network=self.network) as client:
+            priv_key = TronPrivateKey(bytes.fromhex(private_key))
+            if asset.upper() == "TRX":
+                from_addr = priv_key.public_key.to_base58check_address()
+                sun_amount = int(amount * 1_000_000)
+                txn = (
+                    client.trx.transfer(from_addr, to_address, sun_amount)
+                    .memo(memo or "")
+                    .build()
+                    .sign(priv_key)
+                )
+                result = await txn.broadcast()
+                tx_hash = result["txid"]
+            else:
+                # TRC-20 Transfer
+                contracts = {
+                    "USDT": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+                }
+                if asset.upper() not in contracts:
+                    raise ValueError(f"Unsupported Tron asset: {asset}")
+
+                cntr = await client.get_contract(contracts[asset.upper()])
+                txn = (
+                    cntr.functions.transfer(to_address, int(amount * 1_000_000))
+                    .with_owner(priv_key.public_key.to_base58check_address())
+                    .memo(memo or "")
+                    .build()
+                    .sign(priv_key)
+                )
+                result = await txn.broadcast()
+                tx_hash = result["txid"]
+
+            log.info(
+                "tron_transfer_broadcast",
+                tx_hash=tx_hash,
+                to=to_address,
+                amount=str(amount),
+            )
+            return str(tx_hash)

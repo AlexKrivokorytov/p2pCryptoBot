@@ -78,6 +78,23 @@ def asset_keyboard(prefix: str = "asset") -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+# ── Network selection ──────────────────────────────────────────────────────────
+
+
+def network_selection_keyboard(
+    chains: list[str], prefix: str = "ad_network"
+) -> InlineKeyboardMarkup:
+    """Return inline keyboard for selecting a blockchain network for an asset."""
+    builder = InlineKeyboardBuilder()
+    for chain in chains:
+        label = WALLET_CHAIN_LABELS.get(chain, chain.upper())
+        builder.button(text=label, callback_data=f"{prefix}:{chain}")
+    builder.adjust(2)
+    builder.row(InlineKeyboardButton(text="🔙 Back", callback_data="ad:back_to_asset"))
+    builder.row(InlineKeyboardButton(text="❌ Cancel", callback_data="ad:cancel"))
+    return builder.as_markup()
+
+
 # ── Payment method selection ───────────────────────────────────────────────────
 
 
@@ -310,6 +327,8 @@ def back_to_menu_keyboard() -> InlineKeyboardMarkup:
 WALLET_CHAIN_LABELS: dict[str, str] = {
     "ton": "🔷 TON",
     "evm": "🟡 EVM (BSC/ETH)",
+    "solana": "🟣 Solana",
+    "tron": "🔴 Tron (TRX)",
 }
 
 
@@ -484,4 +503,39 @@ def b2b_purchase_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🔷 Pay with TON (Coming Soon)", callback_data="b2b:pay:ton")
     )
     builder.row(InlineKeyboardButton(text="🔙 Back", callback_data="b2b:menu"))
+    return builder.as_markup()
+
+
+# ── Settings & Preferences ───────────────────────────────────────────────────
+
+
+def settings_keyboard(notifications_enabled: bool, current_fiat: str) -> InlineKeyboardMarkup:
+    """Return the main settings keyboard."""
+    builder = InlineKeyboardBuilder()
+
+    # Notification toggle
+    notif_text = "🔔 Notifications: ON" if notifications_enabled else "🔕 Notifications: OFF"
+    builder.row(InlineKeyboardButton(text=notif_text, callback_data="settings:toggle_notif"))
+
+    # Fiat currency
+    builder.row(
+        InlineKeyboardButton(
+            text=f"💵 Default Fiat: {current_fiat}", callback_data="settings:choose_fiat"
+        )
+    )
+
+    builder.row(InlineKeyboardButton(text="🏠 Back to menu", callback_data="menu:main"))
+    return builder.as_markup()
+
+
+def fiat_selection_keyboard() -> InlineKeyboardMarkup:
+    """Return keyboard for choosing default fiat currency."""
+    builder = InlineKeyboardBuilder()
+    fiats = ["USD", "EUR", "RUB", "UAH", "KZT"]
+
+    for fiat in fiats:
+        builder.button(text=f"🏳️ {fiat}", callback_data=f"settings:set_fiat:{fiat}")
+
+    builder.adjust(3)
+    builder.row(InlineKeyboardButton(text="🔙 Back", callback_data="settings"))
     return builder.as_markup()

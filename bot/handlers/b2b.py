@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import structlog
 from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, LabeledPrice, Message, PreCheckoutQuery
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    LabeledPrice,
+    Message,
+    PreCheckoutQuery,
+)
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import settings
 from bot.keyboards import b2b_menu_keyboard, b2b_purchase_keyboard
+from bot.states import B2BCustomizeFSM
 from services import b2b_service
 from services.bot_spawner import BotSpawnerService
 
@@ -31,7 +40,8 @@ async def cb_b2b_menu(callback: CallbackQuery, session: AsyncSession) -> None:
     license_id = license_data["license_id"] if license_data else None
 
     text = (
-        "💎 <b>White-Label P2P SaaS</b>\n\n"
+        "💎 <b>White-Label P2P SaaS</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n\n"
         f"License ID: <code>{license_id or 'N/A'}</code>\n"
         f"Status: {'✅ Active' if has_active_license else '❌ Inactive'}\n\n"
         "Start your own P2P exchange in minutes. Our SaaS solution provides:\n"
@@ -155,6 +165,109 @@ async def cb_b2b_pay_ton(callback: CallbackQuery, session: AsyncSession) -> None
     await callback.answer()
 
 
+@router.callback_query(F.data == "b2b:customize")
+async def cb_b2b_customize(callback: CallbackQuery, session: AsyncSession) -> None:
+    """Show the branding customization menu."""
+    if not isinstance(callback.message, Message):
+        return
+
+    license_data = await b2b_service.get_active_license(session, callback.from_user.id)
+    if not license_data:
+        await callback.answer("❌ Active license required.", show_alert=True)
+        return
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🏷️ Bot Name", callback_data="b2b:edit:bot.name"),
+        InlineKeyboardButton(text="👋 Welcome Msg", callback_data="b2b:edit:bot.welcome_message"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="ℹ️ Help Text", callback_data="b2b:edit:bot.help_text"),
+        InlineKeyboardButton(text="📞 Support Handle", callback_data="b2b:edit:bot.support_handle"),
+    )
+    builder.row(InlineKeyboardButton(text="🔙 Back", callback_data="b2b:menu"))
+
+    curr_name = license_data["branding"].get("bot", {}).get("name", "N/A")
+    await callback.message.edit_text(
+        "🎨 <b>Customize Branding</b>\n\n"
+        "Select a field to customize. Your changes will be applied instantly.\n\n"
+        f"<b>Current Name:</b> <code>{curr_name}</code>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML",
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("b2b:edit:"))
+async def cb_b2b_customize_field(callback: CallbackQuery, state: FSMContext) -> None:
+    """Ask for the new value of a branding field."""
+    if not isinstance(callback.message, Message):
+        return
+
+    field_path = callback.data.split(":", 2)[2]  # type: ignore[union-attr]
+    await state.set_state(B2BCustomizeFSM.enter_value)
+    await state.update_data(field_path=field_path)
+
+    prompts = {
+        "bot.name": "Enter the new <b>Bot Name</b> (e.g. My P2P Bot):",
+        "bot.welcome_message": (
+            "Enter the new <b>Welcome Message</b>.\n\n"
+            "Tip: Use <code>{bot_name}</code> and <code>{first_name}</code> as placeholders."
+        ),
+        "bot.help_text": "Enter the new <b>Help Text</b> (HTML supported):",
+        "bot.support_handle": "Enter the <b>Support Handle</b> (e.g. @my_support):",
+    }
+
+    await callback.message.edit_text(
+        prompts.get(field_path, "Enter the new value:"),
+        reply_markup=InlineKeyboardBuilder()
+        .row(InlineKeyboardButton(text="❌ Cancel", callback_data="b2b:customize"))
+        .as_markup(),  # type: ignore[arg-type]
+        parse_mode="HTML",
+    )
+    await callback.answer()
+
+
+@router.message(B2BCustomizeFSM.enter_value)
+async def msg_b2b_branding_value(
+    message: Message, state: FSMContext, session: AsyncSession
+) -> None:
+    """Process the new branding value and update DB."""
+    data = await state.get_data()
+    field_path: str = data["field_path"]
+    value = (message.text or "").strip()
+
+    if not value:
+        await message.answer("❌ Value cannot be empty.")
+        return
+
+    # Basic validation for support handle
+    if field_path == "bot.support_handle" and not value.startswith("@"):
+        await message.answer("❌ Support handle must start with @")
+        return
+
+    try:
+        license_data = await b2b_service.get_active_license(session, message.from_user.id)  # type: ignore[union-attr]
+        if not license_data:
+            await message.answer("❌ License expired or not found.")
+            await state.clear()
+            return
+
+        await b2b_service.update_license_branding(
+            session, license_data["license_id"], field_path, value
+        )
+
+        await state.clear()
+        await message.answer(
+            f"✅ <b>Success!</b>\n\nField <code>{field_path}</code> updated to:\n{value}",
+            reply_markup=b2b_menu_keyboard(has_active_license=True),
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        log.error("b2b_branding_update_failed", error=str(e), user_id=message.from_user.id)  # type: ignore[union-attr]
+        await message.answer(f"❌ <b>Update failed</b>\n\nReason: {e}", parse_mode="HTML")
+
+
 @router.callback_query(F.data == "b2b:spawn")
 async def cb_b2b_spawn(callback: CallbackQuery, session: AsyncSession) -> None:
     """Show instructions for spawning a bot via Managed Bot API."""
@@ -178,7 +291,7 @@ async def cb_b2b_spawn(callback: CallbackQuery, session: AsyncSession) -> None:
         "2. Choose a name and username for your bot\n"
         "3. @BotFather will send a confirmation back to THIS bot\n\n"
         f"🔗 <a href='{spawn_link}'>Click here to Create Bot</a>\n\n"
-        "<i>Note: Ваша лицензия ID: <code>{license_data['license_id']}</code></i>"
+        "<i>Note: Your License ID: <code>{license_data['license_id']}</code></i>"
     )
     if not isinstance(callback.message, Message):
         await callback.answer()
@@ -218,7 +331,6 @@ async def handle_managed_bot_created(
 
     try:
         # 2. Get the token from BotFather using Managed Bot API
-        # aiogram 3.27 supports get_managed_bot_token on the bot object
         token_data = await message.bot.get_managed_bot_token(bot_id=bot_info.bot_id)  # type: ignore[attr-defined, union-attr, call-arg]
         token = token_data.token  # type: ignore[union-attr]
 

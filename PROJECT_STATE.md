@@ -39,13 +39,18 @@ We have successfully implemented **Phases 1 through 5 (Foundations)**, plus an A
    - **Bot Spawning**: Create managed white-label bot instances via Telegram's Managed Bot API.
 7. **Expanded Notification System:** Dynamic branding-based templates for all trade lifecycle events (disputes, releases, refunds, expiry).
 8. **AI Removal:** Cleaned the project of all legacy AI/dispute mediation stubs and experimental features to focus on a robust "student-like" or "SaaS-ready" core.
+9. **Multi-Chain Marketplace (Phase 8 Foundations):**
+   - **On-Chain Escrow**: Marketplace deals now generate unique, non-custodial escrow wallets for EVM, TON, Solana, and Tron.
+   - **Ecommerce Service**: Decoupled product and deal logic into `MarketplaceEcommerceService`.
+   - **Automated Verification**: `MarketplaceScanner` monitors on-chain deposits to automatically mark deals as `paid`.
+   - **Multi-Chain Checkout**: Frontend updated to display blockchain-specific payment instructions and address copy-to-clipboard.
 
 ---
 
 ## 3. Where We Stopped
 
-- **Notification Expansion Completed:** Refactored `notification_service.py` to use dynamic templates from `branding.yaml`. Implemented automated dispute resolution alerts and stagnant trade cleanup.
-- **Task Verification:** 13/13 unit tests passed for the new notification logic. `ruff` and `mypy` are clean.
+- **Marketplace Multi-Chain Foundations Completed:** Expanded DB schema, refactored service/API layers, implemented background scanners, and updated the checkout UI to support decentralized crypto payments for digital/physical goods.
+- **Task Verification:** Database migrations applied. Service layer and scanners implemented. `Checkout.tsx` and `ProductDetails.tsx` updated.
 
 ---
 

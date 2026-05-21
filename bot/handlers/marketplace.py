@@ -19,8 +19,11 @@ from bot.keyboards import (
     ad_type_keyboard,
     asset_keyboard,
     back_to_menu_keyboard,
+    network_selection_keyboard,
 )
+from db.models.user import User
 from services.marketplace_service import MarketplaceService
+from services.wallet_service import get_supported_chains_for_asset
 
 log = structlog.get_logger(__name__)
 router = Router(name="marketplace")
@@ -38,6 +41,7 @@ class CreateAdFSM(StatesGroup):
 
     choosing_type = State()
     choosing_asset = State()
+    choosing_network = State()
     entering_fiat = State()
     entering_price = State()
     entering_limits = State()
@@ -61,8 +65,9 @@ def _build_ad_list_text(ads: list[Any], page: int, total_pages: int) -> str:
         is_sell = getattr(ad, "type", "sell") == "sell"
         emoji = "📤" if is_sell else "📥"
         direction = "Sell" if is_sell else "Buy"
+        network_str = f" ({ad.chain.upper()})" if ad.chain else ""
         lines.append(
-            f"{i}. {emoji} <b>{direction} {ad.asset}</b> for <b>{ad.fiat}</b>\n"
+            f"{i}. {emoji} <b>{direction} {ad.asset}</b>{network_str} for <b>{ad.fiat}</b>\n"
             f"   Rate: <b>{float(ad.price_value):.2f} {ad.fiat}/{ad.asset}</b>\n"
             f"   Limits: <b>{float(ad.min_limit):.0f} – {float(ad.max_limit):.0f} {ad.fiat}</b>\n"
         )
@@ -104,15 +109,18 @@ def _build_ad_page_keyboard(ads: list[Any], page: int, total_pages: int) -> Any:
 # ── Browse market ──────────────────────────────────────────────────────────────
 
 
-async def _render_market(callback: CallbackQuery, session: AsyncSession, page: int) -> None:
+async def _render_market(
+    callback: CallbackQuery, session: AsyncSession, page: int, db_user: User
+) -> None:
     """Fetch and render ads for the given page.
 
     Args:
         callback: The triggering callback query.
         session: DB session.
         page: Page number (1-indexed).
+        db_user: Current user object for fiat filtering.
     """
-    all_ads = await MarketplaceService.get_all_active_ads(session)
+    all_ads = await MarketplaceService.get_all_active_ads(session, fiat=db_user.default_fiat)
 
     total_pages = max(1, math.ceil(len(all_ads) / PAGE_SIZE))
     page = max(1, min(page, total_pages))
@@ -127,16 +135,16 @@ async def _render_market(callback: CallbackQuery, session: AsyncSession, page: i
 
 
 @router.callback_query(F.data == "market:browse")
-async def cb_market_browse(callback: CallbackQuery, session: AsyncSession) -> None:
+async def cb_market_browse(callback: CallbackQuery, session: AsyncSession, db_user: User) -> None:
     """Show the P2P market order book — first page."""
-    await _render_market(callback, session, page=1)
+    await _render_market(callback, session, page=1, db_user=db_user)
 
 
 @router.callback_query(F.data.startswith("market:page:"))
-async def cb_market_page(callback: CallbackQuery, session: AsyncSession) -> None:
+async def cb_market_page(callback: CallbackQuery, session: AsyncSession, db_user: User) -> None:
     """Paginate through the ad list."""
     page = int(callback.data.split(":")[-1])  # type: ignore[union-attr]
-    await _render_market(callback, session, page=page)
+    await _render_market(callback, session, page=page, db_user=db_user)
 
 
 @router.callback_query(F.data.startswith("ad:view:"))
@@ -153,9 +161,10 @@ async def cb_ad_view(callback: CallbackQuery, session: AsyncSession) -> None:
     direction = "Sell" if ad["type"] == "sell" else "Buy"
     terms_text = ad["terms"] or "No special terms."
 
+    network_str = f" (Network: <b>{ad['chain'].upper()}</b>)" if ad.get("chain") else ""
     text = (
         f"📋 <b>Ad Details</b>\n\n"
-        f"{emoji} Direction: <b>{direction} {ad['asset']}</b>\n"
+        f"{emoji} Direction: <b>{direction} {ad['asset']}</b>{network_str}\n"
         f"💵 Fiat: <b>{ad['fiat']}</b>\n"
         f"📈 Rate: <b>{ad['price_value']:.2f} {ad['fiat']}/{ad['asset']}</b>\n"
         f"🔢 Limits: <b>{ad['min_limit']:.0f} – {ad['max_limit']:.0f} {ad['fiat']}</b>\n\n"
@@ -212,20 +221,68 @@ async def cb_ad_choose_type(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.callback_query(F.data.startswith("ad_asset:"), CreateAdFSM.choosing_asset)
-async def cb_ad_choose_asset(callback: CallbackQuery, state: FSMContext) -> None:
-    """Save the asset and ask for fiat currency."""
+async def cb_ad_choose_asset(callback: CallbackQuery, state: FSMContext, db_user: User) -> None:
+    """Save the asset and ask for network (if multiple) or fiat currency."""
     asset = callback.data.split(":")[-1]  # type: ignore[union-attr]
     await state.update_data(asset=asset)
+
+    chains = get_supported_chains_for_asset(asset)
+
+    if len(chains) > 1:
+        await state.set_state(CreateAdFSM.choosing_network)
+        if callback.message and isinstance(callback.message, Message):
+            await callback.message.edit_text(
+                f"🌐 <b>Step 1.1</b> — Choose the network for <b>{asset}</b>:",
+                reply_markup=network_selection_keyboard(chains),
+                parse_mode="HTML",
+            )
+    else:
+        # Only one chain or unknown, skip network selection
+        network = chains[0] if chains else "unknown"
+        await state.update_data(network=network)
+        await state.set_state(CreateAdFSM.entering_fiat)
+
+        if callback.message and isinstance(callback.message, Message):
+            fiat_prompt = (
+                "💵 <b>Step 2/5</b> — Enter fiat currency code\n\n"
+                f"Suggested: <code>{db_user.default_fiat}</code>"
+            )
+            await callback.message.edit_text(
+                fiat_prompt,
+                reply_markup=back_to_menu_keyboard(),
+                parse_mode="HTML",
+            )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("ad_network:"), CreateAdFSM.choosing_network)
+async def cb_ad_choose_network(callback: CallbackQuery, state: FSMContext, db_user: User) -> None:
+    """Save the selected network and proceed to fiat entry."""
+    network = callback.data.split(":")[-1]  # type: ignore[union-attr]
+    await state.update_data(network=network)
     await state.set_state(CreateAdFSM.entering_fiat)
 
     if callback.message and isinstance(callback.message, Message):
         fiat_prompt = (
-            "💵 <b>Step 2/5</b> — Enter fiat currency code "
-            "(e.g. <code>RUB</code>, <code>USD</code>, <code>EUR</code>):"
+            "💵 <b>Step 2/5</b> — Enter fiat currency code\n\n"
+            f"Suggested: <code>{db_user.default_fiat}</code>"
         )
         await callback.message.edit_text(
             fiat_prompt,
             reply_markup=back_to_menu_keyboard(),
+            parse_mode="HTML",
+        )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "ad:back_to_asset", CreateAdFSM.choosing_network)
+async def cb_ad_back_to_asset(callback: CallbackQuery, state: FSMContext) -> None:
+    """Go back to asset selection from network selection."""
+    await state.set_state(CreateAdFSM.choosing_asset)
+    if callback.message and isinstance(callback.message, Message):
+        await callback.message.edit_text(
+            "🪙 <b>Step 1/5</b> — Choose the crypto asset:",
+            reply_markup=asset_keyboard(prefix="ad_asset"),
             parse_mode="HTML",
         )
     await callback.answer()
@@ -307,11 +364,12 @@ async def msg_ad_enter_limits(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     ad_type = data.get("ad_type", "sell_crypto")
     direction = "📤 Sell crypto" if ad_type == "sell_crypto" else "📥 Buy crypto"
+    network = data.get("network", "unknown")
 
     text = (
         f"✅ <b>Review your Ad</b>\n\n"
         f"Direction: <b>{direction}</b>\n"
-        f"Asset: <b>{data['asset']}</b>\n"
+        f"Asset: <b>{data['asset']}</b> (Network: <b>{network.upper()}</b>)\n"
         f"Fiat: <b>{data['fiat']}</b>\n"
         f"Rate: <b>{data['price']:.2f} {data['fiat']}/{data['asset']}</b>\n"
         f"Limits: <b>{min_limit:.0f} – {max_limit:.0f} {data['fiat']}</b>\n\n"
@@ -349,6 +407,7 @@ async def cb_ad_confirm(callback: CallbackQuery, state: FSMContext, session: Asy
                 min_limit=float(data["min_limit"]),
                 max_limit=float(data["max_limit"]),
                 payment_method_ids="",  # Will be extended in Phase 4
+                chain=data.get("network"),
             )
         log.info(
             "ad_created",

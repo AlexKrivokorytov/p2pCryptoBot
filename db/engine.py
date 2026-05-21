@@ -42,3 +42,9 @@ def _build_engine() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
 
 
 engine, async_session_factory = _build_engine()
+
+
+async def get_session() -> AsyncSession:
+    """FastAPI dependency that yields a database session per request."""
+    async with async_session_factory() as session:
+        yield session

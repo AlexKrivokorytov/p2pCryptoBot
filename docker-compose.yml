@@ -6,8 +6,6 @@ services:
       POSTGRES_USER: p2pbot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
       POSTGRES_DB: p2pbot
-    ports:
-      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -47,8 +45,48 @@ services:
       migrate:
         condition: service_completed_successfully
     command: ["python", "-m", "bot.main"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  api:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_URI: postgresql+asyncpg://p2pbot:${POSTGRES_PASSWORD:-password}@postgres:5432/p2pbot
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - uploads_data:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "5173:80"
+    depends_on:
+      - api
+    volumes:
+      - uploads_data:/usr/share/nginx/html/uploads
 
 volumes:
   postgres_data:
+  uploads_data:

@@ -123,6 +123,27 @@ async def expire_stagnant_trades(
     return expired_count
 
 
+async def verify_top_sellers(session_pool: async_sessionmaker[AsyncSession]) -> int:
+    """Auto-verify sellers who meet performance criteria."""
+    verified_count = 0
+    async with session_pool() as session, session.begin():
+        from db.models.user import User
+        result = await session.execute(
+            select(User).where(
+                User.is_verified_seller.is_(False),
+                User.successful_trades >= 10,
+                User.review_count >= 5,
+            )
+        )
+        users = result.scalars().all()
+        for u in users:
+            if u.review_count and (float(u.rating_sum) / float(u.review_count)) >= 4.5:
+                u.is_verified_seller = True
+                verified_count += 1
+                log.info("seller_auto_verified", user_id=u.telegram_id, step="cleanup_task")
+    return verified_count
+
+
 async def start_cleanup_task(
     session_pool: async_sessionmaker[AsyncSession], bot: Bot, crypto_pay: CryptoPayClient
 ) -> None:
@@ -135,9 +156,12 @@ async def start_cleanup_task(
 
             # 2. Expire trades that were accepted but never paid
             stagnant_count = await expire_stagnant_trades(session_pool, bot, crypto_pay)
+            
+            # 3. Auto-verify top sellers
+            verified_count = await verify_top_sellers(session_pool)
 
-            if pending_count or stagnant_count:
-                log.info("cleanup_cycle_done", pending=pending_count, stagnant=stagnant_count)
+            if pending_count or stagnant_count or verified_count:
+                log.info("cleanup_cycle_done", pending=pending_count, stagnant=stagnant_count, verified=verified_count)
         except asyncio.CancelledError:
             log.info("cleanup_task_stopped")
             break

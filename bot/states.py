@@ -65,3 +65,10 @@ class AdminUserFSM(StatesGroup):
     """FSM for administrative user management."""
 
     enter_query = State()
+
+
+class B2BCustomizeFSM(StatesGroup):
+    """Flow: white-label operator customizes their bot branding."""
+
+    choose_field = State()
+    enter_value = State()

@@ -23,6 +23,8 @@ from bot.handlers import (
     marketplace,
     order,
     profile,
+    settings,
+    stars_payment,
     start,
     trade,
     wallet,
@@ -38,7 +40,9 @@ ROUTERS: list[Router] = [
     chat.router,
     profile.router,
     wallet.router,
+    settings.router,
     b2b.router,
+    stars_payment.router,
     admin.router,  # admin last — catch-all admin filters
     admin_sandbox.router,
 ]

@@ -25,6 +25,8 @@ log = structlog.get_logger(__name__)
 _CHAIN_ASSETS: dict[str, list[str]] = {
     "evm": ["BNB", "USDT", "USDC"],
     "ton": ["TON"],
+    "solana": ["SOL"],
+    "tron": ["TRX"],
 }
 
 # Timeout per individual balance request

@@ -53,6 +53,7 @@ from providers.wallet_provider import TonWalletProvider  # noqa: E402
 from services.bot_spawner import BotSpawnerService  # noqa: E402
 from tasks.cleanup import start_cleanup_task  # noqa: E402
 from tasks.escrow_scanner import EscrowScanner  # noqa: E402
+from tasks.marketplace_scanner import MarketplaceScanner  # noqa: E402
 from tasks.ton_scanner import TONScanner  # noqa: E402
 from utils.license_guard import check_license_or_abort  # noqa: E402
 
@@ -144,6 +145,10 @@ async def main() -> None:
     escrow_scanner = EscrowScanner(bot=bot, session_maker=session_pool, interval_sec=30)
     escrow_task = asyncio.create_task(escrow_scanner.run())
 
+    # ── Marketplace Escrow Scanner — Phase 8 ─────────────────────────────────────
+    marketplace_scanner = MarketplaceScanner(bot=bot, session_maker=session_pool, interval_sec=60)
+    marketplace_task = asyncio.create_task(marketplace_scanner.run())
+
     # Spawn active bots on startup
     asyncio.create_task(bot_spawner.spawn_all_active())
 
@@ -160,11 +165,13 @@ async def main() -> None:
         await dynamic_loader.stop_all()
         ton_scanner.stop()
         escrow_scanner.stop()
+        marketplace_scanner.stop()
         cleanup_task.cancel()
         ton_task.cancel()
         escrow_task.cancel()
+        marketplace_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
-            await asyncio.gather(cleanup_task, ton_task, escrow_task)
+            await asyncio.gather(cleanup_task, ton_task, escrow_task, marketplace_task)
         await ton_provider.disconnect()
         await crypto_pay.close()
         # NOTE: bot.session is closed by start_polling (close_bot_session=True default).

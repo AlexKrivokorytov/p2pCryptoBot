@@ -222,3 +222,59 @@ async def get_ton_license_price() -> float:
     # $100 / (USD per 1 TON) = TON amount
     amount = 100.0 / float(rate)
     return round(amount, 2)
+
+
+async def update_license_branding(
+    session: AsyncSession, license_id: str, field_path: str, value: str
+) -> dict[str, Any]:
+    """Update a specific branding field for a license.
+
+    Args:
+        session: DB session.
+        license_id: UUID of the license.
+        field_path: Dot-notation path (e.g. "bot.name").
+        value: New value to set.
+
+    Returns:
+        Updated branding dict.
+    """
+    from bot.schemas import BrandingSchema, deep_merge
+
+    # 1. Fetch license with lock
+    stmt = select(B2BLicense).where(B2BLicense.id == license_id).with_for_update()
+    result = await session.execute(stmt)
+    license_obj = result.scalar_one_or_none()
+
+    if not license_obj:
+        raise ValueError("License not found")
+
+    # 2. Build the override dict from field_path
+    # Supports "bot.name", "bot.welcome_message", etc.
+    parts = field_path.split(".")
+    overrides: dict[str, Any] = {}
+    curr = overrides
+    for part in parts[:-1]:
+        curr[part] = {}
+        curr = curr[part]
+    curr[parts[-1]] = value
+
+    # 3. Validate overrides against schema
+    # We validate the FULL resulting branding to ensure it's valid
+    current_branding = license_obj.branding or {}
+    new_branding = deep_merge(current_branding, overrides)
+
+    # Validate
+    BrandingSchema.from_dict(new_branding)
+
+    # 4. Save
+    license_obj.branding = new_branding
+    await session.commit()
+
+    log.info(
+        "b2b_branding_updated",
+        license_id=license_id,
+        field_path=field_path,
+        user_id=license_obj.owner_id,
+    )
+
+    return new_branding

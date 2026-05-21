@@ -12,8 +12,19 @@ from decimal import Decimal
 import structlog
 
 from providers.rate_provider import get_crypto_usdt_price, get_usdt_fiat_rate
+from providers.fiat_rate_provider import FiatRateProvider
+from bot.config import get_settings
 
 log = structlog.get_logger(__name__)
+
+# Fallback fiat provider
+_fiat_rate_provider: FiatRateProvider | None = None
+
+def _get_fiat_provider() -> FiatRateProvider:
+    global _fiat_rate_provider
+    if _fiat_rate_provider is None:
+        _fiat_rate_provider = FiatRateProvider(get_settings().EXCHANGE_RATE_API_KEY)
+    return _fiat_rate_provider
 
 # Timeout for rate lookups (both legs of the calculation)
 _RATE_TIMEOUT = 5
@@ -38,11 +49,17 @@ async def get_market_rate(asset: str, fiat: str) -> Decimal | None:
     Returns:
         Rate as :class:`~decimal.Decimal`, or ``None`` if either leg is unavailable.
     """
+    # Fallback to fiat_rate_provider if it's a specific currency
+    fiat_upper = fiat.upper()
+    fiat_rate_coro = get_usdt_fiat_rate(fiat)
+    if fiat_upper in {"RUB", "UAH", "KZT", "TRY", "BYN", "GEL"}:
+        fiat_rate_coro = _get_fiat_provider().get_rate_to_usdt(fiat_upper)
+
     try:
         crypto_price, fiat_rate = await asyncio.wait_for(
             asyncio.gather(
                 get_crypto_usdt_price(asset),
-                get_usdt_fiat_rate(fiat),
+                fiat_rate_coro,
             ),
             timeout=_RATE_TIMEOUT,
         )

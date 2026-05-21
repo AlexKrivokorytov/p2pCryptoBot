@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import structlog
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,24 +49,34 @@ async def cmd_start(message: Message, session: AsyncSession) -> None:
     )
 
 
-@router.callback_query(lambda c: c.data == "menu:main")
+@router.callback_query(F.data == "menu:main")
 async def cb_main_menu(callback: CallbackQuery) -> None:
     """Return to main menu."""
-    await callback.message.edit_text(  # type: ignore[union-attr]
-        "🏠 <b>Main Menu</b>",
+    if not isinstance(callback.message, Message):
+        return
+
+    await callback.message.edit_text(
+        "🏠 <b>Main Menu</b>\n━━━━━━━━━━━━━━━━━━━━",
         reply_markup=main_menu_keyboard(),
         parse_mode="HTML",
     )
     await callback.answer()
 
 
-@router.callback_query(lambda c: c.data == "help")
+@router.callback_query(F.data == "help")
 async def cb_help(callback: CallbackQuery) -> None:
-    """Show help text."""
+    """Show help text from branding configuration."""
+    if not isinstance(callback.message, Message):
+        return
+
     b = get_branding()
     help_text = b["bot"]["help_text"].format(support_handle=b["bot"]["support_handle"])
-    await callback.message.answer(  # type: ignore[union-attr]
+
+    from bot.keyboards import back_to_menu_keyboard
+
+    await callback.message.edit_text(
         help_text,
+        reply_markup=back_to_menu_keyboard(),
         parse_mode="HTML",
     )
     await callback.answer()

@@ -70,6 +70,7 @@ class Ad(Base):
 
     type: Mapped[AdType] = mapped_column(Enum(AdType, create_type=False), nullable=False)
     asset: Mapped[str] = mapped_column(String(10), nullable=False)  # USDT, TON, BTC
+    chain: Mapped[str] = mapped_column(String(50), nullable=True)  # ton, evm, tron, solana
     fiat: Mapped[str] = mapped_column(String(10), nullable=False)  # RUB, USD, EUR
 
     price_type: Mapped[PriceType] = mapped_column(
@@ -138,6 +139,9 @@ class ReferralReward(Base):
     )
     order_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+    )
+    deal_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("marketplace_deals.id", ondelete="SET NULL"), nullable=True
     )
 
     asset: Mapped[str] = mapped_column(String(10), nullable=False)

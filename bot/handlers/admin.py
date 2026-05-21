@@ -365,9 +365,72 @@ async def cb_admin_user_verify(callback: CallbackQuery, session: AsyncSession) -
     from db.models.user import User
 
     user = await session.get(User, user_id)
-    if user:
+    if user and isinstance(callback.message, Message):
         await callback.message.edit_text(  # type: ignore[union-attr]
             admin_user_service.format_user_info(user),
             reply_markup=admin_user_manage_keyboard(user.telegram_id, user.is_verified),
             parse_mode="HTML",
         )
+
+
+# ── Marketplace dispute resolution ────────────────────────────────────────────
+
+
+@router.callback_query(F.data.startswith("mkt:dispute:resolve:"))
+async def cb_mkt_dispute_resolve(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    bot: Bot,
+) -> None:
+    """Handle admin inline-button resolution of a marketplace dispute.
+
+    Callback data format: ``mkt:dispute:resolve:<deal_id>:<buyer|seller>``
+    """
+    if not callback.from_user or not isinstance(callback.message, Message):
+        return
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("⛔ Admins only.", show_alert=True)
+        return
+
+    parts = (callback.data or "").split(":")
+    # format: mkt:dispute:resolve:<deal_id>:<resolution>
+    # deal_id is a UUID that may contain hyphens but not colons → safe split by last token
+    resolution = parts[-1]  # "buyer" or "seller"
+    deal_id = ":".join(parts[3:-1])  # reconstruct UUID
+
+    from services import marketplace_dispute_service
+
+    try:
+        result = await marketplace_dispute_service.resolve_marketplace_dispute(
+            session,
+            bot,
+            deal_id=deal_id,
+            admin_id=callback.from_user.id,
+            resolution=resolution,  # type: ignore[arg-type]
+            comment="Resolved via admin bot panel",
+        )
+        emoji = "✅" if resolution == "seller" else "🔄"
+        await callback.message.edit_text(
+            f"{emoji} <b>Marketplace Dispute Resolved</b>\n\n"
+            f"Deal: <code>{deal_id[:8].upper()}</code>\n"
+            f"Decision: <b>"
+            f"{'Release to seller' if resolution == 'seller' else 'Refund to buyer'}"
+            f"</b>\n"
+            f"Status: <b>{result['status']}</b>",
+            reply_markup=admin_dashboard_keyboard(),
+            parse_mode="HTML",
+        )
+        log.info(
+            "mkt_dispute_resolved_via_bot",
+            deal_id=deal_id,
+            admin_id=callback.from_user.id,
+            resolution=resolution,
+            step="cb_mkt_dispute_resolve",
+        )
+    except (ValueError, RuntimeError) as exc:
+        await callback.message.edit_text(
+            format_error(str(exc)),
+            reply_markup=admin_dashboard_keyboard(),
+            parse_mode="HTML",
+        )
+    await callback.answer()

@@ -10,24 +10,47 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.wallet import UserWallet
-from providers.wallet_provider import EvmWalletProvider, TonWalletProvider, WalletProvider
+from providers.wallet_provider import (
+    EvmWalletProvider,
+    SolanaWalletProvider,
+    TonWalletProvider,
+    TronWalletProvider,
+    WalletProvider,
+)
 from utils.encryption import decrypt, encrypt
 
 log = structlog.get_logger(__name__)
 
 # Supported chain keys
-SUPPORTED_CHAINS: frozenset[str] = frozenset({"ton", "evm"})
+SUPPORTED_CHAINS: frozenset[str] = frozenset({"ton", "evm", "solana", "tron"})
+
+
+# Asset to chain mapping. Assets can exist on multiple chains.
+_ASSET_CHAINS: dict[str, list[str]] = {
+    "TON": ["ton"],
+    "USDT": ["ton", "tron", "evm", "solana"],
+    "USDC": ["evm", "solana"],
+    "ETH": ["evm"],
+    "BNB": ["evm"],
+    "MATIC": ["evm"],
+    "SOL": ["solana"],
+    "TRX": ["tron"],
+}
 
 
 def get_chain_for_asset(asset: str) -> str | None:
-    """Return 'ton' or 'evm' based on the asset ticker, or None if handled by CryptoPay."""
-    asset_upper = asset.upper()
-    if asset_upper == "TON":
-        return "ton"
-    if asset_upper in ("BNB", "ETH", "MATIC", "USDT", "USDC"):
-        # For now, we assume these are on EVM chains
-        return "evm"
-    return None
+    """Return the primary chain for *asset*, or None if handled by CryptoPay.
+
+    Note: For multi-chain assets, this returns the first one in the list.
+    Use `get_supported_chains_for_asset` for full list.
+    """
+    chains = get_supported_chains_for_asset(asset)
+    return chains[0] if chains else None
+
+
+def get_supported_chains_for_asset(asset: str) -> list[str]:
+    """Return all supported blockchain networks for the given asset ticker."""
+    return _ASSET_CHAINS.get(asset.upper(), [])
 
 
 # Lazy cache — providers are created on first access, not at import time
@@ -58,6 +81,10 @@ def _get_provider(chain: str) -> WalletProvider:
             _provider_cache[chain] = TonWalletProvider(is_testnet=settings.DEBUG)
         elif chain == "evm":
             _provider_cache[chain] = EvmWalletProvider(rpc_url=settings.EVM_RPC_URL)
+        elif chain == "solana":
+            _provider_cache[chain] = SolanaWalletProvider(rpc_url=settings.SOLANA_RPC_URL)
+        elif chain == "tron":
+            _provider_cache[chain] = TronWalletProvider(is_mainnet=not settings.DEBUG)
     return _provider_cache[chain]
 
 
@@ -278,12 +305,52 @@ async def transfer_from_order_wallet(
         return tx_hash
     except Exception as exc:
         log.error(
-            "order_transfer_failed",
+            "order_wallet_transfer_failed",
             order_id=order_id,
-            chain=chain,
-            asset=asset,
             error=str(exc),
             step="transfer_from_order_wallet",
+        )
+        raise
+
+
+async def transfer_from_deal_wallet(
+    session: AsyncSession,
+    deal_id: str,
+    chain: str,
+    to_address: str,
+    asset: str,
+    amount: Any,  # Decimal
+    memo: str | None = None,
+) -> str:
+    """Sign and broadcast a transfer from a DEAL's escrow wallet."""
+    from db.models.product import MarketplaceDeal
+
+    # Lock not needed here if caller already locked, but safe to acquire
+    stmt = select(MarketplaceDeal).where(MarketplaceDeal.id == deal_id).with_for_update()
+    result = await session.execute(stmt)
+    deal = result.scalar_one_or_none()
+
+    if not deal or not deal.escrow_wallet_private_key_enc:
+        raise ValueError(f"No escrow wallet found for deal {deal_id}")
+
+    private_key = decrypt(deal.escrow_wallet_private_key_enc)
+    provider = _get_provider(chain)
+
+    try:
+        tx_hash = await provider.transfer(
+            private_key=private_key,
+            to_address=to_address,
+            asset=asset,
+            amount=amount,
+            memo=memo,
+        )
+        return tx_hash
+    except Exception as exc:
+        log.error(
+            "deal_wallet_transfer_failed",
+            deal_id=deal_id,
+            error=str(exc),
+            step="transfer_from_deal_wallet",
         )
         raise
 
