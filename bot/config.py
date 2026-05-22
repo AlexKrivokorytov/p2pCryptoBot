@@ -68,11 +68,16 @@ class Settings:
 
     # ── Order settings ────────────────────────────────────────────────────────
     ORDER_TIMEOUT_SEC: int
+    TRADE_TIMEOUT_SEC: int
     ORDER_MIN_AMOUNT_USDT: float
     ORDER_MAX_AMOUNT_USDT: float
+    ORDERS_PER_PAGE: int
 
     # ── Web server ────────────────────────────────────────────────────────────
     WEBHOOK_PORT: int
+
+    # ── Redis (Optional) ──────────────────────────────────────────────────────
+    REDIS_URL: str
 
     # ── Web3 RPC endpoints ────────────────────────────────────────────────────
     TON_RPC_URL: str
@@ -117,9 +122,12 @@ def load_settings() -> Settings:
         AES_KEY=_require("AES_KEY"),
         ADMIN_IDS=_parse_admin_ids(_optional("ADMIN_IDS")),
         ORDER_TIMEOUT_SEC=int(_optional("ORDER_TIMEOUT_SEC", "1800")),
+        TRADE_TIMEOUT_SEC=int(_optional("TRADE_TIMEOUT_SEC", "1800")),
         ORDER_MIN_AMOUNT_USDT=float(_optional("ORDER_MIN_AMOUNT_USDT", "1.0")),
         ORDER_MAX_AMOUNT_USDT=float(_optional("ORDER_MAX_AMOUNT_USDT", "50000.0")),
-        WEBHOOK_PORT=int(_optional("WEBHOOK_PORT", "8080")),
+        ORDERS_PER_PAGE=int(_optional("ORDERS_PER_PAGE", "5")),
+        WEBHOOK_PORT=int(_optional("WEBHOOK_PORT", "8000")),
+        REDIS_URL=_optional("REDIS_URL", ""),
         TON_RPC_URL=_optional("TON_RPC_URL", "https://toncenter.com/api/v2/jsonRPC"),
         EVM_RPC_URL=_optional("EVM_RPC_URL", "https://bsc-dataseed.binance.org/"),
         SOLANA_RPC_URL=_optional("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com"),

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from aiogram import F, Router
+from typing import Any
+
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -81,12 +83,11 @@ async def cmd_profile(message: Message, session: AsyncSession) -> None:
 
 @router.callback_query(F.data == "menu:profile")
 async def cb_profile(callback: CallbackQuery, session: AsyncSession) -> None:
-    """Show the user profile via inline button."""
+    """Show the user's profile."""
     if not callback.from_user or not isinstance(callback.message, Message) or not callback.bot:
         return
 
     bot_me = await callback.bot.get_me()
-
     user = await get_or_create_user(
         session,
         telegram_id=callback.from_user.id,
@@ -97,3 +98,80 @@ async def cb_profile(callback: CallbackQuery, session: AsyncSession) -> None:
     text = await _build_profile_text(user, session, bot_me.username or "bot")
     await callback.message.edit_text(text, reply_markup=back_to_menu_keyboard(), parse_mode="HTML")
     await callback.answer()
+
+
+@router.message(Command("referral"))
+async def cmd_referral(message: Message, session: AsyncSession) -> None:
+    """Show the referral program dashboard."""
+    if not message.from_user or not message.bot:
+        return
+
+    await _show_referral_dashboard(message, session, message.bot, edit=False)
+
+
+@router.callback_query(F.data == "menu:referral")
+async def cb_referral(callback: CallbackQuery, session: AsyncSession) -> None:
+    """Show the referral program dashboard via inline button."""
+    if not callback.from_user or not isinstance(callback.message, Message) or not callback.bot:
+        return
+
+    await _show_referral_dashboard(
+        callback.message, session, callback.bot, edit=True, user=callback.from_user
+    )
+    await callback.answer()
+
+
+async def _show_referral_dashboard(
+    message: Message, session: AsyncSession, bot: Bot, edit: bool = False, user: Any = None
+) -> None:
+    bot_me = await bot.get_me()
+    target_user = user or message.from_user
+    if not target_user:
+        return
+
+    db_user = await get_or_create_user(
+        session,
+        telegram_id=target_user.id,
+        username=target_user.username,
+        first_name=target_user.first_name,
+    )
+
+    from sqlalchemy import func, select
+
+    from db.models.marketplace import ReferralReward
+    from db.models.user import User as DBUser
+
+    # Get referral count
+    count_stmt = (
+        select(func.count()).select_from(DBUser).where(DBUser.referred_by_id == target_user.id)
+    )
+    count_result = await session.execute(count_stmt)
+    referral_count = count_result.scalar_one_or_none() or 0
+
+    # Get total rewards earned
+    sum_stmt = select(func.sum(ReferralReward.amount)).where(
+        ReferralReward.referrer_id == target_user.id
+    )
+    sum_result = await session.execute(sum_stmt)
+    total_earned = sum_result.scalar_one_or_none() or 0
+
+    referral_link = f"https://t.me/{bot_me.username}?start=ref{target_user.id}"
+    balance = getattr(db_user, "referral_balance", 0)
+
+    text = (
+        f"🎁 <b>Referral Program</b>\n\n"
+        f"Invite friends and earn <b>20%</b> of their trading fees for life!\n\n"
+        f"🔗 <b>Your Link:</b>\n<code>{referral_link}</code>\n\n"
+        f"👥 <b>Total Referrals:</b> {referral_count}\n"
+        f"💰 <b>Current Balance:</b> {balance:.4f} USDT\n"
+        f"🏆 <b>Total Earned:</b> {total_earned:.4f} USDT\n\n"
+        f"<i>Your referral balance is automatically credited "
+        f"when your referrals complete trades.</i>"
+    )
+
+    from bot.keyboards import referral_dashboard_keyboard
+
+    if edit:
+        await message.edit_text(text, reply_markup=referral_dashboard_keyboard(), parse_mode="HTML")
+    else:
+        await message.answer(text, reply_markup=referral_dashboard_keyboard(), parse_mode="HTML")

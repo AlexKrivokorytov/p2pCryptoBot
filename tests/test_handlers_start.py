@@ -14,6 +14,7 @@ from db.models.user import User
 pytestmark = pytest.mark.unit
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_cmd_start_new_user(session: AsyncSession) -> None:
     """Test /start command creates a new user."""
@@ -36,6 +37,7 @@ async def test_cmd_start_new_user(session: AsyncSession) -> None:
     assert "Welcome to" in message.answer.call_args[0][0]
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_cmd_start_existing_user(session: AsyncSession) -> None:
     """Test /start command with existing user."""

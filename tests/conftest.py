@@ -21,6 +21,41 @@ from sqlalchemy.ext.asyncio import (
 
 from db.models.base import Base
 
+_DB_AVAILABLE: bool | None = None
+
+
+def _check_db_available() -> bool:
+    """Check if PostgreSQL is reachable (cached result)."""
+    global _DB_AVAILABLE  # noqa: PLW0603
+    if _DB_AVAILABLE is not None:
+        return _DB_AVAILABLE
+    import socket
+
+    uri = os.environ.get(
+        "POSTGRES_URI", "postgresql+asyncpg://p2pbot:password@localhost:5433/p2pbot"
+    )
+    # Extract host:port from URI
+    try:
+        host_part = uri.split("@")[-1].split("/")[0]
+        host, _, port_str = host_part.partition(":")
+        port = int(port_str) if port_str else 5432
+        with socket.create_connection((host, port), timeout=1):
+            _DB_AVAILABLE = True
+    except OSError:
+        _DB_AVAILABLE = False
+    return _DB_AVAILABLE
+
+
+def pytest_collection_modifyitems(items: list) -> None:  # type: ignore[type-arg]
+    """Skip integration and b2b tests when PostgreSQL is not available."""
+    db_skip = pytest.mark.skip(reason="PostgreSQL not available (ConnectionRefused)")
+    for item in items:
+        if (
+            item.get_closest_marker("integration") or item.get_closest_marker("b2b")
+        ) and not _check_db_available():
+            item.add_marker(db_skip)
+
+
 # ---------------- Mock google.generativeai to avoid metaclass issues on import ----------------
 sys.modules["google.generativeai"] = MagicMock()
 

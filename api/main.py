@@ -5,6 +5,7 @@ import json
 import os
 import time
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 from urllib.parse import parse_qsl
@@ -19,17 +20,25 @@ from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-from sqlalchemy import or_, select
-from sqlalchemy import or_, select, func
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from bot.config import settings
 from db.engine import get_session
 from db.models.chat import ChatMessage
-from db.models.product import CurrencyType, DealStatus, MarketplaceDeal, Product, PromoCode, DiscountType
 from db.models.notification import InAppNotification
-from db.models.user import UserWalletChain
+from db.models.product import (
+    CurrencyType,
+    DealStatus,
+    DiscountType,
+    MarketplaceDeal,
+    Product,
+    ProductReview,
+    PromoCode,
+)
+from db.models.user import User
+from db.models.wallet import WalletChain
 from services import marketplace_dispute_service
 from services.marketplace_ecommerce import MarketplaceEcommerceService
 from services.marketplace_notifications import (
@@ -164,7 +173,12 @@ async def _create_stars_invoice_link(
         "payload": payload,
         "provider_token": "",  # Empty = Telegram Stars
         "currency": "XTR",
-        "prices": [{"label": product.title[:32], "amount": amount if amount is not None else int(product.price)}],
+        "prices": [
+            {
+                "label": product.title[:32],
+                "amount": amount if amount is not None else int(product.price),
+            }
+        ],
     }
     async with (
         aiohttp.ClientSession() as session,
@@ -203,7 +217,6 @@ async def get_products(
     session: AsyncSession = Depends(get_session),
 ) -> list:
     """List active products with optional search, category, currency, and sort filters."""
-    from db.models.user import User
     stmt = (
         select(Product)
         .options(joinedload(Product.seller))
@@ -214,7 +227,7 @@ async def get_products(
     if q:
         stmt = stmt.where(or_(Product.title.ilike(f"%{q}%"), Product.description.ilike(f"%{q}%")))
     if category and hasattr(Product, "category"):
-        stmt = stmt.where(getattr(Product, "category") == category)
+        stmt = stmt.where(Product.category == category)
     if currency_type:
         stmt = stmt.where(Product.currency_type == currency_type)
     if sort == "price_asc":
@@ -222,11 +235,13 @@ async def get_products(
     elif sort == "price_desc":
         stmt = stmt.order_by(Product.price.desc())
     elif sort == "rating_desc":
-        from db.models.user import User
         # Calculate avg rating and sort descending, fallback to review count
         stmt = stmt.order_by(
-            (func.coalesce(User.rating_sum, 0) / func.coalesce(func.nullif(User.review_count, 0), 1)).desc(),
-            User.review_count.desc()
+            (
+                func.coalesce(User.rating_sum, 0)
+                / func.coalesce(func.nullif(User.review_count, 0), 1)
+            ).desc(),
+            User.review_count.desc(),
         )
     else:
         order_col = (
@@ -335,7 +350,9 @@ async def create_product(
 
     user = await session.get(User, current_user["user_id"])
     if user and user.is_shadowbanned:
-        raise HTTPException(status_code=403, detail="Your account is restricted due to frequent disputes.")
+        raise HTTPException(
+            status_code=403, detail="Your account is restricted due to frequent disputes."
+        )
 
     # Security: Sanitize inputs (XSS prevention)
     clean_title = bleach.clean(body.title, tags=[], strip=True)
@@ -528,6 +545,7 @@ async def get_seller_products(
 class CreateInvoiceRequest(BaseModel):
     promo_code: str | None = None
 
+
 @app.post("/api/products/{product_id}/invoice")
 async def create_stars_invoice(
     product_id: str,
@@ -557,7 +575,9 @@ async def create_stars_invoice(
 
     user = await session.get(User, current_user["user_id"])
     if user and user.is_shadowbanned:
-        raise HTTPException(status_code=403, detail="Your account is restricted due to frequent disputes.")
+        raise HTTPException(
+            status_code=403, detail="Your account is restricted due to frequent disputes."
+        )
 
     if current_user["user_id"] == product.seller_id:
         raise HTTPException(status_code=400, detail="Cannot buy your own product")
@@ -566,14 +586,15 @@ async def create_stars_invoice(
 
     final_amount = product.price
     if body and body.promo_code:
-        from sqlalchemy.sql import func
-        from db.models.product import PromoCode, DiscountType
-        
-        stmt_promo = select(PromoCode).where(
-            func.lower(PromoCode.code) == body.promo_code.lower(),
-            PromoCode.seller_id == product.seller_id
-        ).with_for_update()
-        
+        stmt_promo = (
+            select(PromoCode)
+            .where(
+                func.lower(PromoCode.code) == body.promo_code.lower(),
+                PromoCode.seller_id == product.seller_id,
+            )
+            .with_for_update()
+        )
+
         promo = (await session.execute(stmt_promo)).scalar_one_or_none()
         if not promo:
             raise HTTPException(status_code=400, detail="Invalid promo code")
@@ -581,22 +602,22 @@ async def create_stars_invoice(
             raise HTTPException(status_code=400, detail="Promo code has expired")
         if promo.max_uses and promo.current_uses >= promo.max_uses:
             raise HTTPException(status_code=400, detail="Promo code usage limit reached")
-            
+
         if promo.discount_type == DiscountType.percentage:
             final_amount = final_amount - (final_amount * promo.discount_value) / 100
         else:
             final_amount = final_amount - promo.discount_value
-            
+
         if final_amount < 0:
             final_amount = Decimal("0.00")
-            
+
         promo.current_uses += 1
         await session.commit()
-    
+
     # We pass the promo code in payload to confirm it later
     promo_str = f":{body.promo_code}" if body and body.promo_code else ""
     payload = f"{product_id}:{current_user['user_id']}{promo_str}"
-    
+
     try:
         invoice_url = await _create_stars_invoice_link(product, payload, int(final_amount))
     except RuntimeError as exc:
@@ -611,13 +632,16 @@ async def get_notifications(
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
     """Get in-app notifications for the user."""
-    stmt = select(InAppNotification).where(
-        InAppNotification.user_id == current_user["user_id"]
-    ).order_by(InAppNotification.created_at.desc()).limit(50)
-    
+    stmt = (
+        select(InAppNotification)
+        .where(InAppNotification.user_id == current_user["user_id"])
+        .order_by(InAppNotification.created_at.desc())
+        .limit(50)
+    )
+
     result = await session.execute(stmt)
     notifications = result.scalars().all()
-    
+
     return [
         {
             "id": str(n.id),
@@ -642,13 +666,13 @@ async def mark_notification_read(
         select(InAppNotification).where(InAppNotification.id == notif_id)
     )
     notif = result.scalar_one_or_none()
-    
+
     if not notif or notif.user_id != current_user["user_id"]:
         raise HTTPException(status_code=404, detail="Notification not found")
-        
+
     notif.is_read = True
     await session.commit()
-    
+
     return {"status": "ok"}
 
 
@@ -659,23 +683,21 @@ async def get_seller_analytics(
 ) -> dict:
     """Get basic analytics for the logged-in seller."""
     seller_id = current_user["user_id"]
-    
+
     # 1. Total successful deals (completed)
     deals_stmt = select(MarketplaceDeal).where(
-        MarketplaceDeal.seller_id == seller_id,
-        MarketplaceDeal.status == DealStatus.completed
+        MarketplaceDeal.seller_id == seller_id, MarketplaceDeal.status == DealStatus.completed
     )
     deals_result = await session.execute(deals_stmt)
     deals = deals_result.scalars().all()
-    
+
     total_xtr = sum(d.amount for d in deals if d.currency_type == "XTR")
     total_fiat = sum(d.amount for d in deals if d.currency_type == "FIAT")
     total_crypto = sum(d.amount for d in deals if d.currency_type == "CRYPTO")
-    
+
     # 2. Active products
     products_stmt = select(func.count(Product.id)).where(
-        Product.seller_id == seller_id,
-        Product.is_active.is_(True)
+        Product.seller_id == seller_id, Product.is_active.is_(True)
     )
     active_count = (await session.execute(products_stmt)).scalar() or 0
 
@@ -697,7 +719,7 @@ async def create_product_boost_invoice(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Create a Telegram Stars invoice link to boost a product.
-    
+
     Costs 50 XTR for 24 hours of promotion.
     """
     result = await session.execute(select(Product).where(Product.id == product_id))
@@ -713,9 +735,15 @@ async def create_product_boost_invoice(
     price_xtr = 50
 
     try:
-        invoice_url = await _create_stars_invoice_link(product, payload, price_xtr, title=f"Boost {product.title}", description="Boost your product for 24 hours in the catalog.")
+        invoice_url = await _create_stars_invoice_link(
+            product,
+            payload,
+            price_xtr,
+            title=f"Boost {product.title}",
+            description="Boost your product for 24 hours in the catalog.",
+        )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return {"invoice_url": invoice_url}
 
@@ -727,10 +755,12 @@ async def confirm_product_boost(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Mock endpoint to confirm a boost payment was successful.
-    
+
     In production, this is done automatically via Telegram Webhook (successful_payment).
     """
-    result = await session.execute(select(Product).where(Product.id == product_id).with_for_update())
+    result = await session.execute(
+        select(Product).where(Product.id == product_id).with_for_update()
+    )
     product = result.scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -740,9 +770,9 @@ async def confirm_product_boost(
 
     product.is_promoted = True
     product.promoted_until = func.now() + timedelta(hours=24)
-    
+
     await session.commit()
-    
+
     return {"status": "ok", "message": "Product boosted successfully"}
 
 
@@ -820,7 +850,9 @@ async def create_deal(
 ) -> dict[str, Any]:
     user = await session.get(User, current_user["user_id"])
     if user and user.is_shadowbanned:
-        raise HTTPException(status_code=403, detail="Your account is restricted due to frequent disputes.")
+        raise HTTPException(
+            status_code=403, detail="Your account is restricted due to frequent disputes."
+        )
 
     try:
         deal = await MarketplaceEcommerceService.create_deal(
@@ -879,7 +911,9 @@ async def get_my_deals(
             "role": "buyer" if deal.buyer_id == uid else "seller",
             "created_at": deal.created_at.isoformat() if deal.created_at else None,
             "dispute_reason": deal.dispute_reason,
-            "dispute_opened_at": deal.dispute_opened_at.isoformat() if deal.dispute_opened_at else None,
+            "dispute_opened_at": deal.dispute_opened_at.isoformat()
+            if deal.dispute_opened_at
+            else None,
             "dispute_resolution": deal.dispute_resolution,
         }
         for deal, product in result.all()
@@ -1006,8 +1040,6 @@ async def create_deal_review(
         raise HTTPException(status_code=400, detail="Can only review completed/paid deals")
 
     # Check if review already exists
-    from db.models.user import User
-
     rev_result = await session.execute(
         select(ProductReview).where(ProductReview.deal_id == deal.id)
     )
@@ -1264,8 +1296,11 @@ async def open_dispute(
         raise HTTPException(status_code=400, detail="Reason must be 1–800 characters")
 
     try:
+        from services.marketplace_notifications import get_bot
+
         result = await marketplace_dispute_service.open_marketplace_dispute(
             session,
+            get_bot(),
             deal_id=str(deal_id),
             initiator_id=current_user["user_id"],
             reason=reason,
@@ -1328,6 +1363,7 @@ async def unban_user(
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from db.models.user import User
+
     user = await session.get(User, target_user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1386,22 +1422,22 @@ async def get_referral_stats(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Get referral statistics for the current user."""
-    from db.models.user import User
-    from sqlalchemy import select, func
-
     stmt = select(User).where(User.telegram_id == current_user["user_id"])
     user = (await session.execute(stmt)).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    stmt_count = select(func.count(User.telegram_id)).where(User.referred_by_id == current_user["user_id"])
+    stmt_count = select(func.count(User.telegram_id)).where(
+        User.referred_by_id == current_user["user_id"]
+    )
     referred_count = (await session.execute(stmt_count)).scalar_one() or 0
 
     return {
         "referral_balance": float(user.referral_balance),
         "referred_users": referred_count,
-        "referral_link": f"https://t.me/{settings.MASTER_BOT_USERNAME}?start=ref_{current_user['user_id']}"
+        "referral_link": f"https://t.me/{settings.MASTER_BOT_USERNAME}?start=ref_{current_user['user_id']}",
     }
+
 
 # ── Promo Codes ────────────────────────────────────────────────────────
 class CreatePromoCodeRequest(BaseModel):
@@ -1410,21 +1446,20 @@ class CreatePromoCodeRequest(BaseModel):
     discount_value: float
     max_uses: int | None = None
 
+
 @app.post("/api/promo-codes")
 async def create_promo_code(
     body: CreatePromoCodeRequest,
     current_user: dict[str, Any] = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    from db.models.product import PromoCode, DiscountType
-    
     if body.discount_type not in ["percentage", "fixed"]:
         raise HTTPException(status_code=400, detail="Invalid discount type")
-        
+
     code_val = body.code.strip().upper()
     if len(code_val) < 3:
         raise HTTPException(status_code=400, detail="Code must be at least 3 characters")
-        
+
     promo = PromoCode(
         seller_id=current_user["user_id"],
         code=code_val,
@@ -1434,17 +1469,19 @@ async def create_promo_code(
     )
     session.add(promo)
     await session.commit()
-    
+
     return {
         "id": promo.id,
         "code": promo.code,
         "discount_type": promo.discount_type,
-        "discount_value": float(promo.discount_value)
+        "discount_value": float(promo.discount_value),
     }
+
 
 class ValidatePromoCodeRequest(BaseModel):
     code: str
     product_id: str
+
 
 @app.post("/api/promo-codes/validate")
 async def validate_promo_code(
@@ -1452,45 +1489,41 @@ async def validate_promo_code(
     current_user: dict[str, Any] = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    from db.models.product import PromoCode, DiscountType, Product
-    from sqlalchemy.sql import func
-    
     # Get product to get seller
     stmt_prod = select(Product).where(Product.id == body.product_id)
     product = (await session.execute(stmt_prod)).scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-        
+
     stmt = select(PromoCode).where(
         func.lower(PromoCode.code) == body.code.strip().lower(),
-        PromoCode.seller_id == product.seller_id
+        PromoCode.seller_id == product.seller_id,
     )
     promo = (await session.execute(stmt)).scalar_one_or_none()
     if not promo:
         raise HTTPException(status_code=404, detail="Invalid promo code")
-        
+
     if promo.expires_at and promo.expires_at < func.now():
         raise HTTPException(status_code=400, detail="Promo code has expired")
     if promo.max_uses and promo.current_uses >= promo.max_uses:
         raise HTTPException(status_code=400, detail="Promo code usage limit reached")
-        
+
     return {
         "valid": True,
         "discount_type": promo.discount_type,
-        "discount_value": float(promo.discount_value)
+        "discount_value": float(promo.discount_value),
     }
+
 
 @app.get("/api/promo-codes")
 async def get_my_promo_codes(
     current_user: dict[str, Any] = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    from db.models.product import PromoCode
-    
     stmt = select(PromoCode).where(PromoCode.seller_id == current_user["user_id"])
     result = await session.execute(stmt)
     codes = result.scalars().all()
-    
+
     return [
         {
             "id": p.id,

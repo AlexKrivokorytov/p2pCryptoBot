@@ -13,7 +13,7 @@ from db.models.wallet import UserWallet, WalletChain
 from services import wallet_service
 from utils.encryption import encrypt
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.integration, pytest.mark.unit]
 
 
 @pytest.mark.asyncio

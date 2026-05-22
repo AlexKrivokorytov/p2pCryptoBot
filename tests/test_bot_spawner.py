@@ -24,7 +24,10 @@ async def test_dynamic_loader_add_remove():
     license_id = str(uuid.uuid4())
     token = "12345:ABCDE"
 
-    with patch("bot.dynamic_loader.Bot", spec=Bot) as mock_bot_class:
+    with (
+        patch("bot.dynamic_loader.Bot", spec=Bot) as mock_bot_class,
+        patch("bot.dynamic_loader.BotInstance.start", new_callable=AsyncMock),
+    ):
         mock_bot = mock_bot_class.return_value
         mock_bot.id = 123
 

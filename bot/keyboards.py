@@ -38,12 +38,22 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(
             text=f"{ui.get('wallet_emoji', '💼')} Wallets", callback_data="menu:wallet"
         ),
-        InlineKeyboardButton(text="⚙️ Settings", callback_data="settings"),
+        InlineKeyboardButton(text="🔗 Referral", callback_data="menu:referral"),
     )
     builder.row(
+        InlineKeyboardButton(text="⚙️ Settings", callback_data="settings"),
         InlineKeyboardButton(text="❓ Help", callback_data="help"),
+    )
+    builder.row(
         InlineKeyboardButton(text="💎 B2B SaaS", callback_data="b2b:menu"),
     )
+    return builder.as_markup()
+
+
+def referral_dashboard_keyboard() -> InlineKeyboardMarkup:
+    """Return keyboard for the referral dashboard."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🏠 Back to menu", callback_data="menu:main"))
     return builder.as_markup()
 
 

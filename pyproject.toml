@@ -11,7 +11,7 @@ dependencies = [
     # Telegram bot framework
     "aiogram>=3.27,<4",
     # Database — async runtime
-    "sqlalchemy[asyncio]>=2.0",
+    "sqlalchemy[asyncio]>=2.0.41",  # >=2.0.41 required for Python 3.14 compatibility
     "asyncpg>=0.29",
     # Database — Alembic sync migrations (psycopg 3, NOT asyncpg)
     "alembic>=1.13",
@@ -40,6 +40,7 @@ dependencies = [
     "aiogram-i18n>=1.5",
     "solana==0.28.1",
     "tronpy==0.5.0",
+    "redis[asyncio]>=5.0.0",
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.0",
     "bleach>=6.1.0",

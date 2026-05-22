@@ -1,10 +1,9 @@
-import asyncio
-import logging
 from decimal import Decimal
 
 import aiohttp
+import structlog
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 class FiatRateProvider:
@@ -34,10 +33,10 @@ class FiatRateProvider:
             return Decimal("1.0")
 
         url = f"{self.BASE_URL}/{self._api_key}/latest/USD"
-        
+
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.get(url, timeout=5) as response:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=5.0)) as response:
                     if response.status != 200:
                         body = await response.text()
                         log.error(
@@ -47,12 +46,12 @@ class FiatRateProvider:
                             step="get_rate_to_usdt",
                         )
                         raise RuntimeError(f"Rate fetch failed with status {response.status}")
-                    
+
                     data = await response.json()
                     rates = data.get("conversion_rates", {})
                     if fiat_currency not in rates:
                         raise RuntimeError(f"Currency {fiat_currency} not found in rates")
-                    
+
                     return Decimal(str(rates[fiat_currency]))
             except Exception as e:
                 log.error("fiat_rate_fetch_error", error=str(e), step="get_rate_to_usdt")

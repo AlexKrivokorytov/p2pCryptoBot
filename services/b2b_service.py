@@ -115,6 +115,9 @@ async def create_ton_invoice(
 ) -> dict[str, Any]:
     """Create a new TON invoice for a B2B license.
 
+    Uses a unique 16-char hex memo derived from UUID for TON transaction matching.
+    Length chosen to balance collision resistance with TON comment size limits.
+
     Args:
         session: DB session.
         user_id: Telegram user ID.
@@ -123,17 +126,19 @@ async def create_ton_invoice(
     Returns:
         Dict of invoice details.
     """
-    memo = str(uuid.uuid4()).replace("-", "")[:12].upper()
+    # Use 16 hex chars (8 bytes = 64 bits of entropy) for better collision resistance
+    # than the original 12-char version while staying within TON comment limits.
+    memo = uuid.uuid4().hex[:16].upper()
 
-    invoice = TONInvoice(
-        owner_id=user_id,
-        amount_ton=amount_ton,
-        status="pending",
-        memo=memo,
-    )
-
-    session.add(invoice)
-    await session.commit()
+    async with session.begin():
+        invoice = TONInvoice(
+            owner_id=user_id,
+            amount_ton=amount_ton,
+            status="pending",
+            memo=memo,
+        )
+        session.add(invoice)
+        await session.flush()
 
     log.info("ton_invoice_created", user_id=user_id, memo=memo, amount=amount_ton)
 
@@ -183,14 +188,15 @@ async def process_ton_payment(
         )
         return False
 
-    # 3. Mark invoice as paid
+    # 3. Mark invoice as paid (timezone-aware UTC timestamp)
     invoice.status = "paid"
     invoice.tx_hash = tx_hash
-    invoice.paid_at = datetime.fromtimestamp(utime)
+    invoice.paid_at = datetime.fromtimestamp(utime, tz=UTC)
 
-    # 4. Activate/Renew license
-    # We use a unique charge_id for TON to prevent double activation
-    # Charge ID for TON is "TON:{tx_hash}"
+    # 4. Activate/Renew license via SAVEPOINT to avoid nested begin() conflict.
+    # process_ton_payment is called without an active transaction by ton_scanner,
+    # so create_b2b_license opens its own begin() context — this is safe here.
+    # The charge_id for TON uses the tx_hash to ensure idempotency.
     charge_id = f"TON:{tx_hash}"
 
     await create_b2b_license(
@@ -266,9 +272,9 @@ async def update_license_branding(
     # Validate
     BrandingSchema.from_dict(new_branding)
 
-    # 4. Save
+    # 4. Save — use flush() since we are inside begin() from the lock above
     license_obj.branding = new_branding
-    await session.commit()
+    await session.flush()
 
     log.info(
         "b2b_branding_updated",

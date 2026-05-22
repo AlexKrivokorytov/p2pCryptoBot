@@ -99,16 +99,21 @@ class MarketplaceEcommerceService:
 
         final_amount = product.price
         promo_id = None
-        
+
         if promo_code_str:
             from sqlalchemy.sql import func
-            from db.models.product import PromoCode, DiscountType
-            
-            stmt_promo = select(PromoCode).where(
-                func.lower(PromoCode.code) == promo_code_str.lower(),
-                PromoCode.seller_id == product.seller_id
-            ).with_for_update()
-            
+
+            from db.models.product import DiscountType, PromoCode
+
+            stmt_promo = (
+                select(PromoCode)
+                .where(
+                    func.lower(PromoCode.code) == promo_code_str.lower(),
+                    PromoCode.seller_id == product.seller_id,
+                )
+                .with_for_update()
+            )
+
             promo = (await session.execute(stmt_promo)).scalar_one_or_none()
             if not promo:
                 raise ValueError("Invalid promo code")
@@ -116,17 +121,17 @@ class MarketplaceEcommerceService:
                 raise ValueError("Promo code has expired")
             if promo.max_uses and promo.current_uses >= promo.max_uses:
                 raise ValueError("Promo code usage limit reached")
-                
+
             # Apply discount
             if promo.discount_type == DiscountType.percentage:
                 discount_amount = (final_amount * promo.discount_value) / 100
                 final_amount = final_amount - discount_amount
             else:
                 final_amount = final_amount - promo.discount_value
-                
+
             if final_amount < 0:
                 final_amount = Decimal("0.00")
-                
+
             promo.current_uses += 1
             promo_id = promo.id
 
@@ -222,8 +227,10 @@ class MarketplaceEcommerceService:
 
         # Trigger on-chain release in background worker
         if deal.currency_type in (CurrencyType.CRYPTO, CurrencyType.XTR):
-            from tasks.payout_worker import process_payout_to_seller
             import asyncio
+
+            from tasks.payout_worker import process_payout_to_seller
+
             asyncio.create_task(process_payout_to_seller(deal.id))
 
         log.info(

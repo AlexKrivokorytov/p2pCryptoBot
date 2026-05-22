@@ -17,6 +17,7 @@ pytestmark = pytest.mark.unit
 _MOCK_REPUTATION = {"total_reviews": 5, "positive_reviews": 4, "completion_rate": 80}
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_user_service_increment_stats(engine) -> None:
     """Test incrementing user trade statistics."""
@@ -46,10 +47,9 @@ async def test_user_service_increment_stats(engine) -> None:
     new_callable=AsyncMock,
     return_value=_MOCK_REPUTATION,
 )
-async def test_cmd_profile(
-    mock_reputation: AsyncMock, mock_get_profile: AsyncMock, session: AsyncSession
-) -> None:
+async def test_cmd_profile(mock_reputation: AsyncMock, mock_get_profile: AsyncMock) -> None:
     """Test the profile command shows statistics."""
+    session = AsyncMock(spec=AsyncSession)
     user = User(telegram_id=999, is_verified=True, total_trades=10, successful_trades=8)
     mock_get_profile.return_value = user
 
@@ -79,10 +79,9 @@ async def test_cmd_profile(
     new_callable=AsyncMock,
     return_value=_MOCK_REPUTATION,
 )
-async def test_cb_profile(
-    mock_reputation: AsyncMock, mock_get_profile: AsyncMock, session: AsyncSession
-) -> None:
+async def test_cb_profile(mock_reputation: AsyncMock, mock_get_profile: AsyncMock) -> None:
     """Test the profile callback shows statistics."""
+    session = AsyncMock(spec=AsyncSession)
     user = User(telegram_id=999, is_verified=False, total_trades=0, successful_trades=0)
     mock_get_profile.return_value = user
 

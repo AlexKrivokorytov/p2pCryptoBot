@@ -45,6 +45,7 @@ async def _create_test_order(
         return order
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_chat_service_save_and_fetch(engine) -> None:
     """Test saving and retrieving messages."""
@@ -65,6 +66,7 @@ async def test_chat_service_save_and_fetch(engine) -> None:
         assert history[1].message_text == "Hi maker"
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_get_other_participant_id(engine) -> None:
     """Test resolving the other participant's ID."""
@@ -95,6 +97,7 @@ async def test_cb_chat_enter() -> None:
     assert "Trade Chat" in callback.message.edit_text.call_args[0][0]
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_msg_chat_forward(engine) -> None:
     """Test forwarding a message in chat."""

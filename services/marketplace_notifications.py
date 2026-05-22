@@ -17,15 +17,19 @@ Integration pattern in api/main.py::
 from __future__ import annotations
 
 import asyncio
+from typing import TYPE_CHECKING
 
 import structlog
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot.config import settings, get_settings
+from bot.config import get_settings
 from db.engine import async_session_factory
 from db.models.notification import InAppNotification
+
+if TYPE_CHECKING:
+    from db.models.product import MarketplaceDeal
 
 log = structlog.get_logger(__name__)
 settings = get_settings()
@@ -45,7 +49,9 @@ async def _save_inapp_notification(user_id: int, type_: str, title: str, message
             session.add(notif)
             await session.commit()
     except Exception as exc:
-        log.warning("failed_to_save_inapp_notification", user_id=user_id, type=type_, error=str(exc))
+        log.warning(
+            "failed_to_save_inapp_notification", user_id=user_id, type=type_, error=str(exc)
+        )
 
 
 # ── Bot factory ───────────────────────────────────────────────────────────────
@@ -72,7 +78,12 @@ def get_bot() -> Bot:
 
 
 async def _safe_send(
-    bot: Bot, user_id: int, text: str, *, event: str, reply_markup: InlineKeyboardMarkup | None = None
+    bot: Bot,
+    user_id: int,
+    text: str,
+    *,
+    event: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
 ) -> bool:
     """Send a Telegram message, logging failures without raising.
 
@@ -152,7 +163,9 @@ async def notify_deal_created(
         message=f"Someone purchased {product_title} for {amount} {currency}.",
     )
 
-    return await _safe_send(bot, seller_id, text, event="notify_deal_created", reply_markup=_deal_keyboard(deal_id))
+    return await _safe_send(
+        bot, seller_id, text, event="notify_deal_created", reply_markup=_deal_keyboard(deal_id)
+    )
 
 
 async def notify_deal_paid(
@@ -189,7 +202,9 @@ async def notify_deal_paid(
         message=f"The buyer has confirmed payment for Deal {deal_id}. Please verify receipt.",
     )
 
-    return await _safe_send(bot, seller_id, text, event="notify_deal_paid", reply_markup=_deal_keyboard(deal_id))
+    return await _safe_send(
+        bot, seller_id, text, event="notify_deal_paid", reply_markup=_deal_keyboard(deal_id)
+    )
 
 
 async def notify_deal_delivered(
@@ -222,7 +237,9 @@ async def notify_deal_delivered(
         message=f"The seller has released the goods/escrow for Deal {deal_id}.",
     )
 
-    return await _safe_send(bot, buyer_id, text, event="notify_deal_delivered", reply_markup=_deal_keyboard(deal_id))
+    return await _safe_send(
+        bot, buyer_id, text, event="notify_deal_delivered", reply_markup=_deal_keyboard(deal_id)
+    )
 
 
 async def notify_deal_completed(
@@ -248,7 +265,9 @@ async def notify_deal_completed(
         f"Deal: {_deal_link(deal_id)}\n\n"
         f"Funds have been released! ⭐"
     )
-    return await _safe_send(bot, seller_id, text, event="notify_deal_completed", reply_markup=_deal_keyboard(deal_id))
+    return await _safe_send(
+        bot, seller_id, text, event="notify_deal_completed", reply_markup=_deal_keyboard(deal_id)
+    )
 
 
 async def notify_stars_purchase(
@@ -281,7 +300,9 @@ async def notify_stars_purchase(
         f"Received: <code>{int(stars)} Stars</code>\n\n"
         f"💰 Payment is instant — no escrow needed."
     )
-    return await _safe_send(bot, seller_id, text, event="notify_stars_purchase", reply_markup=_deal_keyboard(deal_id))
+    return await _safe_send(
+        bot, seller_id, text, event="notify_stars_purchase", reply_markup=_deal_keyboard(deal_id)
+    )
 
 
 async def notify_deal_cancelled(
@@ -369,8 +390,6 @@ async def notify_dispute_opened(
         f"An admin will review the case and make a decision. "
         f"Please do not send any additional payments."
     )
-    import asyncio
-
     results = await asyncio.gather(
         _safe_send(bot, buyer_id, text, event="notify_dispute_opened_buyer"),
         _safe_send(bot, seller_id, text, event="notify_dispute_opened_seller"),
@@ -488,7 +507,7 @@ async def notify_dispute_resolved(
             log.error("notify_dispute_resolved_error", deal_id=deal_id, error=str(r))
 
 
-async def notify_seller_payout_sent(bot: Bot, deal: "MarketplaceDeal") -> bool:
+async def notify_seller_payout_sent(bot: Bot, deal: MarketplaceDeal) -> bool:
     """Notify the seller that a payout was successfully sent on-chain.
 
     Args:
@@ -502,7 +521,8 @@ async def notify_seller_payout_sent(bot: Bot, deal: "MarketplaceDeal") -> bool:
     short_tx = deal.tx_hash_release[:8] + "..." if deal.tx_hash_release else "unknown"
     text = (
         f"🏁 <b>Deal Completed!</b>\n\n"
-        f"Deal <code>{deal_id}</code> has been successfully completed.\n\n"
+        f"Deal <code>{deal_id}</code> has been successfully completed.\n"
+        f"TX: <code>{short_tx}</code>\n\n"
         f"Funds are released. Thank you for using the marketplace!"
     )
 

@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models.user import User
 from services.referral_service import ReferralService
 
+pytestmark = [pytest.mark.integration, pytest.mark.unit]
+
 
 @pytest.mark.asyncio
 async def test_process_referral_reward_no_referrer(session: AsyncSession) -> None:
@@ -19,8 +21,8 @@ async def test_process_referral_reward_no_referrer(session: AsyncSession) -> Non
     await session.commit()
 
     reward = await ReferralService.process_referral_reward(
-        session=session,
         order_id=uuid.uuid4(),
+        deal_id=None,
         referred_user_id=123,
         asset="USDT",
         total_fee=10.0,
@@ -32,8 +34,8 @@ async def test_process_referral_reward_no_referrer(session: AsyncSession) -> Non
 async def test_process_referral_reward_zero_fee(session: AsyncSession) -> None:
     """Should return None if fee is zero or negative."""
     reward = await ReferralService.process_referral_reward(
-        session=session,
         order_id=uuid.uuid4(),
+        deal_id=None,
         referred_user_id=123,
         asset="USDT",
         total_fee=0.0,
@@ -67,8 +69,8 @@ async def test_process_referral_reward_success(session: AsyncSession) -> None:
     await session.commit()
 
     reward = await ReferralService.process_referral_reward(
-        session=session,
         order_id=order_id,
+        deal_id=None,
         referred_user_id=123,
         asset="USDT",
         total_fee=100.0,
@@ -86,8 +88,8 @@ async def test_process_referral_reward_success(session: AsyncSession) -> None:
 async def test_process_referral_reward_low_amount(session: AsyncSession) -> None:
     """Should return None if calculated reward is <= 0."""
     reward = await ReferralService.process_referral_reward(
-        session=session,
         order_id=uuid.uuid4(),
+        deal_id=None,
         referred_user_id=123,
         asset="USDT",
         total_fee=0.00000001,

@@ -6,6 +6,8 @@ os.environ access — avoids Bandit B105 and keeps DB config in one place.
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
+
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -44,7 +46,7 @@ def _build_engine() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
 engine, async_session_factory = _build_engine()
 
 
-async def get_session() -> AsyncSession:
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency that yields a database session per request."""
     async with async_session_factory() as session:
         yield session

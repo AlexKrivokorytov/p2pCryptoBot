@@ -91,6 +91,15 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface PromoCode {
+  id: string;
+  code: string;
+  discount_type: "percentage" | "fixed";
+  discount_value: number;
+  max_uses?: number;
+  current_uses: number;
+}
+
 // ─── API Methods ─────────────────────────────────────────────────────────────
 
 export const marketplaceApi = {
@@ -159,9 +168,7 @@ export const marketplaceApi = {
     return res.data;
   },
 
-  deleteProduct: async (id: string) => {
-    await apiClient.delete(`/api/products/${id}`);
-  },
+
 
   getMyProducts: async () => {
     const res = await apiClient.get<Product[]>("/api/seller/products");

@@ -16,7 +16,15 @@ from db.models.marketplace import (
 )
 from db.models.notification import InAppNotification
 from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
-from db.models.product import CurrencyType, DealStatus, MarketplaceDeal, Product, PromoCode, DiscountType
+from db.models.product import (
+    CurrencyType,
+    DealStatus,
+    DiscountType,
+    MarketplaceDeal,
+    Product,
+    ProductReview,
+    PromoCode,
+)
 from db.models.user import User
 from db.models.wallet import UserWallet, WalletChain
 
@@ -41,8 +49,10 @@ __all__ = [
     "B2BLicense",
     "TONInvoice",
     "AdminAuditLog",
+    "InAppNotification",
     "Product",
     "MarketplaceDeal",
+    "ProductReview",
     "CurrencyType",
     "DealStatus",
     "PromoCode",

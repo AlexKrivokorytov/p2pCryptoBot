@@ -366,7 +366,7 @@ async def cb_admin_user_verify(callback: CallbackQuery, session: AsyncSession) -
 
     user = await session.get(User, user_id)
     if user and isinstance(callback.message, Message):
-        await callback.message.edit_text(  # type: ignore[union-attr]
+        await callback.message.edit_text(
             admin_user_service.format_user_info(user),
             reply_markup=admin_user_manage_keyboard(user.telegram_id, user.is_verified),
             parse_mode="HTML",

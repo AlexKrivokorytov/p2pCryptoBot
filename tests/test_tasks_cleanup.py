@@ -45,6 +45,7 @@ async def _create_order(session: AsyncSession, status: OrderStatus, offset_secon
     return order
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_expire_pending_orders(engine) -> None:
     """Old pending_funding orders should be cancelled, others left alone."""
@@ -85,6 +86,7 @@ async def test_expire_pending_orders(engine) -> None:
         await session.commit()
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_start_cleanup_task_cancels_cleanly(engine) -> None:
     """start_cleanup_task stops gracefully on CancelledError."""
@@ -106,6 +108,7 @@ async def test_start_cleanup_task_cancels_cleanly(engine) -> None:
         await task
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_start_cleanup_task_handles_exception(engine) -> None:
     """start_cleanup_task logs errors but keeps running on unexpected exceptions."""

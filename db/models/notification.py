@@ -1,10 +1,20 @@
+"""In-app notification model."""
+
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from sqlalchemy.dialects.postgresql import UUID
+
 from .base import Base
+
+if TYPE_CHECKING:
+    from db.models.user import User
 
 
 class InAppNotification(Base):
@@ -16,9 +26,11 @@ class InAppNotification(Base):
     user_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE"), nullable=False, index=True
     )
-    user: Mapped["User"] = relationship("User", back_populates="notifications")
+    user: Mapped[User] = relationship("User", back_populates="notifications")
 
-    type: Mapped[str] = mapped_column(String(50), nullable=False) # 'deal_created', 'deal_paid', 'dispute_opened'
+    type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # 'deal_created', 'deal_paid', 'dispute_opened'
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

@@ -49,6 +49,12 @@ class ThrottlingMiddleware(BaseMiddleware):
                 return
             self.cache[user_id] = now
 
+            # TTL cleanup to prevent unbounded growth
+            if len(self.cache) > 5000:
+                # Keep only hits within the last 10 seconds
+                cutoff = now - max(10.0, self.rate_limit * 5)
+                self.cache = {k: v for k, v in self.cache.items() if v >= cutoff}
+
         return await handler(event, data)
 
 

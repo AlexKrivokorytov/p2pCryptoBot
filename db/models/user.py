@@ -1,19 +1,27 @@
 """User ORM model — Telegram user with KYC and daily volume tracking."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, DateTime, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.models.base import Base
 
+if TYPE_CHECKING:
+    from db.models.notification import InAppNotification
+
 
 class User(Base):
     """Telegram user registered in the P2P bot."""
 
     # New relationship
-    notifications: Mapped[list["InAppNotification"]] = relationship("InAppNotification", back_populates="user")
+    notifications: Mapped[list[InAppNotification]] = relationship(
+        "InAppNotification", back_populates="user"
+    )
 
     __tablename__ = "users"
 
@@ -31,7 +39,10 @@ class User(Base):
     )
     referred_by_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
     referral_balance: Mapped[Decimal] = mapped_column(
-        Numeric(precision=18, scale=2), default=Decimal("0.00"), server_default="0.00", nullable=False
+        Numeric(precision=18, scale=2),
+        default=Decimal("0.00"),
+        server_default="0.00",
+        nullable=False,
     )
 
     default_fiat: Mapped[str] = mapped_column(
@@ -43,10 +54,18 @@ class User(Base):
 
     # KYC / verification
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    is_verified_seller: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
-    is_shadowbanned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
-    dispute_count_buyer: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0", nullable=False)
-    dispute_count_seller: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0", nullable=False)
+    is_verified_seller: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    is_shadowbanned: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    dispute_count_buyer: Mapped[int] = mapped_column(
+        BigInteger, default=0, server_default="0", nullable=False
+    )
+    dispute_count_seller: Mapped[int] = mapped_column(
+        BigInteger, default=0, server_default="0", nullable=False
+    )
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Trade Statistics

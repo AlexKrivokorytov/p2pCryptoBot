@@ -14,7 +14,7 @@ from bot.handlers.webhook import cryptopay_webhook
 from db.models.order import Order, OrderStatus, OrderType
 from db.models.user import User
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.integration, pytest.mark.unit]
 
 
 async def _create_order(session: AsyncSession, payload_uuid: str) -> Order:

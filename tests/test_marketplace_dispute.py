@@ -87,6 +87,7 @@ class TestOpenDisputeValidation:
         with pytest.raises(ValueError, match="Dispute is only allowed after payment"):
             await marketplace_dispute_service.open_marketplace_dispute(
                 session,
+                MagicMock(),
                 deal_id=str(deal.id),
                 initiator_id=deal.buyer_id,
                 reason="Item not received",
@@ -111,6 +112,7 @@ class TestOpenDisputeValidation:
         with pytest.raises(ValueError, match="Only the buyer or seller"):
             await marketplace_dispute_service.open_marketplace_dispute(
                 session,
+                MagicMock(),
                 deal_id=str(deal.id),
                 initiator_id=999,  # third party
                 reason="Fraud",
@@ -135,6 +137,7 @@ class TestOpenDisputeValidation:
         with pytest.raises(ValueError, match="Please wait"):
             await marketplace_dispute_service.open_marketplace_dispute(
                 session,
+                MagicMock(),
                 deal_id=str(deal.id),
                 initiator_id=deal.buyer_id,
                 reason="Slow delivery",
@@ -157,6 +160,7 @@ class TestOpenDisputeValidation:
         with pytest.raises(ValueError, match="not found"):
             await marketplace_dispute_service.open_marketplace_dispute(
                 session,
+                MagicMock(),
                 deal_id=str(uuid.uuid4()),
                 initiator_id=100,
                 reason="Test",

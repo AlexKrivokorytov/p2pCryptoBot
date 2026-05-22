@@ -91,9 +91,9 @@ async def test_cmd_admin_shows_dashboard() -> None:
 async def test_cmd_stats_admin(
     mock_format: MagicMock,
     mock_stats: AsyncMock,
-    session: AsyncSession,
 ) -> None:
     """Admin /stats shows formatted stats."""
+    session = AsyncMock(spec=AsyncSession)
     mock_stats.return_value = MagicMock()
     message = AsyncMock()
     message.from_user.id = 999
@@ -106,8 +106,9 @@ async def test_cmd_stats_admin(
 
 
 @pytest.mark.asyncio
-async def test_cmd_stats_not_admin(session: AsyncSession) -> None:
+async def test_cmd_stats_not_admin() -> None:
     """Non-admin is rejected from /stats."""
+    session = AsyncMock(spec=AsyncSession)
     message = AsyncMock()
     message.from_user.id = 123
 
@@ -121,8 +122,9 @@ async def test_cmd_stats_not_admin(session: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.admin_service.get_dispute_queue", new_callable=AsyncMock)
-async def test_cmd_disputes_no_disputes(mock_queue: AsyncMock, session: AsyncSession) -> None:
+async def test_cmd_disputes_no_disputes(mock_queue: AsyncMock) -> None:
     """Admin /disputes shows empty state message."""
+    session = AsyncMock(spec=AsyncSession)
     mock_queue.return_value = []
     message = AsyncMock()
     message.from_user.id = 999
@@ -135,8 +137,9 @@ async def test_cmd_disputes_no_disputes(mock_queue: AsyncMock, session: AsyncSes
 
 
 @pytest.mark.asyncio
-async def test_cmd_disputes_not_admin(session: AsyncSession) -> None:
+async def test_cmd_disputes_not_admin() -> None:
     """Non-admin is rejected from /disputes."""
+    session = AsyncMock(spec=AsyncSession)
     message = AsyncMock()
     message.from_user.id = 123
 
@@ -150,8 +153,9 @@ async def test_cmd_disputes_not_admin(session: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.dispute_service.resolve_dispute", new_callable=AsyncMock)
-async def test_cb_dispute_resolve_not_admin(mock_resolve: AsyncMock, session: AsyncSession) -> None:
+async def test_cb_dispute_resolve_not_admin(mock_resolve: AsyncMock) -> None:
     """Non-admin resolving via callback is rejected."""
+    session = AsyncMock(spec=AsyncSession)
     callback = AsyncMock(spec=CallbackQuery)
     callback.from_user = MagicMock()
     callback.from_user.id = 123
@@ -170,8 +174,9 @@ async def test_cb_dispute_resolve_not_admin(mock_resolve: AsyncMock, session: As
 
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.dispute_service.resolve_dispute", new_callable=AsyncMock)
-async def test_cb_dispute_resolve_success(mock_resolve: AsyncMock, session: AsyncSession) -> None:
+async def test_cb_dispute_resolve_success(mock_resolve: AsyncMock) -> None:
     """Admin successfully resolves dispute."""
+    session = AsyncMock(spec=AsyncSession)
     mock_resolve.return_value = {"status": "completed"}
 
     callback = AsyncMock(spec=CallbackQuery)
@@ -197,8 +202,9 @@ async def test_cb_dispute_resolve_success(mock_resolve: AsyncMock, session: Asyn
 
 @pytest.mark.asyncio
 @patch("bot.handlers.admin.dispute_service.resolve_dispute", new_callable=AsyncMock)
-async def test_cb_dispute_resolve_error(mock_resolve: AsyncMock, session: AsyncSession) -> None:
+async def test_cb_dispute_resolve_error(mock_resolve: AsyncMock) -> None:
     """Admin dispute resolution handles service errors gracefully."""
+    session = AsyncMock(spec=AsyncSession)
     mock_resolve.side_effect = ValueError("Order not found")
 
     callback = AsyncMock(spec=CallbackQuery)
@@ -250,8 +256,9 @@ async def test_msg_arb_order_id_valid() -> None:
 
 
 @pytest.mark.asyncio
-async def test_cb_dispute_view_success(session: AsyncSession) -> None:
+async def test_cb_dispute_view_success() -> None:
     """Admin dispute view displays order details and resolution options."""
+    session = AsyncMock(spec=AsyncSession)
     callback = AsyncMock(spec=CallbackQuery)
     callback.from_user = MagicMock()
     callback.from_user.id = 999

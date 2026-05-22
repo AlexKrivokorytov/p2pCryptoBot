@@ -186,16 +186,19 @@ async def test_get_market_rate_btc_eur(mock_crypto: AsyncMock, mock_fiat: AsyncM
 
 
 @pytest.mark.asyncio
-@patch("services.rate_service.get_usdt_fiat_rate", new_callable=AsyncMock)
+@patch("services.rate_service._get_fiat_provider")
 @patch("services.rate_service.get_crypto_usdt_price", new_callable=AsyncMock)
 async def test_get_market_rate_unavailable_fiat(
-    mock_crypto: AsyncMock, mock_fiat: AsyncMock
+    mock_crypto: AsyncMock, mock_fiat_provider: MagicMock
 ) -> None:
-    """Returns None when fiat rate is unavailable (e.g. RUB)."""
+    """Returns None when fiat rate is unavailable (e.g. RUB via fiat provider)."""
     from services.rate_service import get_market_rate
 
     mock_crypto.return_value = Decimal("65000")
-    mock_fiat.return_value = None
+    # RUB goes through _get_fiat_provider().get_rate_to_usdt()
+    mock_provider = MagicMock()
+    mock_provider.get_rate_to_usdt = AsyncMock(return_value=None)
+    mock_fiat_provider.return_value = mock_provider
 
     result = await get_market_rate("BTC", "RUB")
     assert result is None

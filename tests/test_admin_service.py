@@ -127,6 +127,7 @@ def test_format_dispute_order_long_reason_truncated() -> None:
 # ── get_platform_stats ────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_get_platform_stats_empty_db(engine) -> None:
     """Returns zeroed stats when no orders exist."""
@@ -148,6 +149,7 @@ async def test_get_platform_stats_empty_db(engine) -> None:
 # ── get_dispute_queue ─────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_get_dispute_queue_empty(engine) -> None:
     """Returns empty list when no disputes exist."""
@@ -163,6 +165,7 @@ async def test_get_dispute_queue_empty(engine) -> None:
 # ── get_orders_by_status ──────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_get_orders_by_status_empty(engine) -> None:
     """Returns empty list when no orders match status."""

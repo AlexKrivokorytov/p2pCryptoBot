@@ -1,11 +1,14 @@
 """Handlers for Telegram Stars payment events (TMA Marketplace)."""
 
+from __future__ import annotations
+
 import structlog
 from aiogram import Bot, F, Router
+from aiogram.enums import ContentType
 from aiogram.types import Message, PreCheckoutQuery
-from aiogram.types.message import ContentType
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from db.models.product import DealStatus, MarketplaceDeal
 
@@ -26,7 +29,6 @@ async def process_pre_checkout_query(
 
     deal_id = payload.split(":")[1]
 
-    # Verify deal exists and is pending
     result = await session.execute(select(MarketplaceDeal).where(MarketplaceDeal.id == deal_id))
     deal = result.scalar_one_or_none()
 
@@ -38,7 +40,6 @@ async def process_pre_checkout_query(
         await pre_checkout_query.answer(ok=False, error_message="Deal is no longer active")
         return
 
-    # We have 10 seconds to respond. All good -> ok=True
     await pre_checkout_query.answer(ok=True)
     log.info(
         "stars_pre_checkout_approved", deal_id=deal_id, user_id=pre_checkout_query.from_user.id
@@ -49,16 +50,23 @@ async def process_pre_checkout_query(
 async def process_successful_payment(message: Message, session: AsyncSession, bot: Bot) -> None:
     """Handle successful Stars payment and deliver the product."""
     payment = message.successful_payment
-    payload = payment.invoice_payload
+    if payment is None:
+        log.error("successful_payment_event_missing_payment_data")
+        return
 
+    payload = payment.invoice_payload
     if not payload.startswith("deal:"):
         return
 
     deal_id = payload.split(":")[1]
 
-    # Update deal status using pessimistic lock
+    # Load deal with product eagerly to avoid awaitable_attrs
+    # (MarketplaceDeal does not inherit AsyncAttrs mixin)
     result = await session.execute(
-        select(MarketplaceDeal).where(MarketplaceDeal.id == deal_id).with_for_update()
+        select(MarketplaceDeal)
+        .where(MarketplaceDeal.id == deal_id)
+        .with_for_update()
+        .options(selectinload(MarketplaceDeal.product))
     )
     deal = result.scalar_one_or_none()
 
@@ -70,8 +78,7 @@ async def process_successful_payment(message: Message, session: AsyncSession, bo
     deal.telegram_payment_charge_id = payment.telegram_payment_charge_id
     deal.provider_payment_charge_id = payment.provider_payment_charge_id
 
-    # Auto-delivery logic if it's a digital good
-    await deal.awaitable_attrs.product
+    # Auto-delivery for digital goods
     if deal.product.is_digital and deal.product.digital_content:
         deal.status = DealStatus.delivered
         await message.answer(
@@ -81,7 +88,6 @@ async def process_successful_payment(message: Message, session: AsyncSession, bo
         await message.answer(
             "🎉 Payment successful! The seller has been notified to deliver your product."
         )
-        # Notify seller
         await bot.send_message(
             deal.product.seller_id,
             f"💰 New sale! A buyer purchased '{deal.product.title}'. Please deliver the product.",
@@ -89,4 +95,7 @@ async def process_successful_payment(message: Message, session: AsyncSession, bo
 
     session.add(deal)
     await session.flush()
-    log.info("stars_payment_successful", deal_id=deal_id, user_id=message.from_user.id)
+
+    from_user = message.from_user
+    user_id = from_user.id if from_user is not None else 0
+    log.info("stars_payment_successful", deal_id=deal_id, user_id=user_id)

@@ -1,17 +1,36 @@
+"""P2P bot notification functions — push messages to Telegram users."""
+
+from __future__ import annotations
+
 import structlog
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
+from aiogram.types import InlineKeyboardMarkup
 
 from bot.config import get_branding
-from bot.keyboards import active_trade_maker_keyboard
 
 log = structlog.get_logger(__name__)
 
 
 async def notify_maker_taker_found(
-    bot: Bot, maker_id: int, taker_username: str | None, order_id: str
+    bot: Bot,
+    maker_id: int,
+    taker_username: str | None,
+    order_id: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
 ) -> bool:
-    """Notify the Maker that a Taker has accepted their order."""
+    """Notify the Maker that a Taker has accepted their order.
+
+    Args:
+        bot: Bot instance.
+        maker_id: Telegram user ID of the Maker.
+        taker_username: Username of the Taker.
+        order_id: Order UUID string.
+        reply_markup: Optional inline keyboard (built by caller).
+
+    Returns:
+        True if message was sent successfully.
+    """
     branding = get_branding()
     taker_display = f"@{taker_username}" if taker_username else "A user"
     template = branding["notifications"]["taker_found"]
@@ -20,33 +39,52 @@ async def notify_maker_taker_found(
         order_id=order_id, order_id_short=order_id[:8], taker_display=taker_display
     )
     try:
-        await bot.send_message(
-            maker_id, text, parse_mode="HTML", reply_markup=active_trade_maker_keyboard(order_id)
-        )
+        await bot.send_message(maker_id, text, parse_mode="HTML", reply_markup=reply_markup)
         return True
     except TelegramAPIError as e:
         log.error("notify_maker_taker_found_failed", maker_id=maker_id, error=str(e))
         return False
 
 
-async def notify_maker_fiat_sent(bot: Bot, maker_id: int, order_id: str) -> bool:
-    """Notify the Maker that the Taker claims to have sent fiat."""
+async def notify_maker_fiat_sent(
+    bot: Bot,
+    maker_id: int,
+    order_id: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> bool:
+    """Notify the Maker that the Taker claims to have sent fiat.
+
+    Args:
+        bot: Bot instance.
+        maker_id: Telegram user ID of the Maker.
+        order_id: Order UUID string.
+        reply_markup: Optional inline keyboard (built by caller).
+
+    Returns:
+        True if message was sent successfully.
+    """
     branding = get_branding()
     template = branding["notifications"]["fiat_sent"]
 
     text = template.format(order_id=order_id, order_id_short=order_id[:8])
     try:
-        await bot.send_message(
-            maker_id, text, parse_mode="HTML", reply_markup=active_trade_maker_keyboard(order_id)
-        )
+        await bot.send_message(maker_id, text, parse_mode="HTML", reply_markup=reply_markup)
         return True
     except TelegramAPIError as e:
         log.error("notify_maker_fiat_sent_failed", maker_id=maker_id, error=str(e))
         return False
 
 
+EXPLORER_URLS: dict[str, str] = {
+    "ton": "https://tonscan.org/tx/{tx_hash}",
+    "evm": "https://bscscan.com/tx/{tx_hash}",
+    "solana": "https://solscan.io/tx/{tx_hash}",
+    "tron": "https://tronscan.org/#/transaction/{tx_hash}",
+}
+
+
 async def notify_taker_escrow_released(
-    bot: Bot, taker_id: int, order_id: str, asset: str, amount: float
+    bot: Bot, taker_id: int, order_id: str, asset: str, amount: float, tx_hash: str | None = None
 ) -> bool:
     """Notify the Taker that escrow has been released and crypto is on its way."""
     branding = get_branding()
@@ -58,8 +96,17 @@ async def notify_taker_escrow_released(
         asset=asset,
         amount=f"{amount:.8g}",
     )
+
+    if tx_hash:
+        # Currently, asset mapping to chain is simplified here.
+        # In a real app we might know the exact chain for the asset.
+        chain = "ton" if asset == "TON" else "evm"  # simplified fallback
+        explorer_url = EXPLORER_URLS.get(chain, "").format(tx_hash=tx_hash)
+        if explorer_url:
+            text += f"\n\n🔗 <a href='{explorer_url}'>View Transaction</a>"
+
     try:
-        await bot.send_message(taker_id, text, parse_mode="HTML")
+        await bot.send_message(taker_id, text, parse_mode="HTML", disable_web_page_preview=True)
         return True
     except TelegramAPIError as e:
         log.error("notify_taker_escrow_released_failed", taker_id=taker_id, error=str(e))
@@ -192,4 +239,34 @@ async def notify_maker_order_activated(
         return True
     except TelegramAPIError as e:
         log.error("notify_maker_order_activated_failed", maker_id=maker_id, error=str(e))
+        return False
+
+
+async def notify_taker_order_activated(
+    bot: Bot, taker_id: int, order_id: str, asset: str, amount: float
+) -> bool:
+    """Notify the Taker that the Maker's escrow deposit is confirmed."""
+    branding = get_branding()
+    template = branding.get("notifications", {}).get(
+        "taker_order_activated",
+        "✅ <b>Ad Activated!</b>\n\nSeller's deposit for order <code>{order_id_short}</code> "
+        "has been detected and is locked in escrow.\n\n"
+        "Please proceed to complete the fiat transfer. Once done, tap <b>I've sent fiat</b>.",
+    )
+
+    text = template.format(
+        order_id=order_id,
+        order_id_short=order_id[:8],
+        asset=asset,
+        amount=amount,
+    )
+    try:
+        from bot.keyboards import active_trade_taker_keyboard
+
+        await bot.send_message(
+            taker_id, text, parse_mode="HTML", reply_markup=active_trade_taker_keyboard(order_id)
+        )
+        return True
+    except TelegramAPIError as e:
+        log.error("notify_taker_order_activated_failed", taker_id=taker_id, error=str(e))
         return False

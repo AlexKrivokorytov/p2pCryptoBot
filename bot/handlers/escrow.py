@@ -36,10 +36,14 @@ async def cb_escrow_release_step1(
         return
 
     gas_buffer = order.get("on_chain_gas_buffer", 0)
+    amount_net = float(order["amount"]) - float(order["total_fee"])
+    taker_display = f"@{order['taker_username']}" if order.get("taker_username") else "the buyer"
+
     warning_text = (
         f"⚠️ <b>Release Escrow Confirmation</b>\n\n"
-        f"Are you sure you want to release <code>{order['amount']} {order['asset']}</code> "
-        f"to the taker?\n\n"
+        f"Are you sure you want to release the funds?\n\n"
+        f"<b>Amount to send:</b> <code>{amount_net:.8g} {order['asset']}</code>\n"
+        f"<b>Recipient:</b> {taker_display}\n\n"
     )
 
     if gas_buffer:
@@ -84,8 +88,11 @@ async def cb_escrow_confirm(
             f"Order <code>{order_id[:8]}…</code> is now <b>completed</b>.\n"
             "Crypto has been sent to the taker."
         )
-        if result.get("on_chain_tx_hash"):
-            text += f"\n\n<b>Transaction Hash:</b>\n<code>{result['on_chain_tx_hash']}</code>"
+        tx_hash: str | None = None
+        result_tx_hash = result.get("on_chain_tx_hash")
+        if isinstance(result_tx_hash, str):
+            tx_hash = result_tx_hash
+            text += f"\n\n<b>Transaction Hash:</b>\n<code>{tx_hash}</code>"
 
         await callback.message.edit_text(  # type: ignore[union-attr]
             text,
@@ -101,7 +108,8 @@ async def cb_escrow_confirm(
                 order["taker_id"],
                 order_id,
                 order["asset"],
-                order["amount"] - order["total_fee"],
+                float(order["amount"]) - float(order["total_fee"]),
+                tx_hash=tx_hash,
             )
     except Exception as exc:
         log.error(

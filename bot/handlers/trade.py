@@ -8,6 +8,7 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards import (
+    active_trade_maker_keyboard,
     active_trade_taker_keyboard,
     back_to_menu_keyboard,
 )
@@ -66,7 +67,11 @@ async def cb_take_order(
 
     taker_username = callback.from_user.username
     await notification_service.notify_maker_taker_found(
-        bot, result["maker_id"], taker_username, order_id
+        bot,
+        result["maker_id"],
+        taker_username,
+        order_id,
+        reply_markup=active_trade_maker_keyboard(order_id),
     )
 
 
@@ -91,4 +96,9 @@ async def cb_fiat_sent(callback: CallbackQuery, session: AsyncSession, bot: Bot)
     # Send push notification to Maker
     order = await order_service.get_order_details(session, order_id=order_id)
     if order and order["maker_id"]:
-        await notification_service.notify_maker_fiat_sent(bot, order["maker_id"], order_id)
+        await notification_service.notify_maker_fiat_sent(
+            bot,
+            order["maker_id"],
+            order_id,
+            reply_markup=active_trade_maker_keyboard(order_id),
+        )

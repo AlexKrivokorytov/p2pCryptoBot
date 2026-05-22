@@ -31,8 +31,9 @@ def _make_wallet(chain: str, address: str) -> UserWallet:
 
 @pytest.mark.asyncio
 @patch("services.balance_service.ws.get_user_wallets", new_callable=AsyncMock)
-async def test_portfolio_empty_wallets(mock_get: AsyncMock, session: AsyncSession) -> None:
+async def test_portfolio_empty_wallets(mock_get: AsyncMock) -> None:
     """Returns empty list when user has no wallets."""
+    session = AsyncMock(spec=AsyncSession)
     mock_get.return_value = []
     result = await balance_service.get_portfolio_balances(session, user_id=1)
     assert result == []
@@ -44,9 +45,9 @@ async def test_portfolio_empty_wallets(mock_get: AsyncMock, session: AsyncSessio
 async def test_portfolio_evm_balances(
     mock_fetch: AsyncMock,
     mock_get: AsyncMock,
-    session: AsyncSession,
 ) -> None:
     """Returns WalletBalance objects with fetched amounts for EVM wallet."""
+    session = AsyncMock(spec=AsyncSession)
     wallet = _make_wallet("evm", "0xTestAddress")
     mock_get.return_value = [wallet]
 
@@ -73,9 +74,9 @@ async def test_portfolio_evm_balances(
 async def test_portfolio_ton_balances(
     mock_fetch: AsyncMock,
     mock_get: AsyncMock,
-    session: AsyncSession,
 ) -> None:
     """Returns WalletBalance objects with TON amount."""
+    session = AsyncMock(spec=AsyncSession)
     wallet = _make_wallet("ton", "UQTestTonAddress")
     mock_get.return_value = [wallet]
     mock_fetch.side_effect = [("TON", Decimal("5.123456789"))]
@@ -92,9 +93,9 @@ async def test_portfolio_ton_balances(
 async def test_portfolio_multiple_wallets(
     mock_fetch: AsyncMock,
     mock_get: AsyncMock,
-    session: AsyncSession,
 ) -> None:
     """Handles multiple wallets (one EVM, one TON) correctly."""
+    session = AsyncMock(spec=AsyncSession)
     evm = _make_wallet("evm", "0xEvmAddr")
     ton = _make_wallet("ton", "UQTonAddr")
     mock_get.return_value = [evm, ton]
@@ -164,11 +165,12 @@ async def test_fetch_single_balance_exception(mock_get_provider: MagicMock) -> N
 @pytest.mark.asyncio
 @patch("bot.handlers.wallet.balance_service.get_portfolio_balances", new_callable=AsyncMock)
 async def test_cb_wallet_balance_no_wallets(
-    mock_portfolio: AsyncMock, session: AsyncSession
+    mock_portfolio: AsyncMock,
 ) -> None:
     """Balance callback shows empty-state message when no wallets."""
     from bot.handlers import wallet as wallet_handlers
 
+    session = AsyncMock(spec=AsyncSession)
     mock_portfolio.return_value = []
 
     from aiogram.types import CallbackQuery, Message
@@ -191,12 +193,13 @@ async def test_cb_wallet_balance_no_wallets(
 @pytest.mark.asyncio
 @patch("bot.handlers.wallet.balance_service.get_portfolio_balances", new_callable=AsyncMock)
 async def test_cb_wallet_balance_with_balance(
-    mock_portfolio: AsyncMock, session: AsyncSession
+    mock_portfolio: AsyncMock,
 ) -> None:
     """Balance callback shows amounts when wallets have balance."""
     from bot.handlers import wallet as wallet_handlers
     from services.balance_service import WalletBalance
 
+    session = AsyncMock(spec=AsyncSession)
     wallet = _make_wallet("evm", "0xRichAddr")
     mock_portfolio.return_value = [
         WalletBalance(
@@ -225,8 +228,9 @@ async def test_cb_wallet_balance_with_balance(
 
 
 @pytest.mark.asyncio
-async def test_balance_service_unsupported_chain(session: AsyncSession) -> None:
+async def test_balance_service_unsupported_chain() -> None:
     """Handles wallets with unsupported chains by returning empty balances."""
+    session = AsyncMock(spec=AsyncSession)
     wallet = UserWallet(chain="unsupported", address="addr", user_id=1)
 
     with patch("services.wallet_service.get_user_wallets", new_callable=AsyncMock) as mock_get:

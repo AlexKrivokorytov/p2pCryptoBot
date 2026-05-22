@@ -16,7 +16,7 @@ from db.models.marketplace import (
 from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
 from db.models.user import User
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 
 async def test_create_and_query_ad(session: AsyncSession):

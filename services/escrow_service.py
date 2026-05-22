@@ -134,10 +134,11 @@ async def _release_escrow_logic(
     await user_service.increment_user_trade_stats(session, order.maker_id, successful=True)
     if order.taker_id:
         await user_service.increment_user_trade_stats(session, order.taker_id, successful=True)
-        
+
     # Process referral reward (from platform fee)
     if order.total_fee > 0 and order.taker_id:
         from services.referral_service import ReferralService
+
         await ReferralService.process_referral_reward(
             session=session,
             order_id=order.id,

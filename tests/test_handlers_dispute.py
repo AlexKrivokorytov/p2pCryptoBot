@@ -60,9 +60,12 @@ async def test_msg_dispute_reason_valid() -> None:
 
 
 @pytest.mark.asyncio
+@patch("bot.handlers.dispute.order_service.get_order_details", new_callable=AsyncMock)
 @patch("bot.handlers.dispute.dispute_service.raise_dispute", new_callable=AsyncMock)
-async def test_cb_dispute_confirmed_success(mock_raise: AsyncMock, session: AsyncSession) -> None:
+async def test_cb_dispute_confirmed_success(mock_raise: AsyncMock, mock_order: AsyncMock) -> None:
     """Confirming dispute calls the service successfully."""
+    session = AsyncMock(spec=AsyncSession)
+    mock_order.return_value = {"maker_id": 999, "taker_id": 888}
     callback = AsyncMock()
     callback.from_user.id = 123
     state = AsyncMock(spec=FSMContext)
@@ -86,8 +89,9 @@ async def test_cb_dispute_confirmed_success(mock_raise: AsyncMock, session: Asyn
 
 @pytest.mark.asyncio
 @patch("bot.handlers.dispute.dispute_service.raise_dispute", new_callable=AsyncMock)
-async def test_cb_dispute_confirmed_error(mock_raise: AsyncMock, session: AsyncSession) -> None:
+async def test_cb_dispute_confirmed_error(mock_raise: AsyncMock) -> None:
     """Errors during dispute creation are shown to the user."""
+    session = AsyncMock(spec=AsyncSession)
     mock_raise.side_effect = ValueError("Order not found")
 
     callback = AsyncMock()

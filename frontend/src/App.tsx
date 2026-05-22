@@ -9,7 +9,7 @@ import { DealsPage } from "./pages/Deals";
 import { ProfilePage } from "./pages/Profile";
 import { ProductDetails } from "./pages/ProductDetails";
 import { Checkout } from "./pages/Checkout";
-import { SellerPage } from "./pages/Seller";
+import { SellerDashboard } from "./pages/Seller";
 import { ChatPage } from "./pages/Chat";
 import { AdminPanel } from "./pages/AdminPanel";
 import { NotificationsPage } from "./pages/Notifications";
@@ -45,7 +45,7 @@ function AppInner() {
       {/* Full-screen routes (no bottom nav) */}
       <Route path="/product/:id" element={<ProductDetails />} />
       <Route path="/checkout/:dealId" element={<Checkout />} />
-      <Route path="/seller" element={<SellerPage />} />
+      <Route path="/seller" element={<SellerDashboard />} />
       <Route path="/chat/:dealId" element={<ChatPage />} />
       <Route path="/admin" element={<AdminPanel />} />
       <Route path="/notifications" element={<NotificationsPage />} />

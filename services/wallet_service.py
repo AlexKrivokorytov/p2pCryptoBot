@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -207,7 +206,7 @@ async def transfer_from_wallet(
     chain: str,
     to_address: str,
     asset: str,
-    amount: Any,  # Decimal
+    amount: Decimal,
     memo: str | None = None,
 ) -> str:
     """Sign and broadcast a transfer from a user's wallet.
@@ -264,7 +263,7 @@ async def transfer_from_order_wallet(
     chain: str,
     to_address: str,
     asset: str,
-    amount: Any,  # Decimal
+    amount: Decimal,
     memo: str | None = None,
 ) -> str:
     """Sign and broadcast a transfer from an ORDER's escrow wallet.
@@ -319,7 +318,7 @@ async def transfer_from_deal_wallet(
     chain: str,
     to_address: str,
     asset: str,
-    amount: Any,  # Decimal
+    amount: Decimal,
     memo: str | None = None,
 ) -> str:
     """Sign and broadcast a transfer from a DEAL's escrow wallet."""

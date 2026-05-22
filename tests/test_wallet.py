@@ -13,7 +13,7 @@ from db.models.user import User
 from db.models.wallet import UserWallet, WalletChain
 from services import wallet_service
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.integration, pytest.mark.unit]
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 

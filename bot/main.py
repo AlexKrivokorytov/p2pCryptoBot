@@ -22,12 +22,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 
 import structlog
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.fsm.storage.base import BaseStorage
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiohttp import web
 from dotenv import load_dotenv
@@ -59,7 +59,7 @@ from utils.license_guard import check_license_or_abort  # noqa: E402
 
 # ── Structlog setup ─────────────────────────────────────────────────────────────
 structlog.configure(
-    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+    wrapper_class=structlog.make_filtering_bound_logger(20),  # 20 == logging.INFO
     processors=[
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.add_log_level,
@@ -91,7 +91,20 @@ async def main() -> None:
         token=settings.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
-    dp = Dispatcher(storage=MemoryStorage())
+
+    storage: BaseStorage
+    if settings.REDIS_URL:
+        from aiogram.fsm.storage.redis import RedisStorage
+        from redis.asyncio import Redis
+
+        redis_client = Redis.from_url(settings.REDIS_URL)
+        storage = RedisStorage(redis=redis_client)
+        log.info("fsm_storage_initialized", type="redis")
+    else:
+        storage = MemoryStorage()
+        log.info("fsm_storage_initialized", type="memory")
+
+    dp = Dispatcher(storage=storage)
 
     # ── Dynamic Bot Spawner — B2B Phase 5 ────────────────────────────────────────
     dynamic_loader = DynamicBotLoader(session_pool, crypto_pay, ROUTERS)

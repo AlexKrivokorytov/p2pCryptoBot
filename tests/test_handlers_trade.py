@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, ANY
 
 import pytest
 from aiogram import Bot
@@ -45,9 +45,9 @@ async def _create_test_order(session: AsyncSession, order_id: str, maker_id: int
 async def test_cb_take_order_success(
     mock_notify: AsyncMock,
     mock_take: AsyncMock,
-    session: AsyncSession,
 ) -> None:
     """Taker successfully accepts an order and maker is notified."""
+    session = AsyncMock(spec=AsyncSession)
     mock_take.return_value = {"maker_id": 999, "status": "escrow_held"}
 
     callback = AsyncMock()
@@ -59,7 +59,12 @@ async def test_cb_take_order_success(
     await trade_handlers.cb_take_order(callback, session, bot)
 
     mock_take.assert_called_once_with(session, order_id="5a1fc458", taker_id=123)
-    mock_notify.assert_called_once_with(bot, 999, "taker_usr", "5a1fc458")
+    # notify_maker_taker_found is called with bot, maker_id, taker_username, order_id,
+    # and reply_markup kwarg — verify positional args only
+    mock_notify.assert_called_once()
+    args, kwargs = mock_notify.call_args
+    assert args == (bot, 999, "taker_usr", "5a1fc458")
+    assert "reply_markup" in kwargs
     callback.message.edit_text.assert_called_once()
     assert "Trade accepted!" in callback.message.edit_text.call_args[0][0]
     callback.answer.assert_called_once()
@@ -67,8 +72,9 @@ async def test_cb_take_order_success(
 
 @pytest.mark.asyncio
 @patch("bot.handlers.trade.order_service.take_order", new_callable=AsyncMock)
-async def test_cb_take_order_error(mock_take: AsyncMock, session: AsyncSession) -> None:
+async def test_cb_take_order_error(mock_take: AsyncMock) -> None:
     """Order taken by someone else or not found shows error."""
+    session = AsyncMock(spec=AsyncSession)
     mock_take.side_effect = ValueError("Order is no longer available")
 
     callback = AsyncMock()
@@ -83,6 +89,7 @@ async def test_cb_take_order_error(mock_take: AsyncMock, session: AsyncSession) 
     callback.answer.assert_called_once()
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 @patch("bot.handlers.trade.notification_service.notify_maker_fiat_sent", new_callable=AsyncMock)
 async def test_cb_fiat_sent(mock_notify: AsyncMock, session: AsyncSession) -> None:
@@ -97,7 +104,7 @@ async def test_cb_fiat_sent(mock_notify: AsyncMock, session: AsyncSession) -> No
 
     await trade_handlers.cb_fiat_sent(callback, session, bot)
 
-    mock_notify.assert_called_once_with(bot, 999, order_id)
+    mock_notify.assert_called_once_with(bot, 999, order_id, reply_markup=ANY)
     callback.message.edit_text.assert_called_once()
     assert "Fiat sent!" in callback.message.edit_text.call_args[0][0]
     callback.answer.assert_called_once()

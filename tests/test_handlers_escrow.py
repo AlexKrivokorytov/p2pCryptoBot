@@ -47,10 +47,13 @@ async def _create_order(
 
 
 @pytest.mark.asyncio
+@patch("bot.handlers.escrow.order_service.get_order_details", new_callable=AsyncMock)
 @patch("bot.handlers.escrow.escrow_service.release_escrow", new_callable=AsyncMock)
-async def test_cb_escrow_confirm_success(mock_release: AsyncMock, session: AsyncSession) -> None:
+async def test_cb_escrow_confirm_success(mock_release: AsyncMock, mock_order: AsyncMock) -> None:
     """Releasing escrow calls the service and shows success."""
     mock_release.return_value = {"status": "completed"}
+    mock_order.return_value = {"taker_id": 456, "asset": "USDT", "amount": 100, "total_fee": 0}
+    session = AsyncMock(spec=AsyncSession)
 
     callback = AsyncMock()
     callback.from_user.id = 123
@@ -69,9 +72,10 @@ async def test_cb_escrow_confirm_success(mock_release: AsyncMock, session: Async
 
 @pytest.mark.asyncio
 @patch("bot.handlers.escrow.escrow_service.release_escrow", new_callable=AsyncMock)
-async def test_cb_escrow_confirm_error(mock_release: AsyncMock, session: AsyncSession) -> None:
+async def test_cb_escrow_confirm_error(mock_release: AsyncMock) -> None:
     """Escrow release errors are displayed to the user."""
     mock_release.side_effect = ValueError("Order not found")
+    session = AsyncMock(spec=AsyncSession)
 
     callback = AsyncMock()
     callback.from_user.id = 123
@@ -86,8 +90,12 @@ async def test_cb_escrow_confirm_error(mock_release: AsyncMock, session: AsyncSe
 
 
 @pytest.mark.asyncio
-async def test_cb_order_status_not_found(session: AsyncSession) -> None:
+@patch("bot.handlers.escrow.order_service.get_order_details", new_callable=AsyncMock)
+async def test_cb_order_status_not_found(mock_order: AsyncMock) -> None:
     """Order status handles non-existent orders."""
+    mock_order.return_value = None
+    session = AsyncMock(spec=AsyncSession)
+
     callback = AsyncMock()
     callback.data = "order:status:00000000-0000-0000-0000-000000000000"
 
@@ -96,6 +104,7 @@ async def test_cb_order_status_not_found(session: AsyncSession) -> None:
     callback.answer.assert_called_once_with("Order not found.", show_alert=True)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_cb_order_status_maker_escrow_held(session: AsyncSession) -> None:
     """Maker checking escrow_held order gets confirmation keyboard."""
@@ -115,6 +124,7 @@ async def test_cb_order_status_maker_escrow_held(session: AsyncSession) -> None:
     assert "reply_markup" in callback.message.answer.call_args[1]
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_cb_order_status_taker_escrow_held(session: AsyncSession) -> None:
     """Taker checking escrow_held order gets alert status."""

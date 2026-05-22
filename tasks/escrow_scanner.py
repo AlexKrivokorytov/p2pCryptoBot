@@ -132,6 +132,15 @@ class EscrowScanner:
                 order.asset,
                 float(order.amount),
             )
+
+            if order.taker_id:
+                await notification_service.notify_taker_order_activated(
+                    self.bot,
+                    order.taker_id,
+                    str(order.id),
+                    order.asset,
+                    float(order.amount),
+                )
         else:
             # Log periodically or only on change? For now, silence.
             pass

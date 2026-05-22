@@ -2,15 +2,15 @@
 
 import uuid
 from decimal import Decimal
-import logging
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.marketplace import ReferralReward
 from db.models.user import User
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 class ReferralService:
@@ -42,18 +42,18 @@ class ReferralService:
         reward_amount_float = total_fee * reward_percentage
         if reward_amount_float <= 0:
             return None
-            
+
         reward_amount = Decimal(str(reward_amount_float))
 
         # 3. Lock referrer to credit balance (Financial operation)
         stmt_referrer = select(User).where(User.telegram_id == referrer_id).with_for_update()
         res_referrer = await session.execute(stmt_referrer)
         referrer = res_referrer.scalar_one_or_none()
-        
+
         if not referrer:
             log.warning("referrer_not_found_for_reward", referrer_id=referrer_id)
             return None
-            
+
         referrer.referral_balance += reward_amount
 
         # 4. Create reward record
@@ -67,7 +67,7 @@ class ReferralService:
         )
         session.add(reward)
         await session.flush()
-        
+
         log.info(
             "referral_reward_processed",
             referrer_id=referrer_id,
@@ -76,7 +76,7 @@ class ReferralService:
             asset=asset,
             deal_id=str(deal_id) if deal_id else None,
             order_id=str(order_id) if order_id else None,
-            step="process_referral_reward"
+            step="process_referral_reward",
         )
 
         return reward

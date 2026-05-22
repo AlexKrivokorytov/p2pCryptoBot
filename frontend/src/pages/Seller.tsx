@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronLeft, Star, Tag } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronLeft, Star } from "lucide-react";
 import type { Product, CreateProductBody, CurrencyType, PromoCode } from "../api/client";
 import { marketplaceApi } from "../api/client";
 import { tgHapticLight, tgHapticSuccess, tgHapticError, tgShowConfirm, tgShowAlert } from "../lib/tg";
@@ -421,31 +421,30 @@ export function SellerDashboard() {
 
   async function handleBoost(product: Product) {
     tgHapticLight();
-    tgShowConfirm(`Boost "${product.title}" for 24 hours? Cost: 50 Stars.`, async (ok) => {
-      if (!ok) return;
-      try {
-        const { invoice_url } = await marketplaceApi.createBoostInvoice(product.id);
-        const WebApp = (window as any).Telegram?.WebApp;
-        if (WebApp?.openInvoice) {
-          WebApp.openInvoice(invoice_url, async (status: string) => {
-            if (status === "paid") {
-              await marketplaceApi.confirmBoost(product.id);
-              tgHapticSuccess();
-              await loadProducts();
-              tgShowAlert("Product boosted successfully! 🚀");
-            } else {
-              tgHapticError();
-              tgShowAlert("Payment was not completed.");
-            }
-          });
-        } else {
-          window.open(invoice_url, "_blank");
-        }
-      } catch (e: any) {
-        tgHapticError();
-        tgShowAlert(e.response?.data?.detail || "Failed to create boost invoice.");
+    const ok = await tgShowConfirm(`Boost "${product.title}" for 24 hours? Cost: 50 Stars.`);
+    if (!ok) return;
+    try {
+      const { invoice_url } = await marketplaceApi.createBoostInvoice(product.id);
+      const WebApp = (window as any).Telegram?.WebApp;
+      if (WebApp?.openInvoice) {
+        WebApp.openInvoice(invoice_url, async (status: string) => {
+          if (status === "paid") {
+            await marketplaceApi.confirmBoost(product.id);
+            tgHapticSuccess();
+            await loadProducts();
+            tgShowAlert("Product boosted successfully! 🚀");
+          } else {
+            tgHapticError();
+            tgShowAlert("Payment was not completed.");
+          }
+        });
+      } else {
+        window.open(invoice_url, "_blank");
       }
-    });
+    } catch (e: any) {
+      tgHapticError();
+      tgShowAlert(e.response?.data?.detail || "Failed to create boost invoice.");
+    }
   }
 
   async function loadProducts() {
@@ -549,6 +548,7 @@ export function SellerDashboard() {
             </div>
           </div>
         )}
+      </div>
 
       {/* Tabs */}
       <div className="flex px-4 pb-2 border-b mb-3" style={{ borderColor: "rgba(128,128,128,0.15)" }}>

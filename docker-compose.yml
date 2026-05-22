@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: p2pbot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
       POSTGRES_DB: p2pbot
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,7 +29,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["/bin/sh", "/app/migrate.sh"]
+    command: ["python", "init_db.py"]
     restart: "no"
 
   bot:

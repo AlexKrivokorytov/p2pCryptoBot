@@ -26,7 +26,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models.product import CurrencyType, DealStatus, MarketplaceDeal
 from db.models.user import User
 from services.marketplace_notifications import (
-    get_bot,
     notify_dispute_opened,
     notify_dispute_resolved,
     notify_marketplace_admin_dispute,
@@ -43,6 +42,7 @@ VALID_RESOLUTIONS: frozenset[str] = frozenset({"buyer", "seller"})
 
 async def open_marketplace_dispute(
     session: AsyncSession,
+    bot: Bot,
     *,
     deal_id: str,
     initiator_id: int,
@@ -55,6 +55,7 @@ async def open_marketplace_dispute(
 
     Args:
         session: Active async SQLAlchemy session.
+        bot: Bot instance for sending Telegram notifications.
         deal_id: UUID string of the deal.
         initiator_id: Telegram user ID of the party raising the dispute.
         reason: Human-readable description of the problem (already sanitized by caller).
@@ -116,7 +117,6 @@ async def open_marketplace_dispute(
     )
 
     # Fire-and-forget notifications (outside the transaction)
-    bot = get_bot()
     await notify_dispute_opened(bot, deal.buyer_id, deal.seller_id, deal_id_str, reason)
     await notify_marketplace_admin_dispute(
         bot,
@@ -192,8 +192,10 @@ async def resolve_marketplace_dispute(
                     buyer.is_shadowbanned = True
 
             if deal.currency_type in (CurrencyType.CRYPTO, CurrencyType.XTR):
-                from tasks.payout_worker import process_payout_to_seller
                 import asyncio
+
+                from tasks.payout_worker import process_payout_to_seller
+
                 asyncio.create_task(process_payout_to_seller(deal.id))
         else:
             # Refund → buyer
@@ -213,7 +215,7 @@ async def resolve_marketplace_dispute(
         deal.status = final_status
         deal.dispute_resolution = resolution
         deal.dispute_resolved_by = admin_id
-        deal.dispute_resolution_comment = comment or None
+        deal.dispute_resolution_comment = comment if comment else None  # type: ignore[assignment]
         if tx_hash:
             deal.tx_hash_release = tx_hash
 
@@ -243,9 +245,6 @@ async def resolve_marketplace_dispute(
 # ── Internal resolution helpers ───────────────────────────────────────────────
 
 
-
-
-
 async def _refund_to_buyer_crypto(session: AsyncSession, deal: MarketplaceDeal) -> str:
     """Refund escrow funds to buyer's on-chain wallet.
 
@@ -270,7 +269,7 @@ async def _refund_to_buyer_crypto(session: AsyncSession, deal: MarketplaceDeal) 
         return await transfer_from_deal_wallet(
             session=session,
             deal_id=str(deal.id),
-            chain=deal.blockchain.value,  # type: ignore[union-attr]
+            chain=deal.blockchain.value,
             to_address=deal.buyer_wallet_address,
             asset=asset,
             amount=deal.amount,

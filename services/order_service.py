@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 from decimal import Decimal
 from typing import Any
@@ -11,7 +10,7 @@ import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config import get_branding
+from bot.config import get_branding, settings
 from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
 from providers.crypto_pay import CryptoPayClient
 from services import wallet_service
@@ -20,10 +19,10 @@ from utils.encryption import encrypt
 log = structlog.get_logger(__name__)
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-ORDER_TIMEOUT_SEC: int = int(os.environ.get("ORDER_TIMEOUT_SEC", "1800"))
-ORDER_MIN_AMOUNT_USDT: float = float(os.environ.get("ORDER_MIN_AMOUNT_USDT", "1.0"))
-ORDER_MAX_AMOUNT_USDT: float = float(os.environ.get("ORDER_MAX_AMOUNT_USDT", "50000.0"))
-ORDERS_PER_PAGE: int = int(os.environ.get("ORDERS_PER_PAGE", "5"))
+ORDER_TIMEOUT_SEC: int = settings.ORDER_TIMEOUT_SEC
+ORDER_MIN_AMOUNT_USDT: float = settings.ORDER_MIN_AMOUNT_USDT
+ORDER_MAX_AMOUNT_USDT: float = settings.ORDER_MAX_AMOUNT_USDT
+ORDERS_PER_PAGE: int = settings.ORDERS_PER_PAGE
 
 
 def _validate_asset(asset: str) -> None:

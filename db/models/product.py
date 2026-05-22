@@ -1,5 +1,7 @@
 """Models for Marketplace products and deals (TMA integration)."""
 
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
@@ -86,7 +88,7 @@ class Product(Base):
     seller_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE"), nullable=False, index=True
     )
-    seller: Mapped["User"] = relationship("User", back_populates="products")
+    seller: Mapped[User] = relationship("User")
 
     title: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
@@ -109,8 +111,10 @@ class Product(Base):
     crypto_network: Mapped[str] = mapped_column(String(20), nullable=True)  # E.g. mainnet, testnet
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    
-    is_promoted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+
+    is_promoted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     promoted_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -118,9 +122,7 @@ class Product(Base):
     )
 
     # Relationships
-    deals: Mapped[list["MarketplaceDeal"]] = relationship(
-        "MarketplaceDeal", back_populates="product"
-    )
+    deals: Mapped[list[MarketplaceDeal]] = relationship("MarketplaceDeal", back_populates="product")
 
 
 class MarketplaceDeal(Base):
@@ -147,7 +149,9 @@ class MarketplaceDeal(Base):
     )
 
     amount: Mapped[Decimal] = mapped_column(Numeric(precision=18, scale=2), nullable=False)
-    original_amount: Mapped[Decimal | None] = mapped_column(Numeric(precision=18, scale=2), nullable=True)
+    original_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=18, scale=2), nullable=True
+    )
     currency_type: Mapped[CurrencyType] = mapped_column(
         Enum(CurrencyType, name="deal_currency_type"), nullable=False
     )
@@ -179,7 +183,9 @@ class MarketplaceDeal(Base):
 
     # Auto-payout tracking (Phase 12)
     seller_wallet_address: Mapped[str] = mapped_column(String(256), nullable=True)
-    payout_status: Mapped[str] = mapped_column(String(32), nullable=True)  # pending|sent|failed|manual
+    payout_status: Mapped[str] = mapped_column(
+        String(32), nullable=True
+    )  # pending|sent|failed|manual
     payout_error: Mapped[str] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(

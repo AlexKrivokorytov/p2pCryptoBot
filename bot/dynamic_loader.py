@@ -108,3 +108,20 @@ class DynamicBotLoader:
         await asyncio.gather(*(inst.stop() for inst in self.instances.values()))
         self.instances.clear()
         log.info("dynamic_loader_stopped_all")
+
+
+def get_master_bot() -> Bot | None:
+    """Return the master bot singleton used for system-level notifications.
+
+    Delegates to ``marketplace_notifications.get_bot()`` which lazily creates
+    and caches the Bot instance on first call.
+
+    Returns:
+        The shared Bot instance, or None if BOT_TOKEN is not configured.
+    """
+    try:
+        from services.marketplace_notifications import get_bot
+
+        return get_bot()
+    except Exception:
+        return None
