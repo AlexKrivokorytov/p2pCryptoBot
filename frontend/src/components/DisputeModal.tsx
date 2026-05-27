@@ -35,13 +35,13 @@ export function DisputeModal({ dealId, onClose, onSuccess }: DisputeModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div 
-        className="w-full max-w-sm rounded-2xl p-5 shadow-lg" 
+      <div
+        className="w-full max-w-sm rounded-2xl p-5 shadow-lg"
         style={{ background: "var(--tg-theme-bg-color, #fff)", color: "var(--tg-theme-text-color, #000)" }}
       >
         <h3 className="text-lg font-bold mb-2">Open a Dispute</h3>
-        
-        <div 
+
+        <div
           className="p-3 rounded-xl text-sm mb-4"
           style={{ background: "rgba(244,67,54,0.1)", color: "#b71c1c" }}
         >
@@ -66,7 +66,7 @@ export function DisputeModal({ dealId, onClose, onSuccess }: DisputeModalProps) 
             if (error) setError("");
           }}
         />
-        
+
         <div className="text-xs text-right mb-4" style={{ color: reason.length < 20 ? "#b71c1c" : "var(--tg-theme-hint-color, #999)" }}>
           {reason.length}/500
         </div>

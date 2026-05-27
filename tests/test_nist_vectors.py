@@ -149,9 +149,9 @@ class TestNISTAES256GCMVectors:
         """NIST recommends 96-bit (12-byte) nonce for GCM — verify implementation."""
         from utils.encryption import _NONCE_BYTES
 
-        assert _NONCE_BYTES == 12, (
-            f"NIST SP 800-38D recommends 96-bit nonce for GCM. Got {_NONCE_BYTES * 8}-bit nonce."
-        )
+        assert (
+            _NONCE_BYTES == 12
+        ), f"NIST SP 800-38D recommends 96-bit nonce for GCM. Got {_NONCE_BYTES * 8}-bit nonce."
 
 
 class TestRFC4231HMACSha256Vectors:

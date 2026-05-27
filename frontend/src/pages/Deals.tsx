@@ -153,7 +153,7 @@ export function DealsPage() {
               const canDeliver = deal.role === "seller" && deal.status === "paid";
               const canComplete = deal.role === "buyer" && deal.status === "delivered";
               const canChat = !["completed", "cancelled"].includes(deal.status);
-              
+
               const canDispute = deal.role === "buyer" && ["paid", "delivered"].includes(deal.status) && (() => {
                 if (!deal.created_at) return false;
                 const elapsed = Date.now() - new Date(deal.created_at).getTime();
@@ -266,7 +266,7 @@ export function DealsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--tg-theme-bg-color, #fff)", color: "var(--tg-theme-text-color, #000)" }}>
             <h3 className="text-lg font-bold mb-4 text-center">Leave a Review</h3>
-            
+
             <div className="flex justify-center gap-2 mb-6">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -274,8 +274,8 @@ export function DealsPage() {
                   onClick={() => setRating(star)}
                   className="bg-transparent border-none outline-none focus:outline-none p-1"
                 >
-                  <Star 
-                    className={`w-8 h-8 ${rating >= star ? 'fill-yellow-400 stroke-yellow-500' : 'fill-transparent stroke-gray-300'}`} 
+                  <Star
+                    className={`w-8 h-8 ${rating >= star ? 'fill-yellow-400 stroke-yellow-500' : 'fill-transparent stroke-gray-300'}`}
                   />
                 </button>
               ))}

@@ -100,13 +100,13 @@ async def test_concurrent_take_order_exactly_one_wins(db_factory) -> None:  # ty
     await asyncio.gather(try_take(80002), try_take(80003), try_take(80004))
 
     successes = [r for r in results if r[0] == "ok"]
-    assert len(successes) == 1, (
-        f"Expected exactly 1 winner in concurrent race, got {len(successes)}: {results}"
-    )
+    assert (
+        len(successes) == 1
+    ), f"Expected exactly 1 winner in concurrent race, got {len(successes)}: {results}"
     errors = [r for r in results if r[0] == "err"]
-    assert len(errors) == 2, (
-        f"Expected exactly 2 losers in concurrent race, got {len(errors)}: {results}"
-    )
+    assert (
+        len(errors) == 2
+    ), f"Expected exactly 2 losers in concurrent race, got {len(errors)}: {results}"
 
 
 # ── Test: Invalid status transition ───────────────────────────────────────────

@@ -91,12 +91,12 @@ export function Catalog() {
     <div className="flex flex-col h-full" style={{ background: "var(--tg-theme-bg-color, #fff)" }}>
       {/* Search Bar */}
       <div className="px-4 mb-3">
-        <div 
+        <div
           className="flex items-center gap-2 px-3 py-2 rounded-xl"
           style={{ background: "var(--tg-theme-secondary-bg-color, #f0f0f0)" }}
         >
           <span className="opacity-40 text-lg">🔍</span>
-          <input 
+          <input
             type="text"
             placeholder="Search marketplace..."
             value={search}
@@ -105,7 +105,7 @@ export function Catalog() {
             style={{ color: "var(--tg-theme-text-color, #000)" }}
           />
           {search && (
-            <button 
+            <button
                 onClick={() => setSearch("")}
                 className="bg-transparent border-none text-xs font-bold opacity-40 px-1"
                 style={{ color: "var(--tg-theme-text-color, #000)" }}
@@ -116,8 +116,8 @@ export function Catalog() {
         </div>
         <div className="flex justify-between items-center mt-2 px-1">
           <span className="text-xs opacity-50 font-medium">Sort by:</span>
-          <select 
-            value={sort} 
+          <select
+            value={sort}
             onChange={(e) => setSort(e.target.value)}
             className="bg-transparent border-none outline-none text-xs font-semibold"
             style={{ color: "var(--tg-theme-button-color, #5288c1)" }}

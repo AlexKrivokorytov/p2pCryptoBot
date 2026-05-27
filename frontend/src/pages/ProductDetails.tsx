@@ -47,7 +47,7 @@ export function ProductDetails() {
   const navigate = useNavigate();
   const { setIsLoading, isLoading } = useAppStore();
   const [product, setProduct] = useState<Product | null>(null);
-  
+
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount_type: string; discount_value: number } | null>(null);
   const [promoError, setPromoError] = useState("");

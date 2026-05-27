@@ -117,11 +117,11 @@ export function Checkout() {
               <div className="flex flex-col gap-2">
                 <span className="opacity-60">Escrow Address</span>
                 <div className="relative group">
-                  <span className="font-mono break-all text-[11px] p-3 rounded-xl block leading-tight" 
+                  <span className="font-mono break-all text-[11px] p-3 rounded-xl block leading-tight"
                     style={{ background: "var(--tg-theme-bg-color, #fff)", border: "1px solid rgba(0,0,0,0.05)" }}>
                     {deal.escrow_wallet_address}
                   </span>
-                  <button 
+                  <button
                     onClick={() => {
                       navigator.clipboard.writeText(deal.escrow_wallet_address || "");
                       tgHapticSuccess();
@@ -161,7 +161,7 @@ export function Checkout() {
         style={{ background: "rgba(255, 152, 0, 0.12)", color: "var(--tg-theme-text-color, #333)" }}>
         <Clock className="w-5 h-5 mr-3 shrink-0 mt-0.5 opacity-70" />
         <p>
-          {deal.currency_type === "CRYPTO" 
+          {deal.currency_type === "CRYPTO"
             ? "Send the exact amount to the escrow address. Payment will be detected automatically within 1-5 minutes."
             : "Transfer the exact amount within 15 minutes. Do not add any comments to the bank transfer."}
         </p>

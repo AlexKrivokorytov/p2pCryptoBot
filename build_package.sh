@@ -86,7 +86,7 @@ docker build \
     --tag "${IMAGE_NAME}:${IMAGE_TAG}" \
     --tag "${IMAGE_NAME}:latest" \
     --file Dockerfile \
-    . 
+    .
 
 echo "  ✅ Docker image built successfully."
 

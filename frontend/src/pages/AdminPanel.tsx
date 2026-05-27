@@ -88,7 +88,7 @@ export function AdminPanel() {
 
                 <div className="flex justify-between items-center mb-4">
                   <span className="font-mono font-bold text-lg">{d.amount} {d.currency}</span>
-                  <button 
+                  <button
                     onClick={() => { tgHapticLight(); navigate(`/chat/${d.id}`); }}
                     className="flex items-center gap-1 text-sm font-semibold px-3 py-1.5 rounded-lg"
                     style={{ background: "var(--tg-theme-button-color, #5288c1)", color: "#fff" }}

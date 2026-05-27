@@ -119,13 +119,13 @@ limits:
 notifications:
   # Templates for automated Telegram notifications.
   # Use HTML tags for formatting. Placeholders {order_id}, {asset}, {amount}, etc.
-  
+
   # Sent to Maker when a Taker accepts their order.
   taker_found: |
     🔔 <b>Trade Started!</b>
     Order: <code>{order_id_short}</code>
     Taker: {taker_display}
-    
+
     Your crypto is locked in escrow. Wait for the taker to send the fiat payment.
     You will receive another notification once they confirm the transfer.
 
@@ -133,7 +133,7 @@ notifications:
   fiat_sent: |
     💸 <b>Fiat Transfer Confirmed by Taker!</b>
     Order: <code>{order_id_short}</code>
-    
+
     Please check your bank account / wallet.
     If you received the exact amount, tap <b>Release Escrow</b>.
     If there is an issue, you can raise a dispute.
@@ -143,8 +143,8 @@ notifications:
     ✅ <b>Crypto Released!</b>
     Order: <code>{order_id_short}</code>
     Amount: <code>{amount} {asset}</code>
-    
-    The seller confirmed your fiat payment. 
+
+    The seller confirmed your fiat payment.
     Your crypto has been transferred to your wallet.
 
   # Sent to both parties when a dispute is opened.
@@ -152,8 +152,8 @@ notifications:
     ⚠️ <b>Dispute Opened</b>
     Order: <code>{order_id_short}</code>
     Reason: <i>{reason}</i>
-    
-    A moderator will review the trade history and make a decision. 
+
+    A moderator will review the trade history and make a decision.
     The funds are locked in escrow until the dispute is resolved.
 
   # Sent to both parties when a dispute is resolved.
@@ -161,7 +161,7 @@ notifications:
     ⚖️ <b>Dispute Resolved</b>
     Order: <code>{order_id_short}</code>
     Decision: <b>{decision}</b>
-    
+
     Status: <b>{status}</b>
     The moderator has made a final decision on this trade.
 
@@ -170,7 +170,7 @@ notifications:
     ⏰ <b>Ad Expired / Cancelled</b>
     Order: <code>{order_id_short}</code>
     Asset: <b>{asset}</b>
-    
+
     Your ad was cancelled or timed out.
     If funds were in escrow, they have been returned to your wallet.
 
@@ -179,5 +179,5 @@ notifications:
     💰 <b>Escrow Refunded</b>
     Order: <code>{order_id_short}</code>
     Amount: <code>{amount} {asset}</code>
-    
+
     The crypto has been returned to your wallet.

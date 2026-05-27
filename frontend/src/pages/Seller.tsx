@@ -10,7 +10,7 @@ import { tgHapticLight, tgHapticSuccess, tgHapticError, tgShowConfirm, tgShowAle
 function PromoCodesTab() {
   const [promos, setPromos] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [showAdd, setShowAdd] = useState(false);
   const [code, setCode] = useState("");
   const [type, setType] = useState<"percentage" | "fixed">("percentage");
@@ -171,11 +171,11 @@ function ProductForm({ initial, onSave, onClose }: FormProps) {
     setSaving(true);
     try {
       const savedId = await onSave(form, initial?.id);
-      
+
       if (savedId && images.length > 0) {
         await marketplaceApi.uploadProductImages(savedId, images);
       }
-      
+
       tgHapticSuccess();
       onClose();
     } catch {
@@ -534,7 +534,7 @@ export function SellerDashboard() {
       </div>
       <div className="px-4 pt-4 pb-2">
         <h1 className="text-2xl font-bold mb-4">Seller Dashboard</h1>
-        
+
         {/* Analytics Block */}
         {analytics && (
           <div className="grid grid-cols-2 gap-3 mb-4">

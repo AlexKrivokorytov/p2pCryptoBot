@@ -130,9 +130,9 @@ class TestSQLInjectionPrevention:
         ]
         for path in critical_files:
             source = pathlib.Path(path).read_text()
-            assert "with_for_update()" in source, (
-                f"{path} missing with_for_update() — race condition risk"
-            )
+            assert (
+                "with_for_update()" in source
+            ), f"{path} missing with_for_update() — race condition risk"
 
 
 class TestSecretManagement:
@@ -145,9 +145,9 @@ class TestSecretManagement:
         assert "encrypt(" in source
         encrypt_pos = source.index("encrypt(")
         wallet_pos = source.index("UserWallet(")
-        assert encrypt_pos < wallet_pos, (
-            "Private key must be encrypted BEFORE creating UserWallet object"
-        )
+        assert (
+            encrypt_pos < wallet_pos
+        ), "Private key must be encrypted BEFORE creating UserWallet object"
 
     def test_no_private_key_in_log_statements(self) -> None:
         """Private key material must never appear in log calls."""
