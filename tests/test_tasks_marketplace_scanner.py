@@ -7,8 +7,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from db.models.product import CurrencyType, DealStatus, MarketplaceDeal, Product
 from db.models.user import User
 from tasks.marketplace_scanner import MarketplaceScanner
@@ -21,7 +20,6 @@ def mock_bot() -> AsyncMock:
     return AsyncMock()
 
 
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 @pytest.fixture
 def scanner(mock_bot: AsyncMock, engine: AsyncEngine) -> MarketplaceScanner:

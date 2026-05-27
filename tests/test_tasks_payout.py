@@ -92,6 +92,7 @@ def _build_session_ctx(
 # ── Deal not found ─────────────────────────────────────────────────────────────
 
 
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
 @pytest.mark.asyncio
 async def test_payout_deal_not_found_returns_early() -> None:
     """Returns immediately when deal does not exist in DB."""
