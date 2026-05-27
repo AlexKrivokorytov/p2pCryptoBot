@@ -9,7 +9,14 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models.product import CurrencyType, DealStatus, DiscountType, MarketplaceDeal, Product, PromoCode
+from db.models.product import (
+    CurrencyType,
+    DealStatus,
+    DiscountType,
+    MarketplaceDeal,
+    Product,
+    PromoCode,
+)
 from db.models.user import User
 from services.marketplace_ecommerce import MarketplaceEcommerceService
 

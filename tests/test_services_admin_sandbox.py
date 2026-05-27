@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.admin import AdminAuditLog
-from db.models.b2b import B2BLicense
 from db.models.order import Order, OrderStatus, OrderType, SupportedAsset
 from db.models.user import User
 from db.models.wallet import UserWallet
@@ -39,7 +38,7 @@ async def test_log_admin_action(session: AsyncSession) -> None:
     stmt = select(AdminAuditLog).where(AdminAuditLog.admin_id == 999)
     res = await session.execute(stmt)
     log_entry = res.scalar_one()
-    
+
     assert log_entry.action == "test_action"
     assert log_entry.target_id == "123"
     assert log_entry.details == {"key": "value"}
@@ -54,7 +53,7 @@ async def test_inject_test_balance(session: AsyncSession) -> None:
 
     # Initial injection
     await inject_test_balance(session, admin_id=999, user_id=1010, amount=500.0, asset="USDT")
-    
+
     # Check wallet was created
     stmt = select(UserWallet).where(UserWallet.user_id == 1010)
     res = await session.execute(stmt)
@@ -81,7 +80,7 @@ async def test_activate_license_bypass_new(session: AsyncSession) -> None:
     await session.commit()
 
     lic = await activate_license_bypass(session, admin_id=999, user_id=2020, days=30)
-    
+
     assert lic.owner_id == 2020
     assert lic.is_active is True
     assert lic.expires_at > datetime.now(UTC)
@@ -111,7 +110,7 @@ async def test_force_order_status(session: AsyncSession) -> None:
     await session.commit()
 
     await force_order_status(session, admin_id=999, order_id=str(order_id), new_status="completed")
-    
+
     # Verify status changed
     stmt = select(Order).where(Order.id == order_id)
     res = await session.execute(stmt)

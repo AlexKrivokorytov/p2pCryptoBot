@@ -85,8 +85,12 @@ async def test_escrow_scanner_check_order_deposit_funded(session: AsyncSession, 
 
     with (
         patch("tasks.escrow_scanner._get_provider", return_value=mock_provider),
-        patch("services.notification_service.notify_maker_order_activated", new_callable=AsyncMock) as mock_notify_maker,
-        patch("services.notification_service.notify_taker_order_activated", new_callable=AsyncMock) as mock_notify_taker,
+        patch(
+            "services.notification_service.notify_maker_order_activated", new_callable=AsyncMock
+        ) as mock_notify_maker,
+        patch(
+            "services.notification_service.notify_taker_order_activated", new_callable=AsyncMock
+        ) as mock_notify_taker,
     ):
         await scanner._scan_once()
 
@@ -102,7 +106,9 @@ async def test_escrow_scanner_check_order_deposit_funded(session: AsyncSession, 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_escrow_scanner_check_order_deposit_insufficient(session: AsyncSession, engine) -> None:
+async def test_escrow_scanner_check_order_deposit_insufficient(
+    session: AsyncSession, engine
+) -> None:
     """EscrowScanner leaves order pending when balance is insufficient."""
     async with session.begin():
         maker = User(telegram_id=3003, username="maker_escrow_scan_ins")
@@ -134,7 +140,9 @@ async def test_escrow_scanner_check_order_deposit_insufficient(session: AsyncSes
 
     with (
         patch("tasks.escrow_scanner._get_provider", return_value=mock_provider),
-        patch("services.notification_service.notify_maker_order_activated", new_callable=AsyncMock) as mock_notify,
+        patch(
+            "services.notification_service.notify_maker_order_activated", new_callable=AsyncMock
+        ) as mock_notify,
     ):
         await scanner._scan_once()
         mock_notify.assert_not_called()
@@ -186,6 +194,7 @@ async def test_marketplace_scanner_check_deal_deposit_funded(session: AsyncSessi
 
     async with session.begin():
         from db.models.product import CurrencyType
+
         product = Product(
             seller_id=4001,
             title="Scan Product",
@@ -232,7 +241,9 @@ async def test_marketplace_scanner_check_deal_deposit_funded(session: AsyncSessi
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_marketplace_scanner_check_deal_deposit_insufficient(session: AsyncSession, engine) -> None:
+async def test_marketplace_scanner_check_deal_deposit_insufficient(
+    session: AsyncSession, engine
+) -> None:
     """MarketplaceScanner leaves deal created when deposit is insufficient."""
     async with session.begin():
         seller = User(telegram_id=4003, username="seller_market_scan_ins")
@@ -242,6 +253,7 @@ async def test_marketplace_scanner_check_deal_deposit_insufficient(session: Asyn
 
     async with session.begin():
         from db.models.product import CurrencyType
+
         product = Product(
             seller_id=4003,
             title="Scan Product Insufficient",

@@ -8,7 +8,6 @@ which matches how SQLAlchemy ORM objects behave once loaded.
 from __future__ import annotations
 
 import uuid
-from contextlib import asynccontextmanager
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 

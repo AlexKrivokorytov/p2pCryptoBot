@@ -7,9 +7,7 @@ from decimal import Decimal
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
 from db.models.product import CurrencyType, DealStatus, MarketplaceDeal, Product
 from db.models.user import User
@@ -70,9 +68,7 @@ async def test_get_secure_link_buyer_paid(session: AsyncSession) -> None:
     await _make_user(session, 1002)
     deal_id = await _make_deal(session, buyer_id=1001, seller_id=1002, status=DealStatus.paid)
 
-    link = await FileDeliveryService.get_secure_link(
-        session=session, deal_id=deal_id, user_id=1001
-    )
+    link = await FileDeliveryService.get_secure_link(session=session, deal_id=deal_id, user_id=1001)
 
     assert link == f"/api/deals/{deal_id}/download"
 
@@ -84,9 +80,7 @@ async def test_get_secure_link_buyer_delivered(session: AsyncSession) -> None:
     await _make_user(session, 1004)
     deal_id = await _make_deal(session, buyer_id=1003, seller_id=1004, status=DealStatus.delivered)
 
-    link = await FileDeliveryService.get_secure_link(
-        session=session, deal_id=deal_id, user_id=1003
-    )
+    link = await FileDeliveryService.get_secure_link(session=session, deal_id=deal_id, user_id=1003)
 
     assert "/download" in link
 
@@ -98,9 +92,7 @@ async def test_get_secure_link_buyer_completed(session: AsyncSession) -> None:
     await _make_user(session, 1006)
     deal_id = await _make_deal(session, buyer_id=1005, seller_id=1006, status=DealStatus.completed)
 
-    link = await FileDeliveryService.get_secure_link(
-        session=session, deal_id=deal_id, user_id=1005
-    )
+    link = await FileDeliveryService.get_secure_link(session=session, deal_id=deal_id, user_id=1005)
 
     assert link is not None
 
@@ -112,9 +104,7 @@ async def test_get_secure_link_seller_access(session: AsyncSession) -> None:
     await _make_user(session, 1008)
     deal_id = await _make_deal(session, buyer_id=1007, seller_id=1008, status=DealStatus.paid)
 
-    link = await FileDeliveryService.get_secure_link(
-        session=session, deal_id=deal_id, user_id=1008
-    )
+    link = await FileDeliveryService.get_secure_link(session=session, deal_id=deal_id, user_id=1008)
 
     assert link is not None
 
@@ -139,7 +129,9 @@ async def test_get_secure_link_unauthorized_user(session: AsyncSession) -> None:
 
     with pytest.raises(HTTPException) as exc_info:
         await FileDeliveryService.get_secure_link(
-            session=session, deal_id=deal_id, user_id=9999  # stranger
+            session=session,
+            deal_id=deal_id,
+            user_id=9999,  # stranger
         )
 
     assert exc_info.value.status_code == 403
@@ -153,9 +145,7 @@ async def test_get_secure_link_buyer_unpaid_denied(session: AsyncSession) -> Non
     deal_id = await _make_deal(session, buyer_id=1011, seller_id=1012, status=DealStatus.created)
 
     with pytest.raises(HTTPException) as exc_info:
-        await FileDeliveryService.get_secure_link(
-            session=session, deal_id=deal_id, user_id=1011
-        )
+        await FileDeliveryService.get_secure_link(session=session, deal_id=deal_id, user_id=1011)
 
     assert exc_info.value.status_code == 403
 
@@ -170,8 +160,6 @@ async def test_get_secure_link_non_digital_product_rejected(session: AsyncSessio
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await FileDeliveryService.get_secure_link(
-            session=session, deal_id=deal_id, user_id=1013
-        )
+        await FileDeliveryService.get_secure_link(session=session, deal_id=deal_id, user_id=1013)
 
     assert exc_info.value.status_code == 400

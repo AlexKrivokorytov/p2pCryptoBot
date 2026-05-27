@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram import Bot
-from aiogram.types import Message, PreCheckoutQuery, SuccessfulPayment, User as TgUser
+from aiogram.types import Message, PreCheckoutQuery, SuccessfulPayment
+from aiogram.types import User as TgUser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -198,9 +199,7 @@ async def test_successful_payment_digital_autodelivery(session: AsyncSession) ->
 
     # Verify deal status is delivered in DB
     await session.commit()
-    result = await session.execute(
-        select(MarketplaceDeal).where(MarketplaceDeal.id == deal.id)
-    )
+    result = await session.execute(select(MarketplaceDeal).where(MarketplaceDeal.id == deal.id))
     db_deal = result.scalar_one()
     assert db_deal.status == DealStatus.delivered
     assert db_deal.telegram_payment_charge_id == "tg_chg_1"
@@ -257,8 +256,6 @@ async def test_successful_payment_non_digital(session: AsyncSession) -> None:
 
     # Verify deal status is paid in DB
     await session.commit()
-    result = await session.execute(
-        select(MarketplaceDeal).where(MarketplaceDeal.id == deal.id)
-    )
+    result = await session.execute(select(MarketplaceDeal).where(MarketplaceDeal.id == deal.id))
     db_deal = result.scalar_one()
     assert db_deal.status == DealStatus.paid

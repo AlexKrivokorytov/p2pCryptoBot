@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+
 from db.models.product import CurrencyType, DealStatus, MarketplaceDeal, Product
 from db.models.user import User
 from tasks.marketplace_scanner import MarketplaceScanner
@@ -20,7 +21,6 @@ def mock_bot() -> AsyncMock:
     return AsyncMock()
 
 
-
 @pytest.fixture
 def scanner(mock_bot: AsyncMock, engine: AsyncEngine) -> MarketplaceScanner:
     factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -31,15 +31,15 @@ def scanner(mock_bot: AsyncMock, engine: AsyncEngine) -> MarketplaceScanner:
 async def test_scanner_run_stop(scanner: MarketplaceScanner) -> None:
     """Scanner run and stop methods toggle the running state."""
     assert not scanner._running
-    
+
     # We mock _scan_once to just stop the scanner so it doesn't loop forever
     async def mock_scan_once() -> None:
         scanner.stop()
-        
+
     with patch.object(scanner, "_scan_once", new_callable=AsyncMock) as mock_scan:
         mock_scan.side_effect = mock_scan_once
         await scanner.run()
-        
+
     assert not scanner._running
     mock_scan.assert_called_once()
 
@@ -53,7 +53,9 @@ async def test_scan_once_no_deals(scanner: MarketplaceScanner, session: AsyncSes
 
 
 @pytest.mark.asyncio
-async def test_scan_once_with_created_deal(scanner: MarketplaceScanner, session: AsyncSession) -> None:
+async def test_scan_once_with_created_deal(
+    scanner: MarketplaceScanner, session: AsyncSession
+) -> None:
     """Scanner checks deposit for a created deal with blockchain and escrow."""
     buyer = User(telegram_id=111, username="buyer")
     seller = User(telegram_id=222, username="seller")
@@ -106,7 +108,9 @@ async def test_scan_once_with_created_deal(scanner: MarketplaceScanner, session:
 
 
 @pytest.mark.asyncio
-async def test_scan_once_insufficient_balance(scanner: MarketplaceScanner, session: AsyncSession) -> None:
+async def test_scan_once_insufficient_balance(
+    scanner: MarketplaceScanner, session: AsyncSession
+) -> None:
     """Scanner does not change status if balance is insufficient."""
     buyer = User(telegram_id=333, username="buyer3")
     seller = User(telegram_id=444, username="seller4")

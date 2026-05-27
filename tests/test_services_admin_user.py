@@ -87,51 +87,61 @@ def test_format_user_info_contains_html_tags() -> None:
     assert "<b>" in result
     assert "<code>" in result
 
+
 # ── find_user_by_query ───────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_find_user_by_query_username(mocker: MagicMock) -> None:
     from services.admin_user_service import find_user_by_query
+
     session = MagicMock()
     session.execute = mocker.AsyncMock()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = _make_user()
     session.execute.return_value = mock_result
-    
+
     user = await find_user_by_query(session, "@alice")
     assert user is not None
     assert user.username == "alice"
 
+
 @pytest.mark.asyncio
 async def test_find_user_by_query_id(mocker: MagicMock) -> None:
     from services.admin_user_service import find_user_by_query
+
     session = MagicMock()
     session.execute = mocker.AsyncMock()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = _make_user()
     session.execute.return_value = mock_result
-    
+
     user = await find_user_by_query(session, "123456")
     assert user is not None
     assert user.telegram_id == 123456
 
+
 @pytest.mark.asyncio
 async def test_find_user_by_query_username_no_at(mocker: MagicMock) -> None:
     from services.admin_user_service import find_user_by_query
+
     session = MagicMock()
     session.execute = mocker.AsyncMock()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = _make_user()
     session.execute.return_value = mock_result
-    
+
     user = await find_user_by_query(session, "alice")
     assert user is not None
 
+
 # ── toggle_user_verification ───────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_toggle_user_verification(mocker: MagicMock) -> None:
     from services.admin_user_service import toggle_user_verification
+
     session = MagicMock()
     session.execute = mocker.AsyncMock()
     session.commit = mocker.AsyncMock()
@@ -139,11 +149,13 @@ async def test_toggle_user_verification(mocker: MagicMock) -> None:
     user_mock = _make_user(is_verified=False)
     mock_result.scalar_one_or_none.return_value = user_mock
     session.execute.return_value = mock_result
-    
-    log_admin_action_mock = mocker.patch("services.admin_user_service.log_admin_action", new_callable=mocker.AsyncMock)
-    
+
+    log_admin_action_mock = mocker.patch(
+        "services.admin_user_service.log_admin_action", new_callable=mocker.AsyncMock
+    )
+
     await toggle_user_verification(session, 111, 222, True)
-    
+
     assert user_mock.is_verified is True
     log_admin_action_mock.assert_called_once()
     session.commit.assert_called_once()

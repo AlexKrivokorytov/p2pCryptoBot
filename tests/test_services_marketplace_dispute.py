@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from aiogram import Bot
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.product import CurrencyType, DealStatus, MarketplaceDeal, Product
@@ -50,7 +49,7 @@ async def test_open_marketplace_dispute_success(session: AsyncSession, mock_bot:
         status=DealStatus.paid,
         amount=10.0,
         currency_type=CurrencyType.CRYPTO,
-        created_at=datetime.now(UTC) - timedelta(minutes=DISPUTE_COOLDOWN_MINUTES + 5)
+        created_at=datetime.now(UTC) - timedelta(minutes=DISPUTE_COOLDOWN_MINUTES + 5),
     )
     session.add(deal)
     await session.commit()
@@ -69,7 +68,9 @@ async def test_open_marketplace_dispute_success(session: AsyncSession, mock_bot:
 
 
 @pytest.mark.asyncio
-async def test_open_marketplace_dispute_cooldown(session: AsyncSession, mock_bot: AsyncMock) -> None:
+async def test_open_marketplace_dispute_cooldown(
+    session: AsyncSession, mock_bot: AsyncMock
+) -> None:
     """Should raise ValueError if cooldown has not elapsed."""
     buyer = User(telegram_id=333, username="b3")
     seller = User(telegram_id=444, username="s4")
@@ -91,7 +92,7 @@ async def test_open_marketplace_dispute_cooldown(session: AsyncSession, mock_bot
         status=DealStatus.paid,
         amount=10.0,
         currency_type=CurrencyType.CRYPTO,
-        created_at=datetime.now(UTC) - timedelta(minutes=1)
+        created_at=datetime.now(UTC) - timedelta(minutes=1),
     )
     session.add(deal)
     await session.commit()
@@ -103,7 +104,9 @@ async def test_open_marketplace_dispute_cooldown(session: AsyncSession, mock_bot
 
 
 @pytest.mark.asyncio
-async def test_resolve_marketplace_dispute_seller_wins(session: AsyncSession, mock_bot: AsyncMock) -> None:
+async def test_resolve_marketplace_dispute_seller_wins(
+    session: AsyncSession, mock_bot: AsyncMock
+) -> None:
     """Admin resolves dispute in favor of seller."""
     buyer = User(telegram_id=555, username="b5")
     seller = User(telegram_id=666, username="s6")
@@ -130,7 +133,12 @@ async def test_resolve_marketplace_dispute_seller_wins(session: AsyncSession, mo
     await session.commit()
 
     result = await resolve_marketplace_dispute(
-        session, mock_bot, deal_id=str(deal_id), admin_id=999, resolution="seller", comment="Seller provided proof"
+        session,
+        mock_bot,
+        deal_id=str(deal_id),
+        admin_id=999,
+        resolution="seller",
+        comment="Seller provided proof",
     )
 
     assert result["status"] == DealStatus.completed
@@ -148,16 +156,16 @@ async def test_resolve_marketplace_dispute_seller_wins(session: AsyncSession, mo
 
 
 @pytest.mark.asyncio
-async def test_resolve_marketplace_dispute_buyer_wins_xtr(session: AsyncSession, mock_bot: AsyncMock) -> None:
+async def test_resolve_marketplace_dispute_buyer_wins_xtr(
+    session: AsyncSession, mock_bot: AsyncMock
+) -> None:
     """Admin resolves in favor of buyer, refunds XTR."""
     buyer = User(telegram_id=777, username="b7")
     seller = User(telegram_id=888, username="s8")
     session.add_all([buyer, seller])
     await session.commit()
 
-    product = Product(
-        seller_id=888, title="Test Prod", price=10.0, currency_type=CurrencyType.XTR
-    )
+    product = Product(seller_id=888, title="Test Prod", price=10.0, currency_type=CurrencyType.XTR)
     session.add(product)
     await session.commit()
 
@@ -175,7 +183,9 @@ async def test_resolve_marketplace_dispute_buyer_wins_xtr(session: AsyncSession,
     session.add(deal)
     await session.commit()
 
-    with patch("services.marketplace_dispute_service._refund_to_buyer_xtr", new_callable=AsyncMock) as mock_refund:
+    with patch(
+        "services.marketplace_dispute_service._refund_to_buyer_xtr", new_callable=AsyncMock
+    ) as mock_refund:
         result = await resolve_marketplace_dispute(
             session, mock_bot, deal_id=str(deal_id), admin_id=999, resolution="buyer"
         )

@@ -94,7 +94,9 @@ async def test_notify_deal_created_sends_to_seller() -> None:
     """notify_deal_created sends message to the seller."""
     bot = _make_bot()
 
-    with patch("services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock):
+    with patch(
+        "services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock
+    ):
         result = await notify_deal_created(
             bot=bot,
             seller_id=100,
@@ -115,7 +117,9 @@ async def test_notify_deal_created_telegram_error_returns_false() -> None:
     bot = _make_bot()
     bot.send_message.side_effect = TelegramAPIError(method=MagicMock(), message="error")
 
-    with patch("services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock):
+    with patch(
+        "services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock
+    ):
         result = await notify_deal_created(
             bot=bot,
             seller_id=100,
@@ -137,7 +141,9 @@ async def test_notify_deal_paid_sends_to_seller() -> None:
     """notify_deal_paid sends message to seller_id."""
     bot = _make_bot()
 
-    with patch("services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock):
+    with patch(
+        "services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock
+    ):
         result = await notify_deal_paid(
             bot=bot,
             seller_id=100,
@@ -159,7 +165,9 @@ async def test_notify_deal_delivered_sends_to_buyer() -> None:
     """notify_deal_delivered sends message to buyer_id."""
     bot = _make_bot()
 
-    with patch("services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock):
+    with patch(
+        "services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock
+    ):
         result = await notify_deal_delivered(
             bot=bot,
             buyer_id=200,
@@ -354,7 +362,9 @@ async def test_notify_seller_payout_sent_success() -> None:
     bot = _make_bot()
     deal = _make_deal()
 
-    with patch("services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock):
+    with patch(
+        "services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock
+    ):
         result = await notify_seller_payout_sent(bot=bot, deal=deal)
 
     assert result is True
@@ -368,7 +378,9 @@ async def test_notify_seller_payout_sent_no_tx_hash() -> None:
     deal = _make_deal()
     deal.tx_hash_release = None
 
-    with patch("services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock):
+    with patch(
+        "services.marketplace_notifications._save_inapp_notification", new_callable=AsyncMock
+    ):
         result = await notify_seller_payout_sent(bot=bot, deal=deal)
 
     assert result is True
