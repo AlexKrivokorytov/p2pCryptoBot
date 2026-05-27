@@ -222,3 +222,87 @@ async def test_notify_order_expired_error(mock_branding) -> None:
         bot, maker_id=111, order_id="uuid-12345678", asset="BTC"
     )
     assert result is False
+
+
+@pytest.mark.asyncio
+async def test_notify_dispute_opened_error(mock_branding) -> None:
+    bot = AsyncMock(spec=Bot)
+    bot.send_message.side_effect = TelegramAPIError(
+        method=SendMessage(chat_id=1, text=""), message="Retry later"
+    )
+    await notification_service.notify_dispute_opened(
+        bot, maker_id=111, taker_id=222, order_id="uuid-123", reason="Test"
+    )
+
+
+@pytest.mark.asyncio
+async def test_notify_dispute_resolved_error(mock_branding) -> None:
+    bot = AsyncMock(spec=Bot)
+    bot.send_message.side_effect = TelegramAPIError(
+        method=SendMessage(chat_id=1, text=""), message="Retry later"
+    )
+    await notification_service.notify_dispute_resolved(
+        bot,
+        maker_id=111,
+        taker_id=222,
+        order_id="uuid-123",
+        decision="taker_wins",
+        status="resolved",
+    )
+
+
+@pytest.mark.asyncio
+async def test_notify_escrow_refunded_error(mock_branding) -> None:
+    bot = AsyncMock(spec=Bot)
+    bot.send_message.side_effect = TelegramAPIError(
+        method=SendMessage(chat_id=1, text=""), message="Retry later"
+    )
+    res = await notification_service.notify_escrow_refunded(
+        bot, maker_id=111, order_id="uuid-123", asset="USDT", amount=10.0
+    )
+    assert res is False
+
+
+@pytest.mark.asyncio
+async def test_notify_maker_order_activated_error(mock_branding) -> None:
+    bot = AsyncMock(spec=Bot)
+    bot.send_message.side_effect = TelegramAPIError(
+        method=SendMessage(chat_id=1, text=""), message="Retry later"
+    )
+    res = await notification_service.notify_maker_order_activated(
+        bot, maker_id=111, order_id="uuid-123", asset="USDT", amount=10.0
+    )
+    assert res is False
+
+
+@pytest.mark.asyncio
+async def test_notify_taker_order_activated_success(mock_branding) -> None:
+    bot = AsyncMock(spec=Bot)
+    res = await notification_service.notify_taker_order_activated(
+        bot, taker_id=111, order_id="uuid-123", asset="USDT", amount=10.0
+    )
+    assert res is True
+    bot.send_message.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_notify_taker_order_activated_error(mock_branding) -> None:
+    bot = AsyncMock(spec=Bot)
+    bot.send_message.side_effect = TelegramAPIError(
+        method=SendMessage(chat_id=1, text=""), message="Retry later"
+    )
+    res = await notification_service.notify_taker_order_activated(
+        bot, taker_id=111, order_id="uuid-123", asset="USDT", amount=10.0
+    )
+    assert res is False
+
+
+@pytest.mark.asyncio
+async def test_notify_taker_escrow_released_with_tx_hash(mock_branding) -> None:
+    bot = AsyncMock(spec=Bot)
+    res = await notification_service.notify_taker_escrow_released(
+        bot, taker_id=123, order_id="uuid-12345678", asset="USDT", amount=10.5, tx_hash="0xabcd"
+    )
+    assert res is True
+    args, kwargs = bot.send_message.call_args
+    assert "0xabcd" in args[1]

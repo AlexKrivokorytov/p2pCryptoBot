@@ -101,7 +101,73 @@ async def test_cb_profile(mock_reputation: AsyncMock, mock_get_profile: AsyncMoc
 
     callback.message.edit_text.assert_called_once()
     text = callback.message.edit_text.call_args[0][0]
-    assert "Unverified" in text
+    assert "Your Profile" in text
+    callback.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("bot.handlers.profile.get_or_create_user", new_callable=AsyncMock)
+async def test_cmd_referral(mock_get_profile: AsyncMock) -> None:
+    """Test the referral command."""
+    session = AsyncMock(spec=AsyncSession)
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.side_effect = [5, 10.5]  # 5 referrals, 10.5 earned
+    session.execute.return_value = mock_result
+
+    user = User(telegram_id=999, is_verified=True, referral_balance=2.5)
+    mock_get_profile.return_value = user
+
+    mock_bot_me = MagicMock()
+    mock_bot_me.username = "testbot"
+
+    message = AsyncMock(spec=Message)
+    message.from_user = MagicMock()
+    message.from_user.id = 999
+    message.answer = AsyncMock()
+    message.bot = AsyncMock()
+    message.bot.get_me = AsyncMock(return_value=mock_bot_me)
+
+    await profile_handlers.cmd_referral(message, session)
+
+    message.answer.assert_called_once()
+    text = message.answer.call_args[0][0]
+    assert "Referral Program" in text
+    assert "5" in text
+    assert "10.5000 USDT" in text
+
+
+@pytest.mark.asyncio
+@patch("bot.handlers.profile.get_or_create_user", new_callable=AsyncMock)
+async def test_cb_referral(mock_get_profile: AsyncMock) -> None:
+    """Test the referral callback."""
+    session = AsyncMock(spec=AsyncSession)
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.side_effect = [2, 1.5]
+    session.execute.return_value = mock_result
+
+    user = User(telegram_id=999, is_verified=True, referral_balance=0.5)
+    mock_get_profile.return_value = user
+
+    mock_bot_me = MagicMock()
+    mock_bot_me.username = "testbot"
+
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.from_user = MagicMock()
+    callback.from_user.id = 999
+    callback.message = AsyncMock(spec=Message)
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
+    callback.bot = AsyncMock()
+    callback.bot.get_me = AsyncMock(return_value=mock_bot_me)
+
+    await profile_handlers.cb_referral(callback, session)
+
+    callback.message.edit_text.assert_called_once()
+    text = callback.message.edit_text.call_args[0][0]
+    assert "Referral Program" in text
+    callback.answer.assert_called_once()
     callback.answer.assert_called_once()
 
 

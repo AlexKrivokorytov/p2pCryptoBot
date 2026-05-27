@@ -79,3 +79,48 @@ async def test_get_active_license_expired(session: AsyncSession):
 
     active = await b2b_service.get_active_license(session, 333)
     assert active is None
+
+
+@pytest.mark.asyncio
+async def test_get_ton_license_price_success():
+    from unittest.mock import AsyncMock, patch
+
+    with patch("services.b2b_service.get_market_rate", new_callable=AsyncMock) as mock_rate:
+        mock_rate.return_value = 5.0
+        price = await b2b_service.get_ton_license_price()
+        assert price == 20.0
+
+
+@pytest.mark.asyncio
+async def test_get_ton_license_price_fallback():
+    from unittest.mock import AsyncMock, patch
+
+    with patch("services.b2b_service.get_market_rate", new_callable=AsyncMock) as mock_rate:
+        mock_rate.return_value = 0.0
+        price = await b2b_service.get_ton_license_price()
+        assert price == 20.0
+
+
+@pytest.mark.asyncio
+async def test_update_license_branding(session: AsyncSession):
+    user = User(telegram_id=444, username="test4")
+    session.add(user)
+    await session.commit()
+
+    lic = await b2b_service.create_b2b_license(session, user_id=444, charge_id="charge_brand")
+
+    updated = await b2b_service.update_license_branding(
+        session, license_id=lic["license_id"], field_path="bot.name", value="New Name"
+    )
+    assert updated["bot"]["name"] == "New Name"
+
+
+@pytest.mark.asyncio
+async def test_update_license_branding_not_found(session: AsyncSession):
+    with pytest.raises(ValueError, match="License not found"):
+        await b2b_service.update_license_branding(
+            session,
+            license_id="00000000-0000-0000-0000-000000000000",
+            field_path="bot.name",
+            value="New Name",
+        )

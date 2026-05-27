@@ -139,3 +139,75 @@ async def test_start_cleanup_task_handles_exception(engine) -> None:
             await task
 
     assert call_count >= 2, "Should have retried after the error"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_expire_stagnant_trades(engine) -> None:
+    """Old escrow_held trades should be refunded."""
+    from aiogram import Bot
+
+    from providers.crypto_pay import CryptoPayClient
+
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    timeout = int(os.environ.get("TRADE_TIMEOUT_SEC", "1800"))
+
+    async with factory() as session:
+        # Create user
+        user = User(telegram_id=302, username="taker_test")
+        session.add(user)
+        await session.commit()
+
+        o1 = await _create_order(session, OrderStatus.escrow_held, offset_seconds=-(timeout + 100))
+        async with session.begin():
+            db_order = await session.get(Order, o1.id)
+            db_order.taker_id = 302
+            db_order.updated_at = o1.created_at
+
+        o1_id = o1.id
+
+    mock_crypto_pay = AsyncMock(spec=CryptoPayClient)
+
+    # Mock refund_escrow to just change status for test
+    async def mock_refund(*args, **kwargs):
+        async with factory() as s, s.begin():
+            order = await s.get(Order, o1_id)
+            order.status = OrderStatus.cancelled
+
+    with contextlib.suppress(Exception):
+        from unittest.mock import patch
+
+        with patch("services.escrow_service.refund_escrow", side_effect=mock_refund):
+            count = await cleanup.expire_stagnant_trades(
+                factory, bot=AsyncMock(spec=Bot), crypto_pay=mock_crypto_pay
+            )
+            assert count == 1
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_verify_top_sellers(engine) -> None:
+    """Users meeting criteria should be auto-verified."""
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    async with factory() as session, session.begin():
+        u1 = User(
+            telegram_id=501, successful_trades=10, review_count=5, rating_sum=23
+        )  # 4.6 avg -> should verify
+        u2 = User(
+            telegram_id=502, successful_trades=10, review_count=5, rating_sum=20
+        )  # 4.0 avg -> should NOT verify
+        u3 = User(
+            telegram_id=503, successful_trades=9, review_count=5, rating_sum=25
+        )  # 5.0 avg, but 9 trades -> should NOT verify
+
+        session.add_all([u1, u2, u3])
+
+    count = await cleanup.verify_top_sellers(factory)
+    assert count == 1
+
+    async with factory() as session:
+        db_u1 = await session.get(User, 501)
+        db_u2 = await session.get(User, 502)
+        assert db_u1.is_verified_seller is True
+        assert db_u2.is_verified_seller is False

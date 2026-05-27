@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 import uuid
 from unittest.mock import AsyncMock, patch
 
@@ -108,13 +109,17 @@ async def test_cb_order_status_not_found(mock_order: AsyncMock) -> None:
 @pytest.mark.asyncio
 async def test_cb_order_status_maker_escrow_held(session: AsyncSession) -> None:
     """Maker checking escrow_held order gets confirmation keyboard."""
-    await _create_test_user(session, telegram_id=111, username="maker")
-    await _create_test_user(session, telegram_id=222, username="taker")
-    order = await _create_order(session, status=OrderStatus.escrow_held, maker_id=111, taker_id=222)
+    maker_id = random.randint(100000, 999999)
+    taker_id = random.randint(100000, 999999)
+    await _create_test_user(session, telegram_id=maker_id, username="maker")
+    await _create_test_user(session, telegram_id=taker_id, username="taker")
+    order = await _create_order(
+        session, status=OrderStatus.escrow_held, maker_id=maker_id, taker_id=taker_id
+    )
     order_id = order.id
 
     callback = AsyncMock()
-    callback.from_user.id = 111  # Maker
+    callback.from_user.id = maker_id  # Maker
     callback.data = f"order:status:{order_id}"
 
     await escrow_handlers.cb_order_status(callback, session)
@@ -128,13 +133,17 @@ async def test_cb_order_status_maker_escrow_held(session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_cb_order_status_taker_escrow_held(session: AsyncSession) -> None:
     """Taker checking escrow_held order gets alert status."""
-    await _create_test_user(session, telegram_id=111, username="maker")
-    await _create_test_user(session, telegram_id=222, username="taker")
-    order = await _create_order(session, status=OrderStatus.escrow_held, maker_id=111, taker_id=222)
+    maker_id = random.randint(100000, 999999)
+    taker_id = random.randint(100000, 999999)
+    await _create_test_user(session, telegram_id=maker_id, username="maker")
+    await _create_test_user(session, telegram_id=taker_id, username="taker")
+    order = await _create_order(
+        session, status=OrderStatus.escrow_held, maker_id=maker_id, taker_id=taker_id
+    )
     order_id = order.id
 
     callback = AsyncMock()
-    callback.from_user.id = 222  # Taker — not maker, gets alert
+    callback.from_user.id = taker_id  # Taker — not maker, gets alert
     callback.data = f"order:status:{order_id}"
 
     await escrow_handlers.cb_order_status(callback, session)

@@ -223,7 +223,7 @@ class TestWebhookSignatureContract:
         """Calling close() on an unopened client must not raise."""
         import asyncio
 
-        asyncio.get_event_loop().run_until_complete(client.close())
+        asyncio.run(client.close())
 
 
 class TestExchangeRatesContract:
@@ -266,6 +266,6 @@ class TestExchangeRatesContract:
     def test_supported_assets_contains_required_coins(self) -> None:
         """Core assets required by the bot must always be present."""
         required = {"USDT", "TON", "BTC", "ETH", "USDC"}
-        assert required.issubset(SUPPORTED_ASSETS), (
-            f"Missing required assets: {required - SUPPORTED_ASSETS}"
-        )
+        assert required.issubset(
+            SUPPORTED_ASSETS
+        ), f"Missing required assets: {required - SUPPORTED_ASSETS}"

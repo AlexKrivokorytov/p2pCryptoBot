@@ -150,3 +150,144 @@ async def test_cb_b2b_spawn(session: AsyncSession) -> None:
         callback.message.edit_text.assert_called_once()
         assert "BotFather" in callback.message.edit_text.call_args[0][0]
         callback.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_cb_b2b_customize_no_license(session: AsyncSession) -> None:
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.message = AsyncMock(spec=Message)
+    callback.from_user = MagicMock()
+    callback.from_user.id = 123
+    callback.answer = AsyncMock()
+
+    with patch("bot.handlers.b2b.b2b_service.get_active_license", return_value=None):
+        await b2b_handlers.cb_b2b_customize(callback, session)
+        callback.answer.assert_called_with("❌ Active license required.", show_alert=True)
+
+
+@pytest.mark.asyncio
+async def test_cb_b2b_customize_with_license(session: AsyncSession) -> None:
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.message = AsyncMock(spec=Message)
+    callback.from_user = MagicMock()
+    callback.from_user.id = 123
+    callback.answer = AsyncMock()
+    callback.message.edit_text = AsyncMock()
+
+    with patch(
+        "bot.handlers.b2b.b2b_service.get_active_license",
+        return_value={"branding": {"bot": {"name": "Test"}}},
+    ):
+        await b2b_handlers.cb_b2b_customize(callback, session)
+        callback.message.edit_text.assert_called_once()
+        assert "Test" in callback.message.edit_text.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_cb_b2b_customize_field() -> None:
+    from aiogram.fsm.context import FSMContext
+
+    callback = AsyncMock(spec=CallbackQuery)
+    callback.message = AsyncMock(spec=Message)
+    callback.data = "b2b:edit:bot.name"
+    callback.message.edit_text = AsyncMock()
+    callback.answer = AsyncMock()
+    state = AsyncMock(spec=FSMContext)
+
+    await b2b_handlers.cb_b2b_customize_field(callback, state)
+    state.set_state.assert_called_once()
+    state.update_data.assert_called_with(field_path="bot.name")
+    callback.message.edit_text.assert_called_once()
+    assert "Bot Name" in callback.message.edit_text.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_msg_b2b_branding_value_empty(session: AsyncSession) -> None:
+    from aiogram.fsm.context import FSMContext
+
+    message = AsyncMock(spec=Message)
+    message.text = "   "
+    state = AsyncMock(spec=FSMContext)
+    state.get_data.return_value = {"field_path": "bot.name"}
+    message.answer = AsyncMock()
+
+    await b2b_handlers.msg_b2b_branding_value(message, state, session)
+    message.answer.assert_called_with("❌ Value cannot be empty.")
+
+
+@pytest.mark.asyncio
+async def test_msg_b2b_branding_value_invalid_handle(session: AsyncSession) -> None:
+    from aiogram.fsm.context import FSMContext
+
+    message = AsyncMock(spec=Message)
+    message.text = "invalid"
+    state = AsyncMock(spec=FSMContext)
+    state.get_data.return_value = {"field_path": "bot.support_handle"}
+    message.answer = AsyncMock()
+
+    await b2b_handlers.msg_b2b_branding_value(message, state, session)
+    message.answer.assert_called_with("❌ Support handle must start with @")
+
+
+@pytest.mark.asyncio
+async def test_msg_b2b_branding_value_success(session: AsyncSession) -> None:
+    from aiogram.fsm.context import FSMContext
+
+    message = AsyncMock(spec=Message)
+    message.text = "New Name"
+    message.from_user = MagicMock()
+    message.from_user.id = 123
+    state = AsyncMock(spec=FSMContext)
+    state.get_data.return_value = {"field_path": "bot.name"}
+    message.answer = AsyncMock()
+
+    with (
+        patch(
+            "bot.handlers.b2b.b2b_service.get_active_license", return_value={"license_id": "123"}
+        ),
+        patch(
+            "bot.handlers.b2b.b2b_service.update_license_branding", new_callable=AsyncMock
+        ) as mock_update,
+    ):
+        await b2b_handlers.msg_b2b_branding_value(message, state, session)
+        mock_update.assert_called_with(session, "123", "bot.name", "New Name")
+        state.clear.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_managed_bot_created_success(session: AsyncSession) -> None:
+    from services.bot_spawner import BotSpawnerService
+
+    message = AsyncMock(spec=Message)
+    message.managed_bot_created = MagicMock()
+    message.managed_bot_created.bot_id = 999
+    message.managed_bot_created.bot_username = "new_bot"
+    message.from_user = MagicMock()
+    message.from_user.id = 123
+    message.bot = AsyncMock()
+    message.bot.get_managed_bot_token.return_value = MagicMock(token="123:abc")
+    message.answer = AsyncMock()
+    bot_spawner = AsyncMock(spec=BotSpawnerService)
+
+    with patch(
+        "bot.handlers.b2b.b2b_service.get_active_license", return_value={"license_id": "123"}
+    ):
+        await b2b_handlers.handle_managed_bot_created(message, session, bot_spawner)
+        bot_spawner.update_bot_token.assert_called_with(session, "123", "123:abc")
+        assert "Successfully Spawned" in message.answer.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_handle_managed_bot_created_no_license(session: AsyncSession) -> None:
+    from services.bot_spawner import BotSpawnerService
+
+    message = AsyncMock(spec=Message)
+    message.managed_bot_created = MagicMock()
+    message.from_user = MagicMock()
+    message.from_user.id = 123
+    message.answer = AsyncMock()
+    bot_spawner = AsyncMock(spec=BotSpawnerService)
+
+    with patch("bot.handlers.b2b.b2b_service.get_active_license", return_value=None):
+        await b2b_handlers.handle_managed_bot_created(message, session, bot_spawner)
+        message.answer.assert_called_with("❌ License not found. Please contact support.")
