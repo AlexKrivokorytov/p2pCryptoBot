@@ -57,7 +57,7 @@ async def inject_test_balance(
                 user_id=user_id,
                 address=f"MOCK_{asset}_{uuid.uuid4().hex[:8]}",
                 chain="ton" if asset == "TON" else "evm",
-                encrypted_privkey="MOCK",
+                encrypted_private_key="MOCK",
             )
             session.add(wallet)
 

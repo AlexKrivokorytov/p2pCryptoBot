@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from db.models.product import DealStatus, MarketplaceDeal
 
@@ -27,7 +28,11 @@ class FileDeliveryService:
          or a token-protected internal redirect. For now, it verifies
          ownership and returns the relative path.
         """
-        stmt = select(MarketplaceDeal).where(MarketplaceDeal.id == deal_id)
+        stmt = (
+            select(MarketplaceDeal)
+            .where(MarketplaceDeal.id == deal_id)
+            .options(joinedload(MarketplaceDeal.product))
+        )
         result = await session.execute(stmt)
         deal = result.scalar_one_or_none()
 
