@@ -11,15 +11,15 @@ Start-Sleep -Seconds 5
 # Start the api container in the background
 docker compose up api -d
 
-echo "Running migrations (Alembic)..."
-docker compose exec api alembic upgrade head
+echo "Initializing Database Schema & Seeding Reference Data..."
+docker compose exec api python init_db.py
 
 if ($LASTEXITCODE -ne 0) {
-    echo "❌ Migrations failed! This would have crashed GitHub Actions."
+    echo "❌ Database initialization failed! This would have crashed GitHub Actions."
     exit $LASTEXITCODE
 }
 
-echo "✅ Migrations passed!"
+echo "✅ Database initialized successfully!"
 echo "Running Pytest..."
 docker compose exec api python -m pytest
 

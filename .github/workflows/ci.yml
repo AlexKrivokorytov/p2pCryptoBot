@@ -88,8 +88,8 @@ jobs:
       - name: Copy branding config
         run: cp branding.yaml.example branding.yaml
 
-      - name: Run Alembic migrations
-        run: alembic upgrade head
+      - name: Initialize Database Schema & Seed Data
+        run: python init_db.py
 
       - name: "🧪 Run unit tests"
         run: |
@@ -157,8 +157,8 @@ jobs:
       - name: Copy branding config
         run: cp branding.yaml.example branding.yaml
 
-      - name: Run Alembic migrations
-        run: alembic upgrade head
+      - name: Initialize Database Schema & Seed Data
+        run: python init_db.py
 
       - name: "🔌 Run contract tests (Crypto Pay & Binance API shapes)"
         run: |
@@ -225,8 +225,8 @@ jobs:
       - name: Copy branding config
         run: cp branding.yaml.example branding.yaml
 
-      - name: Run Alembic migrations
-        run: alembic upgrade head
+      - name: Initialize Database Schema & Seed Data
+        run: python init_db.py
 
       - name: "🗄️ Run integration tests (pessimistic locks, race conditions)"
         run: |
@@ -294,8 +294,8 @@ jobs:
       - name: Copy branding config
         run: cp branding.yaml.example branding.yaml
 
-      - name: Run Alembic migrations
-        run: alembic upgrade head
+      - name: Initialize Database Schema & Seed Data
+        run: python init_db.py
 
       - name: "📈 Run full suite for combined coverage report"
         run: |

@@ -36,7 +36,7 @@ class ThrottlingMiddleware(BaseMiddleware):
         from aiogram.types import CallbackQuery, Message
 
         user_id = None
-        if (isinstance(event, (Message, CallbackQuery))) and event.from_user:
+        if (isinstance(event, Message | CallbackQuery)) and event.from_user:
             user_id = event.from_user.id
 
         if user_id:
@@ -123,7 +123,7 @@ class UserRegistrationMiddleware(BaseMiddleware):
         from services.user_service import get_or_create_user
 
         user = None
-        if isinstance(event, (Message, CallbackQuery)):
+        if isinstance(event, Message | CallbackQuery):
             user = event.from_user
 
         session = data.get("session")

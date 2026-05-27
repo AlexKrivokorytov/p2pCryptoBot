@@ -22,6 +22,7 @@ from db.models.product import (
     DiscountType,
     MarketplaceDeal,
     Product,
+    ProductCategory,
     ProductReview,
     PromoCode,
 )
@@ -51,6 +52,7 @@ __all__ = [
     "AdminAuditLog",
     "InAppNotification",
     "Product",
+    "ProductCategory",
     "MarketplaceDeal",
     "ProductReview",
     "CurrencyType",

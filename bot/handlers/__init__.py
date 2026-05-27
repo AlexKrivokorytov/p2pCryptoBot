@@ -24,6 +24,7 @@ from bot.handlers import (
     order,
     profile,
     settings,
+    shop,
     stars_payment,
     start,
     trade,
@@ -33,6 +34,7 @@ from bot.handlers import (
 ROUTERS: list[Router] = [
     start.router,
     marketplace.router,  # marketplace before order — ad callbacks take priority
+    shop.router,
     order.router,
     trade.router,
     escrow.router,

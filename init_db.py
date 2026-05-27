@@ -56,7 +56,13 @@ from db.models.marketplace import (  # noqa: F401 E402
 )
 from db.models.notification import InAppNotification  # noqa: F401 E402
 from db.models.order import Order  # noqa: F401 E402
-from db.models.product import MarketplaceDeal, Product, ProductReview, PromoCode  # noqa: F401 E402
+from db.models.product import (  # noqa: F401 E402
+    MarketplaceDeal,
+    Product,
+    ProductCategory,
+    ProductReview,
+    PromoCode,
+)
 from db.models.user import User  # noqa: F401 E402
 from db.models.wallet import UserWallet  # noqa: F401 E402
 
@@ -336,6 +342,63 @@ async def _seed_master_license(session: AsyncSession, owner: User) -> None:
     log.info("master_license_created", license_id=str(license_.id))
 
 
+# 4d — Marketplace Categories
+async def _seed_categories(session: AsyncSession) -> None:
+    """Seed the 31 canonical product categories in a 2-level hierarchy.
+
+    This operates idempotently.
+
+    Args:
+        session: The active database session.
+    """
+    from sqlalchemy import select
+
+    # Define the 2-level hierarchy tree (parent_slug -> child_slugs)
+    category_tree: dict[str, list[str]] = {
+        "games": ["game_currency", "game_items", "game_accounts", "game_services"],
+        "education": ["online_courses", "tutoring", "templates"],
+        "digital_services": ["design", "development", "copywriting", "smm"],
+        "keys_licenses": ["software", "streaming", "vpn_proxy"],
+        "social": ["social_boost", "social_accounts", "ad_placements"],
+        "finance": ["crypto_exchange", "ewallet_topup", "promo_cashback"],
+        "delivery": ["goods_on_demand", "courier"],
+        "other": [],
+    }
+
+    # First pass: seed root categories
+    for parent_slug in category_tree:
+        result = await session.execute(
+            select(ProductCategory).where(ProductCategory.slug == parent_slug)
+        )
+        parent = result.scalar_one_or_none()
+        if parent is None:
+            parent = ProductCategory(slug=parent_slug, parent_id=None)
+            session.add(parent)
+            await session.flush()
+            log.info("seeded_root_category", slug=parent_slug)
+
+    # Second pass: seed child categories
+    for parent_slug, child_slugs in category_tree.items():
+        # Get the parent category again to ensure we have its ID
+        result = await session.execute(
+            select(ProductCategory).where(ProductCategory.slug == parent_slug)
+        )
+        parent = result.scalar_one_or_none()
+        if parent is None:
+            log.error("parent_category_not_found_during_seed", slug=parent_slug)
+            continue
+
+        for child_slug in child_slugs:
+            c_result = await session.execute(
+                select(ProductCategory).where(ProductCategory.slug == child_slug)
+            )
+            child = c_result.scalar_one_or_none()
+            if child is None:
+                child = ProductCategory(slug=child_slug, parent_id=parent.id)
+                session.add(child)
+                log.info("seeded_child_category", slug=child_slug, parent=parent_slug)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Section 5 — Drop all (destructive, --drop flag only)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -397,6 +460,7 @@ async def init_db(*, drop_first: bool = False, dry_run: bool = False) -> None:
             await _seed_payment_methods(session)
             admin = await _seed_master_user(session)
             await _seed_master_license(session, admin)
+            await _seed_categories(session)
 
     finally:
         await engine.dispose()

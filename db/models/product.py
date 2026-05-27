@@ -17,6 +17,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Integer,
     Numeric,
     String,
     Text,
@@ -79,6 +80,32 @@ class PromoCode(Base):
     )
 
 
+class ProductCategory(Base):
+    """Marketplace product category supporting a 2-level hierarchy.
+
+    Categories are defined with a unique slug and an optional parent category.
+    Translations for the user interface are handled in frontend/bot layers
+    via localization files mapped by the category slug.
+    """
+
+    __tablename__ = "product_categories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    parent_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("product_categories.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+
+    # Relationships
+    parent: Mapped[ProductCategory | None] = relationship(
+        "ProductCategory", remote_side=[id], back_populates="children"
+    )
+    children: Mapped[list[ProductCategory]] = relationship(
+        "ProductCategory", back_populates="parent", cascade="all, delete-orphan"
+    )
+    products: Mapped[list[Product]] = relationship("Product", back_populates="category")
+
+
 class Product(Base):
     """Marketplace product created by a seller."""
 
@@ -117,12 +144,19 @@ class Product(Base):
     )
     promoted_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    category_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("product_categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     # Relationships
     deals: Mapped[list[MarketplaceDeal]] = relationship("MarketplaceDeal", back_populates="product")
+    category: Mapped[ProductCategory | None] = relationship(
+        "ProductCategory", back_populates="products"
+    )
 
 
 class MarketplaceDeal(Base):
